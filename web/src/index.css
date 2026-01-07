@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
+
+:root {
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'Manrope', system-ui, sans-serif;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+
+  --shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.25);
+  --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  --transition-fast: 160ms ease;
+  --transition-slow: 280ms ease;
+
+  --color-bg: #0b0c10;
+  --color-surface: #13141a;
+  --color-surface-2: #1a1b23;
+  --color-text: #f4f6fb;
+  --color-muted: #b3b7c2;
+  --color-accent: #c9a24d;
+  --color-accent-hover: #e0bc6a;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='light'] {
+  --color-bg: #f7f7fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0f1f6;
+  --color-text: #111319;
+  --color-muted: #4f5565;
+  --color-accent: #c2912d;
+  --color-accent-hover: #dca94b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+p {
+  margin: 0;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #0b0c10;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
