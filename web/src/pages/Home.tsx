@@ -10,6 +10,14 @@ import { cloudinaryUrl } from '../utils/media'
 const Home = () => {
   const heroUrl = cloudinaryUrl(heroImage, { width: 1800, height: 960 })
 
+  const handlePackageClick = () => {
+    // Handle package card click
+  }
+
+  const handleVehicleClick = () => {
+    // Handle vehicle card click
+  }
+
   return (
     <div className="page">
       <section className="hero">
@@ -52,7 +60,7 @@ const Home = () => {
         </header>
         <div className="grid three">
           {packages.slice(0, 3).map((pkg) => (
-            <PackageCard key={pkg.id} item={pkg} />
+            <PackageCard key={pkg.id} item={pkg} onClick={handlePackageClick} />
           ))}
         </div>
       </section>
@@ -67,7 +75,7 @@ const Home = () => {
         </header>
         <div className="grid three">
           {vehicles.map((vehicle) => (
-            <VehicleCard key={vehicle.id} vehicle={vehicle} />
+            <VehicleCard key={vehicle.id} vehicle={vehicle} onClick={handleVehicleClick} />
           ))}
         </div>
       </section>
