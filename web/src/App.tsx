@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import Button from './components/Button'
+import MobileNav from './components/MobileNav'
 import About from './pages/About'
 import Home from './pages/Home'
 import CalendarPage from './pages/CalendarPage'
@@ -41,6 +42,7 @@ const App = () => {
           </nav>
           <div className="topbar__cta">
             <ReservarButton />
+            <MobileNav />
           </div>
         </header>
 
