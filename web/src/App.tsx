@@ -2,21 +2,11 @@ import { useEffect } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import Button from './components/Button'
 import MobileNav from './components/MobileNav'
-import About from './pages/About'
-import Home from './pages/Home'
-import CalendarPage from './pages/CalendarPage'
-import Packages from './pages/Packages'
-import Vehicles from './pages/Vehicles'
-import Reservar from './pages/Reservar'
+import Account from './components/Account'
+import AppRoutes from './routes/Routes'
 import './App.css'
 
-const nav = [
-  { to: '/', label: 'Inicio' },
-  { to: '/paquetes', label: 'Paquetes' },
-  { to: '/vehiculos', label: 'Vehículos' },
-  { to: '/calendario', label: 'Calendario' },
-  { to: '/about', label: 'Sobre nosotros' },
-]
+  const nav = AppRoutes.nav
 
 const ReservarButton = () => {
   const navigate = useNavigate()
@@ -43,17 +33,15 @@ const App = () => {
           <div className="topbar__cta">
             <ReservarButton />
             <MobileNav />
+            <Account />
           </div>
         </header>
 
         <main className="main">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/paquetes" element={<Packages />} />
-            <Route path="/vehiculos" element={<Vehicles />} />
-            <Route path="/calendario" element={<CalendarPage />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/reservar" element={<Reservar />} />
+            {AppRoutes.list.map((r) => (
+              <Route key={r.path} path={r.path} element={r.element} />
+            ))}
           </Routes>
         </main>
 

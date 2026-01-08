@@ -53,6 +53,13 @@ export type CalendarSlot = {
   title: string
   detail?: string
   tag?: string
+  imageUrl?: string
+}
+
+export type Experience = {
+  id: string
+  title: string
+  imageUrl: string
 }
 
 export const heroImage = 'P00_wptrgt'
@@ -317,13 +324,13 @@ export const vehicles: Vehicle[] = [
 ]
 
 export const calendar: CalendarSlot[] = [
-  { id: 'jan05', date: '2026-01-05', status: 'evento', title: 'Concierto internacional', detail: 'Estadio Nacional', tag: 'Concierto' },
-  { id: 'jan08', date: '2026-01-08', status: 'disponible', title: 'Ventana prioritaria', detail: 'Rutas privadas' },
-  { id: 'jan12', date: '2026-01-12', status: 'ocupado', title: 'Boda privada', detail: 'Heredia' },
-  { id: 'jan15', date: '2026-01-15', status: 'evento', title: 'Gala benefica', detail: 'Centro de Convenciones', tag: 'Gala' },
-  { id: 'jan20', date: '2026-01-20', status: 'ocupado', title: 'Agenda bloqueada', detail: 'Lista de espera' },
-  { id: 'jan23', date: '2026-01-23', status: 'disponible', title: 'Corporate shuttle', detail: 'Zona Escazu' },
-  { id: 'jan27', date: '2026-01-27', status: 'evento', title: 'After party concierto', detail: 'VIP hospitality', tag: 'Concierto' },
+  { id: 'jan05', date: '2026-01-05', status: 'evento', title: 'Concierto internacional', detail: 'Estadio Nacional', tag: 'Concierto', imageUrl: 'https://res.cloudinary.com/dcwxslhjf/image/upload/v1767670912/P00_wptrgt.png' },
+  { id: 'jan08', date: '2026-01-08', status: 'disponible', title: 'Ventana prioritaria', detail: 'Rutas privadas', imageUrl: 'https://res.cloudinary.com/dcwxslhjf/image/upload/v1767670912/P00_wptrgt.png' },
+  { id: 'jan12', date: '2026-01-12', status: 'ocupado', title: 'Boda privada', detail: 'Heredia', imageUrl: 'https://res.cloudinary.com/dcwxslhjf/image/upload/v1767670912/P00_wptrgt.png' },
+  { id: 'jan15', date: '2026-01-15', status: 'evento', title: 'Gala benefica', detail: 'Centro de Convenciones', tag: 'Gala', imageUrl: 'https://res.cloudinary.com/dcwxslhjf/image/upload/v1767670912/P00_wptrgt.png' },
+  { id: 'jan20', date: '2026-01-20', status: 'ocupado', title: 'Agenda bloqueada', detail: 'Lista de espera', imageUrl: 'https://res.cloudinary.com/dcwxslhjf/image/upload/v1767670912/P00_wptrgt.png' },
+  { id: 'jan23', date: '2026-01-23', status: 'disponible', title: 'Corporate shuttle', detail: 'Zona Escazu', imageUrl: 'https://res.cloudinary.com/dcwxslhjf/image/upload/v1767670912/P00_wptrgt.png' },
+  { id: 'jan27', date: '2026-01-27', status: 'evento', title: 'After party concierto', detail: 'VIP hospitality', tag: 'Concierto', imageUrl: 'https://res.cloudinary.com/dcwxslhjf/image/upload/v1767670912/P00_wptrgt.png' },
 ]
 
 export const eventHighlight = {
@@ -371,4 +378,37 @@ export const vehicleOccupancy: VehicleOccupancy[] = [
   { vehicleId: 'escalade', date: '2026-01-05', isOccupied: true },
   { vehicleId: 'escalade', date: '2026-01-10', isOccupied: true },
   { vehicleId: 'escalade', date: '2026-01-18', isOccupied: true },
+]
+
+export const experiences: Experience[] = [
+  {
+    id: 'exp_001',
+    title: 'Boda en Hacienda Los Reyes',
+    imageUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80',
+  },
+  {
+    id: 'exp_002',
+    title: 'Concierto Internacional',
+    imageUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
+  },
+  {
+    id: 'exp_003',
+    title: 'Graduación Universitaria',
+    imageUrl: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
+  },
+  {
+    id: 'exp_004',
+    title: 'Quinceañera de Gala',
+    imageUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=80',
+  },
+  {
+    id: 'exp_005',
+    title: 'Evento Corporativo',
+    imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80',
+  },
+  {
+    id: 'exp_006',
+    title: 'Aniversario Premium',
+    imageUrl: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80',
+  },
 ]

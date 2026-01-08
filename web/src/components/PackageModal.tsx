@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Package } from '../data/content'
 import Button from './Button'
 import SafeImage from './SafeImage'
@@ -21,6 +22,8 @@ const PackageModal = ({ package: pkg, isOpen, onClose }: PackageModalProps) => {
       document.body.style.overflow = 'unset'
     }
   }, [isOpen])
+
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -116,7 +119,7 @@ const PackageModal = ({ package: pkg, isOpen, onClose }: PackageModalProps) => {
           )}
 
           <div className="package-modal__actions">
-            <Button variant="primary" onClick={() => window.location.href = '/reservar'}>
+            <Button variant="primary" onClick={() => navigate('/reservar')}>
               Reservar este paquete
             </Button>
             <Button variant="ghost" onClick={onClose}>

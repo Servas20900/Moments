@@ -1,39 +1,17 @@
+import { useEffect, useState } from 'react'
 import Card from '../components/Card'
 import SafeImage from '../components/SafeImage'
+import { fetchExperiences } from '../api/mocks'
+import type { Experience } from '../data/content'
 
 const About = () => {
-  const experiences = [
-    {
-      id: 1,
-      title: 'Boda en Hacienda Los Reyes',
-      imageUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80',
-    },
-    {
-      id: 2,
-      title: 'Concierto Internacional',
-      imageUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
-    },
-    {
-      id: 3,
-      title: 'Graduación Universitaria',
-      imageUrl: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
-    },
-    {
-      id: 4,
-      title: 'Quinceañera de Gala',
-      imageUrl: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=80',
-    },
-    {
-      id: 5,
-      title: 'Evento Corporativo',
-      imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80',
-    },
-    {
-      id: 6,
-      title: 'Aniversario Premium',
-      imageUrl: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80',
-    },
-  ]
+  const [experiences, setExperiences] = useState<Experience[]>([])
+
+  useEffect(() => {
+    let mounted = true
+    fetchExperiences().then((e) => mounted && setExperiences(e))
+    return () => { mounted = false }
+  }, [])
 
   return (
     <div className="page">

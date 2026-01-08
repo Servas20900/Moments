@@ -7,6 +7,8 @@ type SafeImageProps = ImgHTMLAttributes<HTMLImageElement> & {
   fallbackColor?: string
   transformWidth?: number
   transformHeight?: number
+  width?: number | string
+  height?: number | string
 }
 
 const SafeImage = ({
@@ -29,7 +31,14 @@ const SafeImage = ({
   }, [publicId, src, transformHeight, transformWidth])
 
   if (!resolvedSrc || hasError) {
-    return <div className={['image-fallback', className].join(' ')} style={{ background: fallbackColor }} aria-label={alt} />
+    return (
+      <div
+        className={['image-fallback', className].filter(Boolean).join(' ')}
+        style={{ background: fallbackColor }}
+        role="img"
+        aria-label={alt}
+      />
+    )
   }
 
   return (
@@ -39,6 +48,8 @@ const SafeImage = ({
       alt={alt}
       loading="lazy"
       decoding="async"
+      width={props.width ?? transformWidth}
+      height={props.height ?? transformHeight}
       onError={() => setHasError(true)}
       {...props}
     />

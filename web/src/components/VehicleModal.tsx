@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Vehicle } from '../data/content'
-import { vehicleOccupancy } from '../data/content'
+import { fetchVehicleOccupancy } from '../api/mocks'
 import SafeImage from './SafeImage'
 import Button from './Button'
 
@@ -43,12 +43,20 @@ const VehicleModal = ({ vehicle, isOpen, onClose }: VehicleModalProps) => {
     }
   }
 
+  const [occupancy, setOccupancy] = useState<{ vehicleId: string; date: string; isOccupied: boolean }[]>([])
+
+  useEffect(() => {
+    let mounted = true
+    fetchVehicleOccupancy().then((o) => mounted && setOccupancy(o))
+    return () => { mounted = false }
+  }, [])
+
   const getOccupancyForDate = (day: number) => {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    const occupancy = vehicleOccupancy.find(
-      occ => occ.vehicleId === vehicle.id && occ.date === dateStr
+    const occItem = occupancy.find(
+      (o) => o.vehicleId === vehicle.id && o.date === dateStr
     )
-    return occupancy ? occupancy.isOccupied : false
+    return occItem ? occItem.isOccupied : false
   }
 
   const isToday = (day: number) => {

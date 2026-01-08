@@ -1,11 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PackageCard from '../components/PackageCard'
 import PackageModal from '../components/PackageModal'
-import { packages, type Package } from '../data/content'
+import type { Package } from '../data/content'
+import { fetchPackages } from '../api/mocks'
 
 const Packages = () => {
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
-  
+  const [packages, setPackages] = useState<Package[]>([])
+
+  useEffect(() => {
+    let mounted = true
+    fetchPackages().then((p) => mounted && setPackages(p))
+    return () => { mounted = false }
+  }, [])
+
   const categories = Array.from(new Set(packages.map(pkg => pkg.category)))
 
   return (
