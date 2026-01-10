@@ -4,19 +4,20 @@ import Packages from '../pages/Packages'
 import Vehicles from '../pages/Vehicles'
 import CalendarPage from '../pages/CalendarPage'
 import About from '../pages/About'
+import Gallery from '../pages/Gallery'
 import Admin from '../pages/Admin'
 import Login from '../pages/Login'
 import Register from '../pages/Register'
 import Profile from '../pages/Profile'
-import Reservar from '../pages/Reservar'
+import Cart from '../pages/Cart'
 
 export class AppRoutes {
   static nav = [
     { to: '/', label: 'Inicio' },
+    { to: '/about', label: 'Sobre nosotros' },
+    { to: '/calendario', label: 'Calendario Eventos' },
     { to: '/paquetes', label: 'Paquetes' },
     { to: '/vehiculos', label: 'Vehículos' },
-    { to: '/calendario', label: 'Calendario Eventos' },
-    { to: '/about', label: 'Sobre nosotros' },
     { to: '/admin', label: 'Admin' },
   ]
 
@@ -25,12 +26,13 @@ export class AppRoutes {
     { path: '/paquetes', element: <Packages /> },
     { path: '/vehiculos', element: <Vehicles /> },
     { path: '/calendario', element: <CalendarPage /> },
+    { path: '/galeria', element: <Gallery /> },
     { path: '/admin', element: <Admin /> },
     { path: '/login', element: <Login /> },
     { path: '/about', element: <About /> },
     { path: '/register', element: <Register /> },
     { path: '/profile', element: <Profile /> },
-    { path: '/reservar', element: <Reservar /> },
+    { path: '/carrito', element: <Cart /> },
   ]
 }
 

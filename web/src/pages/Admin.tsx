@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
-import { FaEdit, FaTrash, FaPlus, FaSyncAlt } from 'react-icons/fa'
+import { FaEdit, FaTrash } from 'react-icons/fa'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import Modal from '../components/Modal'
-import { fetchPackages, fetchVehicles, fetchCalendar, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, createExperience, updateExperience, deleteExperience } from '../api/mocks'
-import type { Package, Vehicle, CalendarSlot, Experience } from '../data/content'
+import { fetchPackages, fetchVehicles, fetchCalendar, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, createExperience, updateExperience, deleteExperience, fetchSystemImages, createSystemImage, updateSystemImage, deleteSystemImage, fetchHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide } from '../api/mocks'
+import type { Package, Vehicle, CalendarSlot, Experience, SystemImage, HeroSlide } from '../data/content'
 
 const Admin = () => {
   const [packages, setPackages] = useState<Package[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [experiences, setExperiences] = useState<Experience[]>([])
+  const [systemImages, setSystemImages] = useState<SystemImage[]>([])
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([])
   const [pkgCategories, setPkgCategories] = useState<string[]>([])
   const [vehCategories, setVehCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,21 +22,27 @@ const Admin = () => {
   const [showVehCatModal, setShowVehCatModal] = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
   const [showExpModal, setShowExpModal] = useState(false)
+  const [showImgModal, setShowImgModal] = useState(false)
+  const [showHeroModal, setShowHeroModal] = useState(false)
 
   const [editingPackage, setEditingPackage] = useState<Package | null>(null)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [editingEvent, setEditingEvent] = useState<CalendarSlot | null>(null)
   const [editingExp, setEditingExp] = useState<Experience | null>(null)
+  const [editingImage, setEditingImage] = useState<SystemImage | null>(null)
+  const [editingHero, setEditingHero] = useState<HeroSlide | null>(null)
   const [showPkgModal, setShowPkgModal] = useState(false)
   const [showVehModal, setShowVehModal] = useState(false)
 
   useEffect(() => {
     let mounted = true
-    Promise.all([fetchPackages(), fetchVehicles(), fetchCalendar(), fetchNotifications(), fetchExperiences()]).then(([p, v, c, n, e]) => {
+    Promise.all([fetchPackages(), fetchVehicles(), fetchCalendar(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides()]).then(([p, v, c, n, e, img, h]) => {
       if (!mounted) return
       setPackages(p)
       setVehicles(v)
       setExperiences(e)
+      setSystemImages(img)
+      setHeroSlides(h)
       setEvents(c)
       setNotifications(n)
       setPkgCategories(Array.from(new Set(p.map(x => x.category))).filter(Boolean))
@@ -144,6 +152,56 @@ const Admin = () => {
     setEditingExp(null)
   }
 
+  const onCreateImage = () => {
+    setEditingImage({ id: '', category: 'LANDING_PAGE', name: '', description: '', url: '', altText: '', order: 0, isActive: true })
+    setShowImgModal(true)
+  }
+
+  const onEditImage = (img: SystemImage) => { setEditingImage(img); setShowImgModal(true) }
+
+  const onDeleteImage = async (id: string) => {
+    if (!confirm('Eliminar imagen?')) return
+    await deleteSystemImage(id)
+    setSystemImages((s) => s.filter((x) => x.id !== id))
+  }
+
+  const onSaveImage = async (img: SystemImage) => {
+    if (!img.id) {
+      const created = await createSystemImage(img)
+      setSystemImages((s) => [created, ...s])
+    } else {
+      await updateSystemImage(img.id, img)
+      setSystemImages((s) => s.map((x) => (x.id === img.id ? img : x)))
+    }
+    setShowImgModal(false)
+    setEditingImage(null)
+  }
+
+  const onCreateHero = () => {
+    setEditingHero({ id: '', title: '', subtitle: '', description: '', imageUrl: '', order: heroSlides.length + 1, isActive: true })
+    setShowHeroModal(true)
+  }
+
+  const onEditHero = (slide: HeroSlide) => { setEditingHero(slide); setShowHeroModal(true) }
+
+  const onDeleteHero = async (id: string) => {
+    if (!confirm('Eliminar slide?')) return
+    await deleteHeroSlide(id)
+    setHeroSlides((s) => s.filter((x) => x.id !== id))
+  }
+
+  const onSaveHero = async (slide: HeroSlide) => {
+    if (!slide.id) {
+      const created = await createHeroSlide(slide)
+      setHeroSlides((s) => [created, ...s])
+    } else {
+      await updateHeroSlide(slide.id, slide)
+      setHeroSlides((s) => s.map((x) => (x.id === slide.id ? slide : x)))
+    }
+    setShowHeroModal(false)
+    setEditingHero(null)
+  }
+
   if (loading) return <div className="page"><p>Cargando administrador...</p></div>
 
   return (
@@ -157,14 +215,52 @@ const Admin = () => {
       <div className="admin-layout">
         <aside className="admin-sidebar">
           <p className="admin-sidebar__title">Secciones</p>
+          <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-hero')?.scrollIntoView({ behavior: 'smooth' })}>Hero Carousel</button>
           <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-events')?.scrollIntoView({ behavior: 'smooth' })}>Eventos</button>
           <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-packages')?.scrollIntoView({ behavior: 'smooth' })}>Paquetes</button>
           <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-vehicles')?.scrollIntoView({ behavior: 'smooth' })}>Vehículos</button>
           <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-experiences')?.scrollIntoView({ behavior: 'smooth' })}>Experiencias</button>
+          <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-images')?.scrollIntoView({ behavior: 'smooth' })}>Imágenes del Sistema</button>
           <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-notifications')?.scrollIntoView({ behavior: 'smooth' })}>Notificaciones</button>
         </aside>
 
         <div className="admin-main">
+          <section className="section" id="admin-hero">
+            <div className="section__header">
+              <div>
+                <p className="eyebrow">Landing</p>
+                <h2 className="section__title">Hero Carousel</h2>
+              </div>
+              <div>
+                <Button variant="ghost" onClick={onCreateHero}>Nuevo slide</Button>
+              </div>
+            </div>
+
+            <div className="admin-table">
+              <div className="admin-table__head">
+                <span>Título</span>
+                <span>Orden</span>
+                <span>Estado</span>
+                <span>Acciones</span>
+              </div>
+              {heroSlides.map((slide) => (
+                <div key={slide.id} className="admin-table__row">
+                  <span>{slide.title}</span>
+                  <span>{slide.order}</span>
+                  <span>{slide.isActive ? '✓ Activo' : '✗ Inactivo'}</span>
+                  <span className="admin-table__actions">
+                    <button className="btn btn-ghost btn-sm" aria-label={`Editar ${slide.title}`} onClick={() => onEditHero(slide)}>
+                      <FaEdit size={16} />
+                    </button>
+                    <button className="btn btn-ghost btn-sm" aria-label={`Eliminar ${slide.title}`} onClick={() => onDeleteHero(slide.id)}>
+                      <FaTrash size={16} />
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <section className="section" id="admin-events">
             <div className="section__header">
               <div>
@@ -315,6 +411,42 @@ const Admin = () => {
             </div>
           </section>
 
+          <section className="section" id="admin-images">
+            <div className="section__header">
+              <div>
+                <p className="eyebrow">Contenido</p>
+                <h2 className="section__title">Galería y Experiencias</h2>
+              </div>
+              <div>
+                <Button variant="ghost" onClick={onCreateImage}>Nueva imagen</Button>
+              </div>
+            </div>
+
+            <div className="admin-table">
+              <div className="admin-table__head">
+                <span>Nombre</span>
+                <span>Orden</span>
+                <span>Estado</span>
+                <span>Acciones</span>
+              </div>
+              {systemImages.map((img) => (
+                <div key={img.id} className="admin-table__row">
+                  <span>{img.name}</span>
+                  <span>{img.order}</span>
+                  <span>{img.isActive ? '✓ Activa' : '✗ Inactiva'}</span>
+                  <span className="admin-table__actions">
+                    <button className="btn btn-ghost btn-sm" aria-label={`Editar ${img.name}`} onClick={() => onEditImage(img)}>
+                      <FaEdit size={16} />
+                    </button>
+                    <button className="btn btn-ghost btn-sm" aria-label={`Eliminar ${img.name}`} onClick={() => onDeleteImage(img.id)}>
+                      <FaTrash size={16} />
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <section className="section" id="admin-notifications">
             <div className="section__header">
               <div>
@@ -362,6 +494,12 @@ const Admin = () => {
         )}
       </Modal>
 
+      <Modal open={showImgModal} onClose={() => setShowImgModal(false)} title={editingImage ? 'Editar imagen' : 'Crear imagen'}>
+        {editingImage && (
+          <AdminImageForm img={editingImage} onCancel={() => { setShowImgModal(false); setEditingImage(null) }} onSave={onSaveImage} uploadImage={uploadImage} />
+        )}
+      </Modal>
+
       <Modal open={showPkgCatModal} onClose={() => setShowPkgCatModal(false)} title="Crear categoría de paquete">
         <CreateCategoryForm onCreate={(name) => { if (!pkgCategories.includes(name)) setPkgCategories(s => [name, ...s]); setShowPkgCatModal(false) }} onCancel={() => setShowPkgCatModal(false)} />
       </Modal>
@@ -369,11 +507,15 @@ const Admin = () => {
       <Modal open={showVehCatModal} onClose={() => setShowVehCatModal(false)} title="Crear categoría de vehículo">
         <CreateCategoryForm onCreate={(name) => { if (!vehCategories.includes(name)) setVehCategories(s => [name, ...s]); setShowVehCatModal(false) }} onCancel={() => setShowVehCatModal(false)} />
       </Modal>
+
+      <Modal open={showHeroModal} onClose={() => setShowHeroModal(false)} title={editingHero ? 'Editar slide del hero' : 'Crear slide del hero'}>
+        {editingHero && (
+          <AdminHeroSlideForm slide={editingHero} onCancel={() => { setShowHeroModal(false); setEditingHero(null) }} onSave={onSaveHero} uploadImage={uploadImage} />
+        )}
+      </Modal>
     </div>
   )
 }
-
-export default Admin
 
 function AdminEventForm({ ev, onCancel, onSave, uploadImage }: { ev: CalendarSlot; onCancel: () => void; onSave: (e: CalendarSlot) => void; uploadImage: (f: string) => Promise<string> }) {
   const [state, setState] = useState<CalendarSlot>(ev)
@@ -403,7 +545,7 @@ function AdminEventForm({ ev, onCancel, onSave, uploadImage }: { ev: CalendarSlo
       </label>
       <label className="form__label">Tag<input name="tag" value={state.tag ?? ''} onChange={handleChange} /></label>
       <label className="form__label">Detalle<textarea name="detail" value={state.detail ?? ''} onChange={handleChange} /></label>
-      <label className="form__label">Imagen<input type="file" onChange={handleUpload} /></label>
+      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
       {uploading && <div>Subiendo imagen...</div>}
       <div className="stack" style={{ marginTop: 12 }}>
         <Button variant="primary" type="submit">Guardar</Button>
@@ -440,7 +582,7 @@ function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage 
       <label className="form__label">Precio<input name="price" value={String(state.price)} onChange={(e) => setState(s => ({ ...s, price: Number(e.target.value) }))} /></label>
       <label className="form__label">Vehículo<input name="vehicle" value={state.vehicle} onChange={handleChange} /></label>
       <label className="form__label">Descripción<textarea name="description" value={state.description} onChange={handleChange} /></label>
-      <label className="form__label">Imagen<input type="file" onChange={handleUpload} /></label>
+      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
       {uploading && <div>Subiendo imagen...</div>}
       <div className="stack" style={{ marginTop: 12 }}>
         <Button variant="primary" type="submit">Guardar</Button>
@@ -477,7 +619,7 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
       <label className="form__label">Asientos<input name="seats" value={String(state.seats)} onChange={(e) => setState(s => ({ ...s, seats: Number(e.target.value) }))} /></label>
       <label className="form__label">Tarifa<input name="rate" value={state.rate} onChange={handleChange} /></label>
       <label className="form__label">Características<textarea name="features" value={state.features.join(', ')} onChange={(e) => setState(s => ({ ...s, features: e.target.value.split(',').map(x => x.trim()) }))} /></label>
-      <label className="form__label">Imagen<input type="file" onChange={handleUpload} /></label>
+      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
       {uploading && <div>Subiendo imagen...</div>}
       <div className="stack" style={{ marginTop: 12 }}>
         <Button variant="primary" type="submit">Guardar</Button>
@@ -518,7 +660,6 @@ function AdminExperienceForm({ exp, onCancel, onSave, uploadImage }: { exp: Expe
   return (
     <form className="form" onSubmit={(evForm) => { evForm.preventDefault(); onSave(state) }}>
       <label className="form__label">Título<input name="title" value={state.title} onChange={handleChange} /></label>
-      <label className="form__label">URL de imagen<input name="imageUrl" value={state.imageUrl} onChange={handleChange} placeholder="https://..." /></label>
       <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
       {uploading && <div>Subiendo imagen...</div>}
       <div className="stack" style={{ marginTop: 12 }}>
@@ -528,3 +669,93 @@ function AdminExperienceForm({ exp, onCancel, onSave, uploadImage }: { exp: Expe
     </form>
   )
 }
+
+function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemImage; onCancel: () => void; onSave: (img: SystemImage) => void; uploadImage: (f: string) => Promise<string> }) {
+  const [state, setState] = useState<SystemImage>(img)
+  const [uploading, setUploading] = useState(false)
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target
+    if (type === 'checkbox') {
+      setState(s => ({ ...s, [name]: (e.target as HTMLInputElement).checked }))
+    } else if (name === 'order') {
+      setState(s => ({ ...s, order: Number(value) }))
+    } else {
+      setState(s => ({ ...s, [name]: value }))
+    }
+  }
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const url = await uploadImage(file.name)
+    setState(s => ({ ...s, url }))
+    setUploading(false)
+  }
+
+  return (
+    <form className="form" onSubmit={(evForm) => { evForm.preventDefault(); onSave(state) }}>
+      <label className="form__label">Nombre<input name="name" value={state.name} onChange={handleChange} required /></label>
+      <label className="form__label">Descripción<textarea name="description" value={state.description ?? ''} onChange={handleChange} /></label>
+      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} required /></label>
+      {uploading && <div>Subiendo imagen...</div>}
+      <label className="form__label">Texto alternativo<input name="altText" value={state.altText ?? ''} onChange={handleChange} placeholder="Descripción de la imagen" /></label>
+      <label className="form__label">Orden<input name="order" type="number" value={state.order} onChange={handleChange} /></label>
+      <label className="form__label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input name="isActive" type="checkbox" checked={state.isActive} onChange={handleChange} />
+        <span>Mostrar en galería</span>
+      </label>
+      <div className="stack" style={{ marginTop: 12 }}>
+        <Button variant="primary" type="submit">Guardar</Button>
+        <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
+      </div>
+    </form>
+  )
+}
+
+function AdminHeroSlideForm({ slide, onCancel, onSave, uploadImage }: { slide: HeroSlide; onCancel: () => void; onSave: (slide: HeroSlide) => void; uploadImage: (f: string) => Promise<string> }) {
+  const [state, setState] = useState<HeroSlide>(slide)
+  const [uploading, setUploading] = useState(false)
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target
+    if (type === 'checkbox') {
+      setState(s => ({ ...s, [name]: (e.target as HTMLInputElement).checked }))
+    } else if (name === 'order') {
+      setState(s => ({ ...s, order: Number(value) }))
+    } else {
+      setState(s => ({ ...s, [name]: value }))
+    }
+  }
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const url = await uploadImage(file.name)
+    setState(s => ({ ...s, imageUrl: url }))
+    setUploading(false)
+  }
+
+  return (
+    <form className="form" onSubmit={(evForm) => { evForm.preventDefault(); onSave(state) }}>
+      <label className="form__label">Título<input name="title" value={state.title} onChange={handleChange} required /></label>
+      <label className="form__label">Subtítulo<input name="subtitle" value={state.subtitle} onChange={handleChange} required /></label>
+      <label className="form__label">Descripción<textarea name="description" value={state.description} onChange={handleChange} required /></label>
+      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} required /></label>
+      {uploading && <div>Subiendo imagen...</div>}
+      <label className="form__label">Orden<input name="order" type="number" value={state.order} onChange={handleChange} required /></label>
+      <label className="form__label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input name="isActive" type="checkbox" checked={state.isActive} onChange={handleChange} />
+        <span>Slide activo</span>
+      </label>
+      <div className="stack" style={{ marginTop: 12 }}>
+        <Button variant="primary" type="submit">Guardar</Button>
+        <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
+      </div>
+    </form>
+  )
+}
+
+export default Admin

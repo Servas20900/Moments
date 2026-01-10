@@ -1,14 +1,9 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import AppRoutes from '../routes/Routes'
 import './MobileNav.css'
 
-const nav = [
-  { to: '/', label: 'Inicio' },
-  { to: '/paquetes', label: 'Paquetes' },
-  { to: '/vehiculos', label: 'Vehículos' },
-  { to: '/calendario', label: 'Calendario' },
-  { to: '/about', label: 'Sobre nosotros' },
-]
+const nav = AppRoutes.nav
 
 const MobileNav = () => {
   const [isOpen, setIsOpen] = useState(false)

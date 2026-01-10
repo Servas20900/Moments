@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
+import { FaShoppingCart } from 'react-icons/fa'
 import Button from './components/Button'
 import MobileNav from './components/MobileNav'
 import Account from './components/Account'
@@ -8,9 +9,17 @@ import './App.css'
 
   const nav = AppRoutes.nav
 
-const ReservarButton = () => {
+const CartButton = () => {
   const navigate = useNavigate()
-  return <Button variant="primary" onClick={() => navigate('/reservar')}>Reservar</Button>
+  return (
+    <button 
+      onClick={() => navigate('/carrito')}
+      className="cart-icon-btn"
+      title="Carrito"
+    >
+      <FaShoppingCart size={20} />
+    </button>
+  )
 }
 
 const App = () => {
@@ -31,7 +40,7 @@ const App = () => {
             ))}
           </nav>
           <div className="topbar__cta">
-            <ReservarButton />
+            <CartButton />
             <MobileNav />
             <Account />
           </div>

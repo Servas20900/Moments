@@ -1,5 +1,5 @@
-import type { Package, Vehicle, CalendarSlot, VehicleOccupancy, Experience } from '../data/content'
-import { packages as pkgs, vehicles as vehs, calendar as cal, vehicleOccupancy as occ, experiences as exps } from '../data/content'
+import type { Package, Vehicle, CalendarSlot, VehicleOccupancy, Experience, SystemImage, HeroSlide } from '../data/content'
+import { packages as pkgs, vehicles as vehs, calendar as cal, vehicleOccupancy as occ, experiences as exps, systemImages as sysImgs, heroSlides as hSlides } from '../data/content'
 
 const simulate = <T,>(data: T, delay = 300): Promise<T> =>
   new Promise((res) => setTimeout(() => res(data), delay))
@@ -9,6 +9,8 @@ export const fetchVehicles = () => simulate<Vehicle[]>(vehs, 250)
 export const fetchCalendar = () => simulate<CalendarSlot[]>(cal, 250)
 export const fetchVehicleOccupancy = () => simulate<VehicleOccupancy[]>(occ, 250)
 export const fetchExperiences = () => simulate<Experience[]>(exps, 250)
+export const fetchSystemImages = () => simulate<SystemImage[]>(sysImgs, 250)
+export const fetchHeroSlides = () => simulate<HeroSlide[]>(hSlides, 250)
 
 export const createCalendarEvent = (data: Partial<CalendarSlot>) =>
   simulate<CalendarSlot>({
@@ -188,6 +190,46 @@ export const deleteExperience = (id: string) =>
     return true
   })
 
+export const createSystemImage = (data: Partial<SystemImage>) =>
+  simulate<SystemImage>({ ...(data as SystemImage), id: data.id ?? `img_${Math.random().toString(36).slice(2, 8)}` }, 300).then((img) => {
+    sysImgs.unshift(img)
+    return img
+  })
+
+export const updateSystemImage = (id: string, patch: Partial<SystemImage>) =>
+  simulate<boolean>(true, 250).then(() => {
+    const idx = sysImgs.findIndex((x) => x.id === id)
+    if (idx >= 0) sysImgs[idx] = { ...sysImgs[idx], ...patch }
+    return true
+  })
+
+export const deleteSystemImage = (id: string) =>
+  simulate<boolean>(true, 250).then(() => {
+    const idx = sysImgs.findIndex((x) => x.id === id)
+    if (idx >= 0) sysImgs.splice(idx, 1)
+    return true
+  })
+
+export const createHeroSlide = (data: Partial<HeroSlide>) =>
+  simulate<HeroSlide>({ ...(data as HeroSlide), id: data.id ?? `hero_${Math.random().toString(36).slice(2, 8)}` }, 300).then((slide) => {
+    hSlides.unshift(slide)
+    return slide
+  })
+
+export const updateHeroSlide = (id: string, patch: Partial<HeroSlide>) =>
+  simulate<boolean>(true, 250).then(() => {
+    const idx = hSlides.findIndex((x) => x.id === id)
+    if (idx >= 0) hSlides[idx] = { ...hSlides[idx], ...patch }
+    return true
+  })
+
+export const deleteHeroSlide = (id: string) =>
+  simulate<boolean>(true, 250).then(() => {
+    const idx = hSlides.findIndex((x) => x.id === id)
+    if (idx >= 0) hSlides.splice(idx, 1)
+    return true
+  })
+
 export default {
   fetchPackages,
   fetchVehicles,
@@ -204,4 +246,12 @@ export default {
   createExperience,
   updateExperience,
   deleteExperience,
+  fetchSystemImages,
+  createSystemImage,
+  updateSystemImage,
+  deleteSystemImage,
+  fetchHeroSlides,
+  createHeroSlide,
+  updateHeroSlide,
+  deleteHeroSlide,
 }

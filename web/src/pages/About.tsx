@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
+import Button from '../components/Button'
 import SafeImage from '../components/SafeImage'
 import { fetchExperiences } from '../api/mocks'
 import type { Experience } from '../data/content'
 
 const About = () => {
+  const navigate = useNavigate()
   const [experiences, setExperiences] = useState<Experience[]>([])
 
   useEffect(() => {
@@ -54,11 +57,13 @@ const About = () => {
       {/* Sección: Galería de Experiencias */}
       <section className="section">
         <div className="section__header">
-          <p className="eyebrow">Momentos reales</p>
-          <h2 className="heading">Experiencias con nuestros clientes</h2>
-          <p className="section__copy">
-            Cada evento tiene su propia historia. Aquí algunos de los momentos que hemos tenido el privilegio de acompañar.
-          </p>
+          <div>
+            <p className="eyebrow">Momentos reales</p>
+            <h2 className="section__title">Experiencias con nuestros clientes</h2>
+            <p className="section__copy">
+              Cada evento tiene su propia historia. Aquí algunos de los momentos que hemos tenido el privilegio de acompañar.
+            </p>
+          </div>
         </div>
 
         <div className="gallery">
@@ -73,13 +78,21 @@ const About = () => {
             </div>
           ))}
         </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40 }}>
+          <Button variant="primary" onClick={() => navigate('/galeria')}>
+            Ver galería completa
+          </Button>
+        </div>
       </section>
 
       {/* Sección: Contacto */}
       <section className="section section--dark">
         <div className="section__header">
-          <p className="eyebrow">Conversemos</p>
-          <h2 className="heading">Información de contacto</h2>
+          <div>
+            <p className="eyebrow">Conversemos</p>
+            <h2 className="section__title">Información de contacto</h2>
+          </div>
         </div>
 
         <div className="section__split">

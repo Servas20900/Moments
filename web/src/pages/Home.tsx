@@ -1,45 +1,99 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import PackageCard from '../components/PackageCard'
 import SafeImage from '../components/SafeImage'
 import VehicleCard from '../components/VehicleCard'
 import { cloudinaryUrl } from '../utils/media'
-import { fetchPackages, fetchVehicles, fetchCalendar } from '../api/mocks'
-import { heroImage } from '../data/content'
+import { fetchPackages, fetchVehicles, fetchCalendar, fetchHeroSlides } from '../api/mocks'
+import type { HeroSlide } from '../data/content'
 
 const Home = () => {
-  const heroUrl = cloudinaryUrl(heroImage, { width: 1800, height: 960 })
   const [packages, setPackages] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([])
+  const [currentSlide, setCurrentSlide] = useState(0)
 
   useEffect(() => {
     let mounted = true
     fetchPackages().then((p) => mounted && setPackages(p))
     fetchVehicles().then((v) => mounted && setVehicles(v))
     fetchCalendar().then((c) => mounted && setEvents(c.filter((e) => e.status === 'evento')))
+    fetchHeroSlides().then((h) => {
+      if (mounted) {
+        const active = h.filter(s => s.isActive).sort((a, b) => a.order - b.order)
+        setHeroSlides(active)
+      }
+    })
     return () => { mounted = false }
   }, [])
 
+  useEffect(() => {
+    if (heroSlides.length === 0) return
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [heroSlides.length])
+
+  const slide = heroSlides[currentSlide]
+
   return (
     <div className="page">
-      <section className="hero">
-        <div className="hero__bg" style={{ backgroundImage: `linear-gradient(160deg, rgba(11,12,16,0.85), rgba(11,12,16,0.4)), url(${heroUrl})` }} />
-        <div className="hero__content">
-          <p className="eyebrow">Luxury chauffeur · Costa Rica</p>
-          <h1 className="display">Logística premium, detalles obsesivos, cero fricción.</h1>
-          <p className="lede">
-            Servicio con chofer para bodas, conciertos y galas. Rutas testeadas, buffers de tiempo y atención silenciosa para que solo vivas el momento.
-          </p>
-          <div className="hero__actions">
-            <Link to="/reservar" className="btn btn-primary btn-lg">Reservar ahora</Link>
-            <Link to="/paquetes" className="btn btn-ghost btn-lg">Ver paquetes</Link>
-            <Link to="/calendario" className="btn btn-ghost btn-lg">Calendario</Link>
+      {slide && (
+        <section className="hero">
+          <div className="hero__bg" style={{ backgroundImage: `linear-gradient(160deg, rgba(11,12,16,0.85), rgba(11,12,16,0.4)), url(${slide.imageUrl})` }} />
+          <div className="hero__content">
+            {slide.subtitle && <p className="eyebrow">{slide.subtitle}</p>}
+            <h1 className="display">{slide.title}</h1>
+            {slide.description && (
+              <p className="lede">
+                {slide.description}
+              </p>
+            )}
+            <div className="hero__actions">
+              <Link to="/reservar" className="btn btn-primary btn-lg">Reservar ahora</Link>
+              <Link to="/paquetes" className="btn btn-ghost btn-lg">Ver paquetes</Link>
+              <Link to="/calendario" className="btn btn-ghost btn-lg">Calendario</Link>
+            </div>
           </div>
-        </div>
-      </section>
+          
+          {heroSlides.length > 1 && (
+            <>
+              <button
+                className="hero__nav hero__nav--prev"
+                onClick={() => setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)}
+                aria-label="Slide anterior"
+              >
+                <FaChevronLeft size={24} />
+              </button>
+              <button
+                className="hero__nav hero__nav--next"
+                onClick={() => setCurrentSlide((prev) => (prev + 1) % heroSlides.length)}
+                aria-label="Próximo slide"
+              >
+                <FaChevronRight size={24} />
+              </button>
+            </>
+          )}
+          
+          {heroSlides.length > 1 && (
+            <div className="hero__pagination">
+              {heroSlides.map((_, idx) => (
+                <button
+                  key={idx}
+                  className={`hero__dot ${idx === currentSlide ? 'hero__dot--active' : ''}`}
+                  onClick={() => setCurrentSlide(idx)}
+                  aria-label={`Slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="section">
         <header className="section__header">

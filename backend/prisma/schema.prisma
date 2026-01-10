@@ -1,0 +1,389 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================
+// ENUMS (catálogos controlados)
+// =========================
+enum EstadoReserva {
+  PAGO_PENDIENTE
+  CONFIRMADA
+  CANCELADA
+  COMPLETADA
+}
+
+enum EstadoEvento {
+  DISPONIBLE
+  OCUPADO
+  EVENTO
+}
+
+enum TipoPago {
+  TARJETA
+  SINPE
+  TRANSFERENCIA
+}
+
+enum CanalNotificacion {
+  EMAIL
+  WHATSAPP
+  SMS
+  EN_APP
+}
+
+enum EstadoNotificacion {
+  ENVIADA
+  FALLIDA
+  PENDIENTE
+}
+
+enum TipoItemCarrito {
+  PAQUETE
+}
+
+enum CategoriaImagen {
+  LANDING_PAGE
+  EXPERIENCIA
+  GALERIA
+}
+
+// =========================
+// USUARIOS Y SEGURIDAD
+// =========================
+model Usuario {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  contrasena     String
+  nombre         String
+  telefono       String
+  identificacion String?
+  distritoId     Int?
+  estaActivo     Boolean  @default(true)
+  ultimoAcceso   DateTime?
+
+  distrito       Distrito?    @relation(fields: [distritoId], references: [id])
+  roles          UsuarioRol[]
+  reservas       Reserva[]
+  metodosPago    MetodoPago[]
+  notificaciones Notificacion[]
+  carritos       Carrito[]
+
+  creadoEn       DateTime @default(now())
+  actualizadoEn  DateTime @updatedAt
+
+  @@map("usuarios")
+}
+
+model Rol {
+  id       Int         @id @default(autoincrement())
+  codigo   String      @unique
+  nombre   String
+
+  usuarios UsuarioRol[]
+
+  creadoEn DateTime @default(now())
+
+  @@map("roles")
+}
+
+model UsuarioRol {
+  usuarioId String
+  rolId     Int
+
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  rol       Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, rolId])
+  @@map("usuarios_roles")
+}
+
+// =========================
+// SERVICIOS
+// =========================
+model CategoriaPaquete {
+  id       Int       @id @default(autoincrement())
+  nombre   String    @unique
+
+  paquetes Paquete[]
+
+  creadoEn DateTime @default(now())
+
+  @@map("categorias_paquetes")
+}
+
+model Paquete {
+  id            String             @id @default(cuid())
+  categoriaId   Int
+  nombre        String
+  descripcion   String
+  precioBase    Decimal
+  maxPersonas   Int
+  imagenUrl     String
+
+  categoria     CategoriaPaquete  @relation(fields: [categoriaId], references: [id])
+  reservas      Reserva[]
+  itemsCarrito  ItemCarrito[]
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@map("paquetes")
+}
+
+model Vehiculo {
+  id             String              @id @default(cuid())
+  nombre         String
+  categoria      String
+  asientos       Int
+  tarifaPorHora  Decimal
+  imagenUrl      String
+
+  reservas       Reserva[]
+  ocupacion      OcupacionVehiculo[]
+
+  creadoEn       DateTime @default(now())
+  actualizadoEn  DateTime @updatedAt
+
+  @@map("vehiculos")
+}
+
+model Conductor {
+  id         String   @id @default(cuid())
+  nombre     String
+  telefono   String
+  estaActivo Boolean  @default(true)
+
+  reservas   Reserva[]
+
+  creadoEn   DateTime @default(now())
+
+  @@map("conductores")
+}
+
+model ImagenSistema {
+  id             String          @id @default(cuid())
+  categoria      CategoriaImagen
+  nombre         String
+  descripcion    String?
+  url            String
+  altText        String?
+  orden          Int             @default(0)
+  estaActiva     Boolean         @default(true)
+
+  creadoEn       DateTime @default(now())
+  actualizadoEn  DateTime @updatedAt
+
+  @@map("imagenes_sistema")
+}
+
+// =========================
+// OPERACIÓN
+// =========================
+model Reserva {
+  id                String    @id @default(cuid())
+  usuarioId         String?
+  paqueteId         String
+  vehiculoId        String
+  conductorId       String?
+
+  nombre            String
+  email             String
+  telefono          String
+  identificacion    String?
+
+  tipoEvento        String
+  fechaEvento       DateTime
+  horaInicio        DateTime
+  horaFin           DateTime
+  origen            String
+  destino           String
+  numeroPersonas    Int
+
+  precioBase        Decimal
+  precioTotal       Decimal
+  anticipo          Decimal
+  restante          Decimal
+
+  estado            EstadoReserva
+  tipoPago          TipoPago?
+
+  usuario           Usuario?   @relation(fields: [usuarioId], references: [id])
+  paquete           Paquete    @relation(fields: [paqueteId], references: [id])
+  vehiculo          Vehiculo   @relation(fields: [vehiculoId], references: [id])
+  conductor         Conductor? @relation(fields: [conductorId], references: [id])
+
+  pagos             PagoReserva[]
+  notificaciones    Notificacion[]
+  ocupacionVehiculo OcupacionVehiculo[]
+
+  creadoEn          DateTime @default(now())
+  actualizadoEn     DateTime @updatedAt
+
+  @@map("reservas")
+}
+
+model PagoReserva {
+  id              String   @id @default(cuid())
+  reservaId       String
+  monto           Decimal
+  tipoPago        TipoPago
+  comprobantePago String?
+  pagadoEn        DateTime?
+
+  reserva         Reserva @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+
+  creadoEn        DateTime @default(now())
+
+  @@map("pagos_reservas")
+}
+
+model EventoCalendario {
+  id        String       @id @default(cuid())
+  fecha     DateTime
+  titulo    String
+  estado    EstadoEvento
+  etiqueta  String?
+  detalle   String?
+  imagenUrl String?
+
+  creadoEn  DateTime @default(now())
+
+  @@map("eventos_calendario")
+}
+
+model OcupacionVehiculo {
+  id         String    @id @default(cuid())
+  vehiculoId String
+  fecha      DateTime
+  reservaId  String?
+
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+  reserva    Reserva? @relation(fields: [reservaId], references: [id])
+
+  @@unique([vehiculoId, fecha])
+  @@map("ocupacion_vehiculos")
+}
+
+// =========================
+// SOPORTE
+// =========================
+model MetodoPago {
+  id                String   @id @default(cuid())
+  usuarioId         String
+  tipo              TipoPago
+  esPredeterminado  Boolean  @default(false)
+
+  usuario           Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  creadoEn          DateTime @default(now())
+
+  @@map("metodos_pago")
+}
+
+// =========================
+// UBICACIÓN GEOGRÁFICA (para análisis DW)
+// =========================
+model Provincia {
+  id        Int      @id @default(autoincrement())
+  codigo    String   @unique
+  nombre    String
+
+  cantones  Canton[]
+
+  creadoEn  DateTime @default(now())
+
+  @@map("provincias")
+}
+
+model Canton {
+  id          Int        @id @default(autoincrement())
+  provinciaId Int
+  codigo      String     @unique
+  nombre      String
+
+  provincia   Provincia  @relation(fields: [provinciaId], references: [id])
+  distritos   Distrito[]
+
+  creadoEn    DateTime @default(now())
+
+  @@map("cantones")
+}
+
+model Distrito {
+  id        Int       @id @default(autoincrement())
+  cantonId  Int
+  codigo    String    @unique
+  nombre    String
+
+  canton    Canton    @relation(fields: [cantonId], references: [id])
+  usuarios  Usuario[]
+
+  creadoEn  DateTime @default(now())
+
+  @@map("distritos")
+}
+
+// =========================
+// NOTIFICACIONES
+// =========================
+model Notificacion {
+  id         String   @id @default(cuid())
+  usuarioId  String?
+  reservaId  String?
+
+  canal      CanalNotificacion
+  para       String
+  asunto     String
+  mensaje    String
+  estado     EstadoNotificacion
+
+  enviadaEn  DateTime?
+  leidaEn    DateTime?
+
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
+  reserva    Reserva? @relation(fields: [reservaId], references: [id])
+
+  creadoEn   DateTime @default(now())
+
+  @@map("notificaciones")
+}
+
+// =========================
+// CARRITO DE COMPRAS (unificado)
+// =========================
+model Carrito {
+  id            String   @id @default(cuid())
+  usuarioId     String?
+  sesionId      String?
+  estado        String   @default("activo")
+
+  usuario       Usuario?    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  items         ItemCarrito[]
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@map("carritos")
+}
+
+model ItemCarrito {
+  id             String          @id @default(cuid())
+  carritoId      String
+  tipoItem       TipoItemCarrito
+  paqueteId      String?
+  cantidad       Int             @default(1)
+  precioUnitario Decimal
+
+  carrito        Carrito    @relation(fields: [carritoId], references: [id], onDelete: Cascade)
+  paquete        Paquete?   @relation(fields: [paqueteId], references: [id])
+
+  creadoEn       DateTime @default(now())
+
+  @@map("items_carrito")
+}

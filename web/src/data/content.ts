@@ -62,6 +62,28 @@ export type Experience = {
   imageUrl: string
 }
 
+export type HeroSlide = {
+  id: string
+  title: string
+  subtitle?: string
+  description?: string
+  imageUrl: string
+  order: number
+  isActive: boolean
+}
+
+export type SystemImage = {
+  id: string
+  category: 'LANDING_PAGE' | 'EXPERIENCIA' | 'GALERIA'
+  name: string
+  description?: string
+  url: string
+  altText?: string
+  order: number
+  isActive: boolean
+}
+
+
 export const heroImage = 'P00_wptrgt'
 
 /**
@@ -410,5 +432,68 @@ export const experiences: Experience[] = [
     id: 'exp_006',
     title: 'Aniversario Premium',
     imageUrl: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80',
+  },
+]
+
+export const systemImages: SystemImage[] = [
+  {
+    id: 'img_001',
+    category: 'LANDING_PAGE',
+    name: 'Hero Principal',
+    description: 'Imagen principal de la landing page',
+    url: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1920&q=80',
+    altText: 'Moments - Tu experiencia única',
+    order: 1,
+    isActive: true,
+  },
+  {
+    id: 'img_002',
+    category: 'EXPERIENCIA',
+    name: 'Experiencia Boda',
+    description: 'Momento de una ceremonia',
+    url: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80',
+    altText: 'Boda Moments',
+    order: 1,
+    isActive: true,
+  },
+  {
+    id: 'img_003',
+    category: 'GALERIA',
+    name: 'Galería - Evento Corporativo',
+    description: 'Imagen de galería',
+    url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80',
+    altText: 'Evento corporativo',
+    order: 1,
+    isActive: true,
+  },
+]
+
+export const heroSlides: HeroSlide[] = [
+  {
+    id: 'hero_001',
+    title: 'Logística premium',
+    subtitle: 'Luxury chauffeur · Costa Rica',
+    description: 'Servicio con chofer para bodas, conciertos y galas. Rutas testeadas, buffers de tiempo y atención silenciosa.',
+    imageUrl: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1920&q=80',
+    order: 1,
+    isActive: true,
+  },
+  {
+    id: 'hero_002',
+    title: 'Detalles obsesivos',
+    subtitle: 'Precisión en cada traslado',
+    description: 'Coordinamos hasta el último detalle. Choferes de protocolo, vehículos impecables y soporte 24/7.',
+    imageUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=1920&q=80',
+    order: 2,
+    isActive: true,
+  },
+  {
+    id: 'hero_003',
+    title: 'Cero fricción',
+    subtitle: 'Tu momento, nuestro compromiso',
+    description: 'Reserva simple, confirmación clara y experiencia sin improvisaciones. Solo vive el momento.',
+    imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1920&q=80',
+    order: 3,
+    isActive: true,
   },
 ]
