@@ -28,7 +28,7 @@ const Gallery = () => {
           <p className="eyebrow">Galería</p>
           <h1 className="display">Nuestras experiencias</h1>
         </header>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 20px' }}>
+        <div className="gallery-loading">
           <p>Cargando galería...</p>
         </div>
       </div>
@@ -48,8 +48,8 @@ const Gallery = () => {
       <section className="section">
         <div className="gallery-grid">
           {filteredImages.length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 20px' }}>
-              <p style={{ color: 'var(--color-muted)' }}>No hay imágenes disponibles en esta categoría</p>
+            <div className="gallery-empty">
+              <p className="gallery-empty__text">No hay imágenes disponibles en esta categoría</p>
             </div>
           ) : (
             filteredImages.map((img) => (

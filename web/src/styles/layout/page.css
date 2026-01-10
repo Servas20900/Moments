@@ -1,0 +1,63 @@
+/* ============================================================================
+   LAYOUT: PAGE
+   ============================================================================
+   Page container and wrapper styles.
+   ============================================================================ */
+
+.page {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3xl);
+  padding: var(--spacing-3xl) var(--spacing-3xl) calc(var(--spacing-3xl) * 2);
+}
+
+.footer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-2xl) var(--spacing-3xl) calc(var(--spacing-3xl) * 1.5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--color-muted);
+  border-top: 1px solid var(--color-border);
+  gap: var(--spacing-xl);
+}
+
+.footer__links {
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.page-footer {
+  padding: var(--spacing-3xl) var(--spacing-3xl);
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding-bottom: var(--spacing-3xl);
+  }
+
+  .main {
+    padding: var(--spacing-2xl) var(--spacing-xl) calc(var(--spacing-3xl) * 1.5);
+    gap: var(--spacing-2xl);
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-2xl);
+  }
+
+  .page-footer {
+    padding: var(--spacing-xl) var(--spacing-lg);
+  }
+}

@@ -1,0 +1,76 @@
+/* ============================================================================
+   LAYOUT: STACK
+   ============================================================================
+   Vertical and horizontal spacing utilities.
+   ============================================================================ */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.stack--sm {
+  gap: var(--spacing-sm);
+}
+
+.stack--md {
+  gap: var(--spacing-md);
+}
+
+.stack--lg {
+  gap: var(--spacing-lg);
+}
+
+.stack--xl {
+  gap: var(--spacing-xl);
+}
+
+.stack--2xl {
+  gap: var(--spacing-2xl);
+}
+
+.stack-h {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-md);
+}
+
+.stack-h--sm {
+  gap: var(--spacing-sm);
+}
+
+.stack-h--md {
+  gap: var(--spacing-md);
+}
+
+.stack-h--lg {
+  gap: var(--spacing-lg);
+}
+
+.stack-h--xl {
+  gap: var(--spacing-xl);
+}
+
+.stack-h--2xl {
+  gap: var(--spacing-2xl);
+}
+
+/* For inline margin-top (extract from inline styles) */
+.mt-0 { margin-top: 0; }
+.mt-xs { margin-top: var(--spacing-xs); }
+.mt-sm { margin-top: var(--spacing-sm); }
+.mt-md { margin-top: var(--spacing-md); }
+.mt-lg { margin-top: var(--spacing-lg); }
+.mt-xl { margin-top: var(--spacing-xl); }
+.mt-2xl { margin-top: var(--spacing-2xl); }
+.mt-3xl { margin-top: 32px; }
+
+/* For margin-left utilities */
+.ml-0 { margin-left: 0; }
+.ml-xs { margin-left: var(--spacing-xs); }
+.ml-sm { margin-left: var(--spacing-sm); }
+.ml-md { margin-left: var(--spacing-md); }
+.ml-lg { margin-left: var(--spacing-lg); }
+.ml-xl { margin-left: var(--spacing-xl); }
+.ml-2xl { margin-left: var(--spacing-2xl); }

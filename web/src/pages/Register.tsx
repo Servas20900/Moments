@@ -39,7 +39,7 @@ const Register = () => {
             <label className="form__label">Email<input name="email" type="email" value={form.email} onChange={handleChange} /></label>
             <label className="form__label">Teléfono<input name="phone" value={form.phone} onChange={handleChange} /></label>
             <label className="form__label">Contraseña<input name="password" type="password" value={form.password} onChange={handleChange} /></label>
-            <div className="stack" style={{ marginTop: 12 }}>
+            <div className="stack mt-md">
               <Button variant="primary" type="submit" disabled={loading}>{loading ? 'Creando...' : 'Crear cuenta'}</Button>
             </div>
           </form>

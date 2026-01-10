@@ -39,7 +39,7 @@ const Login = () => {
             {error && <div className="form__error">{error}</div>}
             <label className="form__label">Email<input name="email" type="email" value={form.email} onChange={handleChange} /></label>
             <label className="form__label">Contraseña<input name="password" type="password" value={form.password} onChange={handleChange} /></label>
-            <div className="stack" style={{ marginTop: 12 }}>
+            <div className="stack mt-md">
               <Button variant="primary" type="submit" disabled={loading}>{loading ? 'Entrando...' : 'Iniciar sesión'}</Button>
               <Button variant="ghost" type="button" onClick={handleGoogle}>Continuar con Google</Button>
             </div>
@@ -48,7 +48,7 @@ const Login = () => {
 
         <Card title="No tienes cuenta?">
           <p className="section__copy">Crea una cuenta rápida para reservar y recibir confirmaciones.</p>
-          <div className="stack" style={{ marginTop: 12 }}>
+          <div className="stack mt-md">
             <Button variant="ghost" onClick={() => navigate('/register')}>Crear cuenta</Button>
           </div>
         </Card>

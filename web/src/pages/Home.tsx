@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
-import Button from '../components/Button'
 import Card from '../components/Card'
 import PackageCard from '../components/PackageCard'
 import SafeImage from '../components/SafeImage'
@@ -194,7 +193,12 @@ const Home = () => {
             </div>
           </div>
           <div className="media-frame">
-            <SafeImage className="media-frame__image" publicId="samples/landscapes/architecture-beach" alt="Servicio Moments" transformHeight={520} />
+            <SafeImage
+              className="media-frame__image"
+              src={cloudinaryUrl('v1767670912/P00_wptrgt.png', { width: 1200, height: 520 })}
+              alt="Servicio Moments"
+              transformHeight={520}
+            />
           </div>
         </div>
       </section>

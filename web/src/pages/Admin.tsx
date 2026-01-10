@@ -307,7 +307,7 @@ const Admin = () => {
               </div>
               <div>
                 <Button variant="ghost" onClick={onCreatePackage}>Nuevo paquete</Button>
-                <Button variant="ghost" onClick={() => setShowPkgCatModal(true)} style={{ marginLeft: 8 }}>Nueva categoría</Button>
+                <Button variant="ghost" onClick={() => setShowPkgCatModal(true)} className="ml-sm">Nueva categoría</Button>
               </div>
             </div>
 
@@ -346,7 +346,7 @@ const Admin = () => {
               </div>
               <div>
                 <Button variant="ghost" onClick={onCreateVehicle}>Nuevo vehículo</Button>
-                <Button variant="ghost" onClick={() => setShowVehCatModal(true)} style={{ marginLeft: 8 }}>Nueva categoría</Button>
+                <Button variant="ghost" onClick={() => setShowVehCatModal(true)} className="ml-sm">Nueva categoría</Button>
               </div>
             </div>
 
@@ -397,7 +397,7 @@ const Admin = () => {
               {experiences.map((exp) => (
                 <div key={exp.id} className="admin-table__row">
                   <span>{exp.title}</span>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-muted)' }}>{exp.imageUrl.substring(0, 40)}...</span>
+                  <span className="text-sm text-muted">{exp.imageUrl.substring(0, 40)}...</span>
                   <span className="admin-table__actions">
                     <button className="btn btn-ghost btn-sm" aria-label={`Editar ${exp.title}`} onClick={() => onEditExp(exp)}>
                       <FaEdit size={16} />
@@ -547,7 +547,7 @@ function AdminEventForm({ ev, onCancel, onSave, uploadImage }: { ev: CalendarSlo
       <label className="form__label">Detalle<textarea name="detail" value={state.detail ?? ''} onChange={handleChange} /></label>
       <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
       {uploading && <div>Subiendo imagen...</div>}
-      <div className="stack" style={{ marginTop: 12 }}>
+      <div className="stack mt-md">
         <Button variant="primary" type="submit">Guardar</Button>
         <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
       </div>
@@ -584,7 +584,7 @@ function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage 
       <label className="form__label">Descripción<textarea name="description" value={state.description} onChange={handleChange} /></label>
       <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
       {uploading && <div>Subiendo imagen...</div>}
-      <div className="stack" style={{ marginTop: 12 }}>
+      <div className="stack mt-md">
         <Button variant="primary" type="submit">Guardar</Button>
         <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
       </div>
@@ -621,7 +621,7 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
       <label className="form__label">Características<textarea name="features" value={state.features.join(', ')} onChange={(e) => setState(s => ({ ...s, features: e.target.value.split(',').map(x => x.trim()) }))} /></label>
       <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
       {uploading && <div>Subiendo imagen...</div>}
-      <div className="stack" style={{ marginTop: 12 }}>
+      <div className="stack mt-md">
         <Button variant="primary" type="submit">Guardar</Button>
         <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
       </div>
@@ -634,7 +634,7 @@ function CreateCategoryForm({ onCreate, onCancel }: { onCreate: (name: string) =
   return (
     <form className="form" onSubmit={(e) => { e.preventDefault(); if (name.trim()) onCreate(name.trim()) }}>
       <label className="form__label">Nombre de categoría<input value={name} onChange={(e) => setName(e.target.value)} /></label>
-      <div className="stack" style={{ marginTop: 12 }}>
+      <div className="stack mt-md">
         <Button variant="primary" type="submit">Crear</Button>
         <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
       </div>
@@ -662,7 +662,7 @@ function AdminExperienceForm({ exp, onCancel, onSave, uploadImage }: { exp: Expe
       <label className="form__label">Título<input name="title" value={state.title} onChange={handleChange} /></label>
       <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
       {uploading && <div>Subiendo imagen...</div>}
-      <div className="stack" style={{ marginTop: 12 }}>
+      <div className="stack mt-md">
         <Button variant="primary" type="submit">Guardar</Button>
         <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
       </div>
@@ -702,11 +702,11 @@ function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemIma
       {uploading && <div>Subiendo imagen...</div>}
       <label className="form__label">Texto alternativo<input name="altText" value={state.altText ?? ''} onChange={handleChange} placeholder="Descripción de la imagen" /></label>
       <label className="form__label">Orden<input name="order" type="number" value={state.order} onChange={handleChange} /></label>
-      <label className="form__label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <label className="form__label form__label--checkbox">
         <input name="isActive" type="checkbox" checked={state.isActive} onChange={handleChange} />
         <span>Mostrar en galería</span>
       </label>
-      <div className="stack" style={{ marginTop: 12 }}>
+      <div className="stack mt-md">
         <Button variant="primary" type="submit">Guardar</Button>
         <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
       </div>
@@ -746,11 +746,11 @@ function AdminHeroSlideForm({ slide, onCancel, onSave, uploadImage }: { slide: H
       <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} required /></label>
       {uploading && <div>Subiendo imagen...</div>}
       <label className="form__label">Orden<input name="order" type="number" value={state.order} onChange={handleChange} required /></label>
-      <label className="form__label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <label className="form__label form__label--checkbox">
         <input name="isActive" type="checkbox" checked={state.isActive} onChange={handleChange} />
         <span>Slide activo</span>
       </label>
-      <div className="stack" style={{ marginTop: 12 }}>
+      <div className="stack mt-md">
         <Button variant="primary" type="submit">Guardar</Button>
         <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
       </div>

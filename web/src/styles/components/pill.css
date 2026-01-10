@@ -1,0 +1,48 @@
+/* ============================================================================
+   COMPONENTS: PILL
+   ============================================================================
+   Pill/badge component styles.
+   ============================================================================ */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: rgba(201, 162, 77, 0.2);
+  border: 1px solid rgba(201, 162, 77, 0.3);
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c9a24d;
+  white-space: nowrap;
+}
+
+.pill-muted {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--color-border);
+  color: var(--color-muted);
+}
+
+.pill-ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+}
+
+.pill-success {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.pill-warning {
+  background: rgba(251, 146, 60, 0.1);
+  border-color: rgba(251, 146, 60, 0.3);
+  color: #fb923c;
+}
+
+.pill-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}

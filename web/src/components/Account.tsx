@@ -1,21 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { getCurrentUser } from '../api/mocks'
 
 const Account = () => {
   const [user, setUser] = useState<any>(null)
-  const navigate = useNavigate()
 
   useEffect(() => {
     let mounted = true
     getCurrentUser().then((u) => { if (mounted) setUser(u) })
     return () => { mounted = false }
   }, [])
-
-  const handleGoogle = () => {
-    // stub: open OAuth flow later
-    alert('Google Sign-In (stub)')
-  }
 
   return (
     <div className="account-button">

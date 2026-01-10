@@ -79,7 +79,7 @@ const About = () => {
           ))}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40 }}>
+        <div className="flex justify-center mt-3xl">
           <Button variant="primary" onClick={() => navigate('/galeria')}>
             Ver galería completa
           </Button>

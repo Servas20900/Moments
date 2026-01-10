@@ -81,7 +81,7 @@ export const uploadImage = (fileName: string) =>
   // returns a fake cloudinary url for the uploaded image
   simulate<string>(`https://res.cloudinary.com/demo/image/upload/${fileName}`, 400)
 
-export const submitReservation = (payload: any) =>
+export const submitReservation = (_payload: any) =>
   new Promise<{ ok: boolean; id?: string }>((res) =>
     setTimeout(() => res({ ok: true, id: `resv_${Math.random().toString(36).slice(2, 9)}` }), 600)
   )

@@ -19,16 +19,6 @@ const Cart = () => {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const addToCart = (item: any) => {
-    setCart((prev) => {
-      const existing = prev.find((x) => x.id === item.id)
-      if (existing) {
-        return prev.map((x) => (x.id === item.id ? { ...x, quantity: x.quantity + 1 } : x))
-      }
-      return [...prev, { ...item, quantity: 1 }]
-    })
-  }
-
   const removeFromCart = (id: string) => {
     setCart((prev) => prev.filter((x) => x.id !== id))
   }
@@ -79,9 +69,9 @@ const Cart = () => {
           {cart.length === 0 ? (
             <Card>
               <div className="cart-empty">
-                <FaShoppingCart size={48} style={{ opacity: 0.3, marginBottom: 16 }} />
-                <p style={{ color: 'var(--color-muted)' }}>Tu carrito está vacío</p>
-                <p style={{ fontSize: '0.9rem', color: 'var(--color-muted)' }}>Explora la tienda para agregar accesorios</p>
+                <FaShoppingCart size={48} className="opacity-30 mb-lg" />
+                <p className="text-muted">Tu carrito está vacío</p>
+                <p className="text-sm text-muted">Explora la tienda para agregar accesorios</p>
               </div>
             </Card>
           ) : (
@@ -145,14 +135,14 @@ const Cart = () => {
               variant="primary"
               onClick={() => setShowCheckout(!showCheckout)}
               disabled={cart.length === 0}
-              style={{ width: '100%', marginTop: 16 }}
+              className="w-full mt-lg"
             >
               {showCheckout ? 'Cancelar' : 'Proceder al pago'}
             </Button>
           </Card>
 
           {showCheckout && (
-            <Card title="Datos de envío" style={{ marginTop: 20 }}>
+            <Card title="Datos de envío" className="mt-3xl">
               <form className="form" onSubmit={handleCheckout} noValidate>
                 <label className="form__label">
                   Nombre completo
@@ -184,11 +174,11 @@ const Cart = () => {
                   variant="primary"
                   type="submit"
                   disabled={loading}
-                  style={{ width: '100%', marginTop: 12 }}
+                  className="w-full mt-md"
                 >
                   {loading ? 'Procesando...' : 'Completar compra'}
                 </Button>
-                {success && <div className="form__success" style={{ marginTop: 12 }}>{success}</div>}
+                {success && <div className="form__success mt-md">{success}</div>}
               </form>
             </Card>
           )}

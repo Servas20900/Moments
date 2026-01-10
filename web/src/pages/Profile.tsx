@@ -26,7 +26,7 @@ const Profile = () => {
       <div className="section">
         <Card title="No has iniciado sesión">
           <p className="section__copy">Inicia sesión para ver y editar tu perfil. Si no tienes cuenta puedes crear una o usar Google.</p>
-          <div className="stack" style={{ marginTop: 12 }}>
+          <div className="stack mt-md">
             <Button variant="primary" onClick={() => navigate('/login')}>Iniciar sesión</Button>
             <Button variant="ghost" onClick={() => { /* stub for Google */ alert('Google Sign-In (stub)') }}>Continuar con Google</Button>
             <Button variant="ghost" onClick={() => navigate('/register')}>Crear cuenta</Button>
@@ -58,7 +58,7 @@ const Profile = () => {
           {!editing ? (
             <div>
               <p>Teléfono: {user.phone ?? '-'}</p>
-              <div className="stack" style={{ marginTop: 12 }}>
+              <div className="stack mt-md">
                 <Button variant="primary" onClick={() => setEditing(true)}>Editar perfil</Button>
               </div>
             </div>
@@ -67,7 +67,7 @@ const Profile = () => {
               <label className="form__label">Nombre<input name="name" value={form.name} onChange={handleChange} /></label>
               <label className="form__label">Email<input name="email" value={form.email} onChange={handleChange} /></label>
               <label className="form__label">Teléfono<input name="phone" value={form.phone} onChange={handleChange} /></label>
-              <div className="stack" style={{ marginTop: 12 }}>
+              <div className="stack mt-md">
                 <Button variant="primary" type="submit">Guardar</Button>
                 <Button variant="ghost" onClick={() => setEditing(false)}>Cancelar</Button>
               </div>

@@ -1,0 +1,45 @@
+/* ============================================================================
+   MOMENTS · CSS ARCHITECTURE
+   ============================================================================
+   This file imports all modularized CSS files organized by scope and component.
+   Each file contains only styles relevant to its specific area, making the
+   codebase more maintainable and scalable.
+   ============================================================================ */
+
+/* Core styles and variables */
+@import './core/variables.css';
+@import './core/reset.css';
+@import './core/typography.css';
+
+/* Layout and structure */
+@import './layout/shell.css';
+@import './layout/topbar.css';
+@import './layout/page.css';
+@import './layout/section.css';
+@import './layout/grid.css';
+@import './layout/stack.css';
+
+/* Components */
+@import './components/button.css';
+@import './components/card.css';
+@import './components/modal.css';
+@import './components/form.css';
+@import './components/image.css';
+@import './components/pill.css';
+@import './components/account.css';
+@import './components/package-card.css';
+@import './components/vehicle-card.css';
+
+/* Pages and Features */
+@import './pages/home.css';
+@import './pages/gallery.css';
+@import './pages/calendar.css';
+@import './pages/admin.css';
+@import './pages/auth.css';
+@import './pages/cart.css';
+@import './pages/packages.css';
+@import './pages/vehicles.css';
+
+/* Utilities */
+@import './utils/responsive.css';
+@import './utils/visibility.css';

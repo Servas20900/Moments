@@ -173,17 +173,17 @@ const CalendarPage = () => {
           {eventsForMonth().length === 0 && <p>No hay eventos para este mes.</p>}
           <div className="events-list">
             {eventsForMonth().map((ev) => (
-              <div key={ev.id} id={`event-${ev.id}`} className={`event-item ${selectedEventId === ev.id ? 'is-selected' : ''}`} style={{ padding: 12, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
+              <div key={ev.id} id={`event-${ev.id}`} className={`event-item ${selectedEventId === ev.id ? 'is-selected' : ''}`}>
+                <div className="event-item__wrapper">
                   {ev.imageUrl && (
-                    <SafeImage className="event-thumb" src={ev.imageUrl} alt={ev.title} width={120} height={80} style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 8 }} />
+                    <SafeImage className="event-item__image" src={ev.imageUrl} alt={ev.title} width={120} height={80} />
                   )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600 }}>{ev.title} <span style={{ color: 'var(--muted)', fontSize: 12 }}>· {ev.date}</span></div>
-                    {ev.detail && <div style={{ marginTop: 6 }}>{ev.detail}</div>}
-                    {ev.tag && <div style={{ marginTop: 6 }}><strong>Tag:</strong> {ev.tag}</div>}
+                  <div className="event-item__content">
+                    <div className="event-item__header">{ev.title} <span className="event-item__date">· {ev.date}</span></div>
+                    {ev.detail && <div className="event-item__detail">{ev.detail}</div>}
+                    {ev.tag && <div className="event-item__tag"><strong>Tag:</strong> {ev.tag}</div>}
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="event-item__actions">
                     <button className="btn btn-ghost btn-sm" onClick={() => goToPackagesForEvent(ev.id)}>Ver paquetes</button>
                     <button className="btn btn-primary btn-sm" onClick={() => goToReserveForEvent(ev.id)}>Reservar</button>
                   </div>

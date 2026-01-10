@@ -1,13 +1,13 @@
 import { useEffect } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import { FaShoppingCart } from 'react-icons/fa'
-import Button from './components/Button'
 import MobileNav from './components/MobileNav'
 import Account from './components/Account'
 import AppRoutes from './routes/Routes'
 import './App.css'
+import './styles/index.css'
 
-  const nav = AppRoutes.nav
+const nav = AppRoutes.nav
 
 const CartButton = () => {
   const navigate = useNavigate()

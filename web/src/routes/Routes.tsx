@@ -1,4 +1,3 @@
-import React from 'react'
 import Home from '../pages/Home'
 import Packages from '../pages/Packages'
 import Vehicles from '../pages/Vehicles'

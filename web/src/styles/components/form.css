@@ -1,0 +1,83 @@
+/* ============================================================================
+   COMPONENTS: FORM
+   ============================================================================
+   Form elements and form field styles.
+   ============================================================================ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.form__label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  font-weight: 500;
+}
+
+.form__label input,
+.form__label textarea,
+.form__label select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--color-text);
+  transition: all var(--transition-fast);
+}
+
+.form__label input:focus,
+.form__label textarea:focus,
+.form__label select:focus {
+  outline: none;
+  border-color: rgba(201, 162, 77, 0.5);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 0 3px rgba(201, 162, 77, 0.1);
+}
+
+.form__label textarea {
+  min-height: 100px;
+  resize: vertical;
+  font-family: var(--font-body);
+}
+
+.form__label input[type="checkbox"],
+.form__label input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.form__label--checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.form__success {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--radius-md);
+  color: #22c55e;
+  font-size: 0.95rem;
+}
+
+.form__error {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  color: #ef4444;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+  .form {
+    gap: var(--spacing-md);
+  }
+}

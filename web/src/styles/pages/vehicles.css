@@ -1,0 +1,14 @@
+/* ============================================================================
+   PAGES: VEHICLES
+   ============================================================================ */
+
+.grid.vehicles {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-xl);
+}
+
+@media (max-width: 768px) {
+  .grid.vehicles {
+    gap: var(--spacing-lg);
+  }
+}
