@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,7 +8,7 @@ datasource db {
 }
 
 // =========================
-// ENUMS (catálogos controlados)
+// ENUMS
 // =========================
 enum EstadoReserva {
   PAGO_PENDIENTE
@@ -18,10 +17,17 @@ enum EstadoReserva {
   COMPLETADA
 }
 
+enum EstadoPago {
+  PENDIENTE
+  PAGADO
+  FALLIDO
+  REEMBOLSADO
+}
+
 enum EstadoEvento {
   DISPONIBLE
-  OCUPADO
-  EVENTO
+  RESERVADO
+  BLOQUEADO
 }
 
 enum TipoPago {
@@ -33,8 +39,6 @@ enum TipoPago {
 enum CanalNotificacion {
   EMAIL
   WHATSAPP
-  SMS
-  EN_APP
 }
 
 enum EstadoNotificacion {
@@ -51,39 +55,56 @@ enum CategoriaImagen {
   LANDING_PAGE
   EXPERIENCIA
   GALERIA
+  PAQUETE
+  VEHICULO
+  EVENTO
 }
 
-// =========================
-// USUARIOS Y SEGURIDAD
-// =========================
+enum EstadoActivo {
+  ACTIVO
+  INACTIVO
+  SUSPENDIDO
+}
+
+enum EstadoCarrito {
+  ACTIVO
+  CONVERTIDO
+  ABANDONADO
+}
+
 model Usuario {
-  id             String   @id @default(cuid())
-  email          String   @unique
+  id             String  @id @default(cuid())
+  email          String  @unique
   contrasena     String
   nombre         String
   telefono       String
   identificacion String?
   distritoId     Int?
-  estaActivo     Boolean  @default(true)
-  ultimoAcceso   DateTime?
 
-  distrito       Distrito?    @relation(fields: [distritoId], references: [id])
+  // Estado funcional del usuario
+  estado EstadoActivo @default(ACTIVO)
+
+  // Auditoría
+  ultimoAcceso  DateTime?
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+
+  // Relaciones
+  distrito       Distrito?      @relation(fields: [distritoId], references: [id])
   roles          UsuarioRol[]
   reservas       Reserva[]
   metodosPago    MetodoPago[]
   notificaciones Notificacion[]
   carritos       Carrito[]
 
-  creadoEn       DateTime @default(now())
-  actualizadoEn  DateTime @updatedAt
-
   @@map("usuarios")
 }
 
 model Rol {
-  id       Int         @id @default(autoincrement())
-  codigo   String      @unique
-  nombre   String
+  id     Int          @id @default(autoincrement())
+  codigo String       @unique
+  nombre String
+  estado EstadoActivo @default(ACTIVO)
 
   usuarios UsuarioRol[]
 
@@ -96,19 +117,21 @@ model UsuarioRol {
   usuarioId String
   rolId     Int
 
-  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  rol       Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Restrict)
 
   @@id([usuarioId, rolId])
   @@map("usuarios_roles")
 }
 
 // =========================
-// SERVICIOS
+// CATÁLOGO Y SERVICIOS
 // =========================
+
 model CategoriaPaquete {
-  id       Int       @id @default(autoincrement())
-  nombre   String    @unique
+  id     Int          @id @default(autoincrement())
+  nombre String       @unique
+  estado EstadoActivo @default(ACTIVO)
 
   paquetes Paquete[]
 
@@ -118,17 +141,18 @@ model CategoriaPaquete {
 }
 
 model Paquete {
-  id            String             @id @default(cuid())
-  categoriaId   Int
-  nombre        String
-  descripcion   String
-  precioBase    Decimal
-  maxPersonas   Int
-  imagenUrl     String
+  id          String       @id @default(cuid())
+  categoriaId Int
+  nombre      String
+  descripcion String
+  precioBase  Decimal      @db.Decimal(10, 2)
+  maxPersonas Int
+  estado      EstadoActivo @default(ACTIVO)
 
-  categoria     CategoriaPaquete  @relation(fields: [categoriaId], references: [id])
-  reservas      Reserva[]
-  itemsCarrito  ItemCarrito[]
+  categoria    CategoriaPaquete @relation(fields: [categoriaId], references: [id])
+  reservas     Reserva[]
+  itemsCarrito ItemCarrito[]
+  imagenes     ImagenPaquete[]
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
@@ -137,108 +161,160 @@ model Paquete {
 }
 
 model Vehiculo {
-  id             String              @id @default(cuid())
-  nombre         String
-  categoria      String
-  asientos       Int
-  tarifaPorHora  Decimal
-  imagenUrl      String
+  id            String       @id @default(cuid())
+  nombre        String
+  categoria     String
+  asientos      Int
+  tarifaPorHora Decimal      @db.Decimal(10, 2)
+  estado        EstadoActivo @default(ACTIVO)
 
-  reservas       Reserva[]
-  ocupacion      OcupacionVehiculo[]
+  reservas  Reserva[]
+  ocupacion OcupacionVehiculo[]
+  imagenes  ImagenVehiculo[]
 
-  creadoEn       DateTime @default(now())
-  actualizadoEn  DateTime @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
   @@map("vehiculos")
 }
 
 model Conductor {
-  id         String   @id @default(cuid())
-  nombre     String
-  telefono   String
-  estaActivo Boolean  @default(true)
+  id       String       @id @default(cuid())
+  nombre   String
+  telefono String
+  estado   EstadoActivo @default(ACTIVO)
 
-  reservas   Reserva[]
+  reservas Reserva[]
 
-  creadoEn   DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   @@map("conductores")
 }
 
-model ImagenSistema {
-  id             String          @id @default(cuid())
-  categoria      CategoriaImagen
-  nombre         String
-  descripcion    String?
-  url            String
-  altText        String?
-  orden          Int             @default(0)
-  estaActiva     Boolean         @default(true)
+// =========================
+// IMÁGENES (MODELO GENÉRICO + PUENTES CLOUDINARY-BASED)
+// =========================
+model Imagen {
+  id        String          @id @default(cuid())
+  categoria CategoriaImagen
+  url       String // URL retornada por Cloudinary
+  altText   String?
+  estado    EstadoActivo    @default(ACTIVO)
 
-  creadoEn       DateTime @default(now())
-  actualizadoEn  DateTime @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
-  @@map("imagenes_sistema")
+  // Relaciones a tablas puente
+  paquetes  ImagenPaquete[]
+  vehiculos ImagenVehiculo[]
+  eventos   ImagenEvento[]
+
+  @@map("imagenes")
+}
+
+model ImagenPaquete {
+  imagenId  String
+  paqueteId String
+  orden     Int    @default(0)
+
+  imagen  Imagen  @relation(fields: [imagenId], references: [id], onDelete: Restrict)
+  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Restrict)
+
+  @@id([imagenId, paqueteId])
+  @@index([paqueteId, orden])
+  @@map("imagenes_paquetes")
+}
+
+model ImagenVehiculo {
+  imagenId   String
+  vehiculoId String
+  orden      Int    @default(0)
+
+  imagen   Imagen   @relation(fields: [imagenId], references: [id], onDelete: Restrict)
+  vehiculo Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Restrict)
+
+  @@id([imagenId, vehiculoId])
+  @@index([vehiculoId, orden])
+  @@map("imagenes_vehiculos")
+}
+
+model ImagenEvento {
+  imagenId String
+  eventoId String
+  orden    Int    @default(0)
+
+  imagen Imagen           @relation(fields: [imagenId], references: [id], onDelete: Restrict)
+  evento EventoCalendario @relation(fields: [eventoId], references: [id], onDelete: Restrict)
+
+  @@id([imagenId, eventoId])
+  @@index([eventoId, orden])
+  @@map("imagenes_eventos")
 }
 
 // =========================
-// OPERACIÓN
+// OPERACIÓN Y RESERVAS
 // =========================
 model Reserva {
-  id                String    @id @default(cuid())
-  usuarioId         String?
-  paqueteId         String
-  vehiculoId        String
-  conductorId       String?
+  id          String  @id @default(cuid())
+  usuarioId   String?
+  paqueteId   String
+  vehiculoId  String
+  conductorId String?
 
-  nombre            String
-  email             String
-  telefono          String
-  identificacion    String?
+  nombre         String
+  email          String
+  telefono       String
+  identificacion String?
 
-  tipoEvento        String
-  fechaEvento       DateTime
-  horaInicio        DateTime
-  horaFin           DateTime
-  origen            String
-  destino           String
-  numeroPersonas    Int
+  tipoEvento     String
+  fechaEvento    DateTime
+  horaInicio     DateTime
+  horaFin        DateTime
+  origen         String
+  destino        String
+  numeroPersonas Int
 
-  precioBase        Decimal
-  precioTotal       Decimal
-  anticipo          Decimal
-  restante          Decimal
+  precioBase  Decimal @db.Decimal(10, 2)
+  precioTotal Decimal @db.Decimal(10, 2)
+  anticipo    Decimal @db.Decimal(10, 2)
+  restante    Decimal @db.Decimal(10, 2)
 
-  estado            EstadoReserva
-  tipoPago          TipoPago?
+  estado   EstadoReserva
+  tipoPago TipoPago?
 
-  usuario           Usuario?   @relation(fields: [usuarioId], references: [id])
-  paquete           Paquete    @relation(fields: [paqueteId], references: [id])
-  vehiculo          Vehiculo   @relation(fields: [vehiculoId], references: [id])
-  conductor         Conductor? @relation(fields: [conductorId], references: [id])
+  usuario   Usuario?   @relation(fields: [usuarioId], references: [id])
+  paquete   Paquete    @relation(fields: [paqueteId], references: [id])
+  vehiculo  Vehiculo   @relation(fields: [vehiculoId], references: [id])
+  conductor Conductor? @relation(fields: [conductorId], references: [id])
 
   pagos             PagoReserva[]
   notificaciones    Notificacion[]
   ocupacionVehiculo OcupacionVehiculo[]
+  eventoCalendario  EventoCalendario?
+  historialEstados  HistorialEstadoReserva[]
 
-  creadoEn          DateTime @default(now())
-  actualizadoEn     DateTime @updatedAt
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
 
+  @@index([fechaEvento])
+  @@index([estado])
+  @@index([vehiculoId, fechaEvento])
   @@map("reservas")
 }
 
 model PagoReserva {
-  id              String   @id @default(cuid())
-  reservaId       String
-  monto           Decimal
-  tipoPago        TipoPago
-  comprobantePago String?
-  pagadoEn        DateTime?
+  id                String     @id @default(cuid())
+  reservaId         String
+  monto             Decimal    @db.Decimal(10, 2)
+  tipoPago          TipoPago
+  estado            EstadoPago @default(PENDIENTE)
+  referenciaExterna String?
+  comprobantePago   String?
+  pagadoEn          DateTime?
 
-  reserva         Reserva @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  reserva Reserva @relation(fields: [reservaId], references: [id], onDelete: Restrict)
 
-  creadoEn        DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   @@map("pagos_reservas")
 }
@@ -250,23 +326,27 @@ model EventoCalendario {
   estado    EstadoEvento
   etiqueta  String?
   detalle   String?
-  imagenUrl String?
+  reservaId String?      @unique
 
-  creadoEn  DateTime @default(now())
+  reserva  Reserva?       @relation(fields: [reservaId], references: [id])
+  imagenes ImagenEvento[]
+
+  creadoEn DateTime @default(now())
 
   @@map("eventos_calendario")
 }
 
 model OcupacionVehiculo {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   vehiculoId String
   fecha      DateTime
   reservaId  String?
 
-  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
-  reserva    Reserva? @relation(fields: [reservaId], references: [id])
+  vehiculo Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Restrict)
+  reserva  Reserva? @relation(fields: [reservaId], references: [id])
 
   @@unique([vehiculoId, fecha])
+  @@index([vehiculoId, fecha])
   @@map("ocupacion_vehiculos")
 }
 
@@ -274,57 +354,61 @@ model OcupacionVehiculo {
 // SOPORTE
 // =========================
 model MetodoPago {
-  id                String   @id @default(cuid())
-  usuarioId         String
-  tipo              TipoPago
-  esPredeterminado  Boolean  @default(false)
+  id               String       @id @default(cuid())
+  usuarioId        String
+  tipo             TipoPago
+  esPredeterminado Boolean      @default(false)
+  estado           EstadoActivo @default(ACTIVO)
 
-  usuario           Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
 
-  creadoEn          DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   @@map("metodos_pago")
 }
 
 // =========================
-// UBICACIÓN GEOGRÁFICA (para análisis DW)
+// UBICACIÓN
 // =========================
 model Provincia {
-  id        Int      @id @default(autoincrement())
-  codigo    String   @unique
-  nombre    String
+  id     Int          @id @default(autoincrement())
+  codigo String       @unique
+  nombre String
+  estado EstadoActivo @default(ACTIVO)
 
-  cantones  Canton[]
+  cantones Canton[]
 
-  creadoEn  DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   @@map("provincias")
 }
 
 model Canton {
-  id          Int        @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   provinciaId Int
-  codigo      String     @unique
+  codigo      String       @unique
   nombre      String
+  estado      EstadoActivo @default(ACTIVO)
 
-  provincia   Provincia  @relation(fields: [provinciaId], references: [id])
-  distritos   Distrito[]
+  provincia Provincia  @relation(fields: [provinciaId], references: [id])
+  distritos Distrito[]
 
-  creadoEn    DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   @@map("cantones")
 }
 
 model Distrito {
-  id        Int       @id @default(autoincrement())
-  cantonId  Int
-  codigo    String    @unique
-  nombre    String
+  id       Int          @id @default(autoincrement())
+  cantonId Int
+  codigo   String       @unique
+  nombre   String
+  estado   EstadoActivo @default(ACTIVO)
 
-  canton    Canton    @relation(fields: [cantonId], references: [id])
-  usuarios  Usuario[]
+  canton   Canton    @relation(fields: [cantonId], references: [id])
+  usuarios Usuario[]
 
-  creadoEn  DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   @@map("distritos")
 }
@@ -333,38 +417,38 @@ model Distrito {
 // NOTIFICACIONES
 // =========================
 model Notificacion {
-  id         String   @id @default(cuid())
-  usuarioId  String?
-  reservaId  String?
+  id        String  @id @default(cuid())
+  usuarioId String?
+  reservaId String?
 
-  canal      CanalNotificacion
-  para       String
-  asunto     String
-  mensaje    String
-  estado     EstadoNotificacion
+  canal   CanalNotificacion
+  para    String
+  asunto  String
+  mensaje String
+  estado  EstadoNotificacion
 
-  enviadaEn  DateTime?
-  leidaEn    DateTime?
+  enviadaEn DateTime?
+  leidaEn   DateTime?
 
-  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
-  reserva    Reserva? @relation(fields: [reservaId], references: [id])
+  usuario Usuario? @relation(fields: [usuarioId], references: [id])
+  reserva Reserva? @relation(fields: [reservaId], references: [id])
 
-  creadoEn   DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   @@map("notificaciones")
 }
 
 // =========================
-// CARRITO DE COMPRAS (unificado)
+// CARRITO
 // =========================
 model Carrito {
-  id            String   @id @default(cuid())
-  usuarioId     String?
-  sesionId      String?
-  estado        String   @default("activo")
+  id        String        @id @default(cuid())
+  usuarioId String?
+  sesionId  String?
+  estado    EstadoCarrito @default(ACTIVO)
 
-  usuario       Usuario?    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  items         ItemCarrito[]
+  usuario Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  items   ItemCarrito[]
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
@@ -378,12 +462,31 @@ model ItemCarrito {
   tipoItem       TipoItemCarrito
   paqueteId      String?
   cantidad       Int             @default(1)
-  precioUnitario Decimal
+  precioUnitario Decimal         @db.Decimal(10, 2)
 
-  carrito        Carrito    @relation(fields: [carritoId], references: [id], onDelete: Cascade)
-  paquete        Paquete?   @relation(fields: [paqueteId], references: [id])
+  carrito Carrito  @relation(fields: [carritoId], references: [id], onDelete: Restrict)
+  paquete Paquete? @relation(fields: [paqueteId], references: [id])
 
-  creadoEn       DateTime @default(now())
+  creadoEn DateTime @default(now())
 
   @@map("items_carrito")
+}
+
+// =========================
+// HISTORIAL Y TRAZABILIDAD
+// =========================
+model HistorialEstadoReserva {
+  id         String        @id @default(cuid())
+  reservaId  String
+  estado     EstadoReserva
+  comentario String?       @db.Text
+  activo     EstadoActivo  @default(ACTIVO)
+
+  reserva Reserva @relation(fields: [reservaId], references: [id], onDelete: Restrict)
+
+  cambiadoEn DateTime @default(now())
+
+  @@index([reservaId])
+  @@index([cambiadoEn])
+  @@map("historial_estados_reserva")
 }

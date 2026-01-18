@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import SafeImage from '../components/SafeImage'
-import { fetchSystemImages } from '../api/mocks'
+import { fetchSystemImages } from '../api/api'
 import type { SystemImage } from '../data/content'
 
 const Gallery = () => {

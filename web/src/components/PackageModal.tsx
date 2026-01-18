@@ -119,7 +119,7 @@ const PackageModal = ({ package: pkg, isOpen, onClose }: PackageModalProps) => {
           )}
 
           <div className="package-modal__actions">
-            <Button variant="primary" onClick={() => navigate('/reservar')}>
+            <Button variant="primary" onClick={() => navigate('/paquetes')}>
               Reservar este paquete
             </Button>
             <Button variant="ghost" onClick={onClose}>

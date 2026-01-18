@@ -1,12 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import VehicleCard from '../components/VehicleCard'
 import VehicleModal from '../components/VehicleModal'
-import { vehicles } from '../data/content'
 import type { Vehicle } from '../data/content'
+import { fetchVehicles } from '../api/api'
 
 const Vehicles = () => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
+  const [list, setList] = useState<Vehicle[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+    fetchVehicles().then((v) => mounted && setList(v))
+    return () => { mounted = false }
+  }, [])
 
   const handleCardClick = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle)
@@ -28,7 +35,7 @@ const Vehicles = () => {
 
       <section className="section">
         <div className="grid vehicles">
-          {vehicles.map((vehicle) => (
+          {list.map((vehicle) => (
             <VehicleCard
               key={vehicle.id}
               vehicle={vehicle}

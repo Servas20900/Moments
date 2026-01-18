@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import AppRoutes from '../routes/Routes'
-import './MobileNav.css'
 
 const nav = AppRoutes.nav
 

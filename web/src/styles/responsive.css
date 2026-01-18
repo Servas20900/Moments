@@ -1,0 +1,289 @@
+/* ================================
+   RESPONSIVE DESIGN IMPROVEMENTS
+   ================================ */
+
+/* Base responsive containers */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 8px;
+  }
+}
+
+/* Flexible grid system */
+.grid {
+  display: grid;
+  gap: 20px;
+}
+
+.grid.one {
+  grid-template-columns: 1fr;
+}
+
+.grid.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid.four {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1024px) {
+  .grid.four {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid.three {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .grid {
+    gap: 16px;
+  }
+
+  .grid.four,
+  .grid.three,
+  .grid.two {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Flex utilities for responsive layouts */
+.flex-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Responsive spacing utilities */
+.mt-sm { margin-top: 8px; }
+.mt-md { margin-top: 16px; }
+.mt-lg { margin-top: 24px; }
+.mt-xl { margin-top: 32px; }
+
+.mb-sm { margin-bottom: 8px; }
+.mb-md { margin-bottom: 16px; }
+.mb-lg { margin-bottom: 24px; }
+.mb-xl { margin-bottom: 32px; }
+
+.px-sm { padding-left: 8px; padding-right: 8px; }
+.px-md { padding-left: 16px; padding-right: 16px; }
+.px-lg { padding-left: 24px; padding-right: 24px; }
+
+.py-sm { padding-top: 8px; padding-bottom: 8px; }
+.py-md { padding-top: 16px; padding-bottom: 16px; }
+.py-lg { padding-top: 24px; padding-bottom: 24px; }
+
+@media (max-width: 768px) {
+  .mt-lg,
+  .mb-lg {
+    margin-top: 16px;
+    margin-bottom: 16px;
+  }
+
+  .px-lg {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .py-lg {
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+}
+
+/* Hide/Show utilities */
+.hide-mobile {
+  display: none;
+}
+
+.show-mobile {
+  display: block;
+}
+
+@media (min-width: 769px) {
+  .hide-mobile {
+    display: block;
+  }
+
+  .show-mobile {
+    display: none;
+  }
+}
+
+/* Responsive images */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Responsive tables */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .table-responsive {
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+}
+
+/* Responsive page sections */
+.section {
+  padding: 40px 0;
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 32px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .section {
+    padding: 24px 0;
+  }
+}
+
+/* Ensure touch targets are adequate on mobile */
+@media (max-width: 768px) {
+  button,
+  a[role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  .admin-table__action-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Prevent font scaling on landscape orientation */
+html {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Viewport meta helper styles */
+@supports (height: 100dvh) {
+  html,
+  body {
+    height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+}
+
+/* Safe area support for notched devices */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+
+  .modal {
+    padding: max(16px, env(safe-area-inset-left));
+  }
+}
+
+/* Responsive heading adjustments */
+@media (max-width: 1024px) {
+  .display {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .display {
+    font-size: 1.6rem;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .display {
+    font-size: 1.3rem;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+  }
+
+  h2 {
+    font-size: 1rem;
+  }
+
+  h3 {
+    font-size: 0.95rem;
+  }
+}
+
+/* ================================
+   LANDSCAPE ORIENTATION
+   ================================ */
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .section {
+    padding: 20px 0;
+  }
+
+  .topbar {
+    padding: 10px 16px;
+  }
+
+  .modal__panel {
+    max-height: 90vh;
+  }
+}

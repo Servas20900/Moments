@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Vehicle } from '../data/content'
-import { fetchVehicleOccupancy } from '../api/mocks'
+import { fetchVehicleOccupancy } from '../api/api'
 import SafeImage from './SafeImage'
 import Button from './Button'
 
@@ -17,6 +18,7 @@ const VehicleModal = ({ vehicle, isOpen, onClose }: VehicleModalProps) => {
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
+  const navigate = useNavigate()
 
   if (!isOpen || !vehicle) return null
 
@@ -182,7 +184,12 @@ const VehicleModal = ({ vehicle, isOpen, onClose }: VehicleModalProps) => {
             </div>
 
             <div className="vehicle-modal__actions">
-              <Button variant="primary" size="lg" className="vehicle-modal__action-btn">
+              <Button
+                variant="primary"
+                size="lg"
+                className="vehicle-modal__action-btn"
+                onClick={() => navigate('/calendario')}
+              >
                 Reservar {vehicle.name}
               </Button>
               <Button variant="ghost" size="lg" className="vehicle-modal__action-btn" onClick={onClose}>

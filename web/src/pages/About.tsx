@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import SafeImage from '../components/SafeImage'
-import { fetchExperiences } from '../api/mocks'
+import { fetchExperiences } from '../api/api'
 import type { Experience } from '../data/content'
 
 const About = () => {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import PackageCard from '../components/PackageCard'
 import PackageModal from '../components/PackageModal'
 import type { Package } from '../data/content'
-import { fetchPackages } from '../api/mocks'
+import { fetchPackages } from '../api/api'
 
 const Packages = () => {
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)

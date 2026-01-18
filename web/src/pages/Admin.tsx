@@ -3,7 +3,9 @@ import { FaEdit, FaTrash } from 'react-icons/fa'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import Modal from '../components/Modal'
-import { fetchPackages, fetchVehicles, fetchCalendar, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, createExperience, updateExperience, deleteExperience, fetchSystemImages, createSystemImage, updateSystemImage, deleteSystemImage, fetchHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide } from '../api/mocks'
+import { InputField, TextareaField, SelectField, CheckboxField } from '../components/FormField'
+import ImageUpload from '../components/ImageUpload'
+import { fetchPackages, fetchVehicles, fetchCalendar, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, createExperience, updateExperience, deleteExperience, fetchSystemImages, createSystemImage, updateSystemImage, deleteSystemImage, fetchHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide, createImageRecord, attachImageToPackage, attachImageToVehicle, attachImageToEvent } from '../api/api'
 import type { Package, Vehicle, CalendarSlot, Experience, SystemImage, HeroSlide } from '../data/content'
 
 const Admin = () => {
@@ -66,15 +68,41 @@ const Admin = () => {
   }
 
   const onSavePackage = async (pkg: Package) => {
-    if (!pkg.id) {
-      const created = await createPackage(pkg)
-      setPackages((s) => [created, ...s])
-    } else {
-      await updatePackage(pkg.id, pkg)
-      setPackages((s) => s.map((x) => (x.id === pkg.id ? pkg : x)))
+    try {
+      if (!pkg.id) {
+        // 1. Create package without image URL
+        const pkgPayload = { ...pkg, imageUrl: '' }
+        const created = await createPackage(pkgPayload)
+        
+        // 2. If image exists, persist it first in Imagen table
+        if (pkg.imageUrl) {
+          const img = await createImageRecord({ categoria: 'PAQUETE', url: pkg.imageUrl, altText: created.name })
+          // 3. Attach image to package
+          await attachImageToPackage(img.id, created.id, 0)
+          // 4. Refresh with image from BD relation
+          created.imageUrl = pkg.imageUrl
+        }
+        setPackages((s) => [created, ...s])
+      } else {
+        // Update package
+        const pkgPayload = { ...pkg, imageUrl: '' }
+        await updatePackage(pkg.id, pkgPayload)
+        
+        // If image exists, persist it
+        if (pkg.imageUrl) {
+          const img = await createImageRecord({ categoria: 'PAQUETE', url: pkg.imageUrl, altText: pkg.name })
+          await attachImageToPackage(img.id, pkg.id, 0)
+          pkg.imageUrl = pkg.imageUrl // Keep it for display
+        }
+        setPackages((s) => s.map((x) => (x.id === pkg.id ? pkg : x)))
+      }
+    } catch (e) {
+      console.error('Error guardando paquete:', e)
+      alert(`Error: ${e instanceof Error ? e.message : 'No se pudo guardar'}`)
+    } finally {
+      setShowPkgModal(false)
+      setEditingPackage(null)
     }
-    setShowPkgModal(false)
-    setEditingPackage(null)
   }
 
   const onCreateVehicle = () => {
@@ -91,15 +119,38 @@ const Admin = () => {
   }
 
   const onSaveVehicle = async (v: Vehicle) => {
-    if (!v.id) {
-      const created = await createVehicle(v)
-      setVehicles((s) => [created, ...s])
-    } else {
-      await updateVehicle(v.id, v)
-      setVehicles((s) => s.map((x) => (x.id === v.id ? v : x)))
+    try {
+      if (!v.id) {
+        // 1. Create vehicle without image URL
+        const vPayload = { ...v, imageUrl: '' }
+        const created = await createVehicle(vPayload)
+        
+        // 2. If image exists, persist it
+        if (v.imageUrl) {
+          const img = await createImageRecord({ categoria: 'VEHICULO', url: v.imageUrl, altText: created.name })
+          await attachImageToVehicle(img.id, created.id, 0)
+          created.imageUrl = v.imageUrl
+        }
+        setVehicles((s) => [created, ...s])
+      } else {
+        // Update vehicle
+        const vPayload = { ...v, imageUrl: '' }
+        await updateVehicle(v.id, vPayload)
+        
+        if (v.imageUrl) {
+          const img = await createImageRecord({ categoria: 'VEHICULO', url: v.imageUrl, altText: v.name })
+          await attachImageToVehicle(img.id, v.id, 0)
+          v.imageUrl = v.imageUrl
+        }
+        setVehicles((s) => s.map((x) => (x.id === v.id ? v : x)))
+      }
+    } catch (e) {
+      console.error('Error guardando vehículo:', e)
+      alert(`Error: ${e instanceof Error ? e.message : 'No se pudo guardar'}`)
+    } finally {
+      setShowVehModal(false)
+      setEditingVehicle(null)
     }
-    setShowVehModal(false)
-    setEditingVehicle(null)
   }
 
   const onCreateEvent = () => {
@@ -116,15 +167,38 @@ const Admin = () => {
   }
 
   const onSaveEvent = async (ev: CalendarSlot) => {
-    if (!ev.id) {
-      const created = await createCalendarEvent(ev)
-      setEvents((s) => [created, ...s])
-    } else {
-      await updateCalendarEvent(ev.id, ev)
-      setEvents((s) => s.map((x) => (x.id === ev.id ? ev : x)))
+    try {
+      if (!ev.id) {
+        // 1. Create event without image URL
+        const evPayload = { ...ev, imageUrl: '' }
+        const created = await createCalendarEvent(evPayload)
+        
+        // 2. If image exists, persist it
+        if (ev.imageUrl) {
+          const img = await createImageRecord({ categoria: 'EVENTO', url: ev.imageUrl, altText: created.title })
+          await attachImageToEvent(img.id, created.id, 0)
+          created.imageUrl = ev.imageUrl
+        }
+        setEvents((s) => [created, ...s])
+      } else {
+        // Update event
+        const evPayload = { ...ev, imageUrl: '' }
+        await updateCalendarEvent(ev.id, evPayload)
+        
+        if (ev.imageUrl) {
+          const img = await createImageRecord({ categoria: 'EVENTO', url: ev.imageUrl, altText: ev.title })
+          await attachImageToEvent(img.id, ev.id, 0)
+          ev.imageUrl = ev.imageUrl
+        }
+        setEvents((s) => s.map((x) => (x.id === ev.id ? ev : x)))
+      }
+    } catch (e) {
+      console.error('Error guardando evento:', e)
+      alert(`Error: ${e instanceof Error ? e.message : 'No se pudo guardar'}`)
+    } finally {
+      setShowEventModal(false)
+      setEditingEvent(null)
     }
-    setShowEventModal(false)
-    setEditingEvent(null)
   }
 
   const onCreateExp = () => {
@@ -143,9 +217,24 @@ const Admin = () => {
   const onSaveExp = async (exp: Experience) => {
     if (!exp.id) {
       const created = await createExperience(exp)
+      // Persist image for experience
+      if (created.imageUrl) {
+        try {
+          const img = await createImageRecord({ categoria: 'EXPERIENCIA', url: created.imageUrl, altText: created.title })
+        } catch (e) {
+          console.warn('No se pudo persistir imagen de experiencia', e)
+        }
+      }
       setExperiences((s) => [created, ...s])
     } else {
       await updateExperience(exp.id, exp)
+      if (exp.imageUrl) {
+        try {
+          const img = await createImageRecord({ categoria: 'EXPERIENCIA', url: exp.imageUrl, altText: exp.title })
+        } catch (e) {
+          console.warn('No se pudo persistir imagen de experiencia (update)', e)
+        }
+      }
       setExperiences((s) => s.map((x) => (x.id === exp.id ? exp : x)))
     }
     setShowExpModal(false)
@@ -191,15 +280,37 @@ const Admin = () => {
   }
 
   const onSaveHero = async (slide: HeroSlide) => {
-    if (!slide.id) {
-      const created = await createHeroSlide(slide)
-      setHeroSlides((s) => [created, ...s])
-    } else {
-      await updateHeroSlide(slide.id, slide)
-      setHeroSlides((s) => s.map((x) => (x.id === slide.id ? slide : x)))
+    try {
+      if (!slide.id) {
+        // 1. Create hero slide without image URL
+        const slidePayload = { ...slide, imageUrl: '' }
+        const created = await createHeroSlide(slidePayload)
+        
+        // 2. If image exists, persist it
+        if (slide.imageUrl) {
+          const img = await createImageRecord({ categoria: 'LANDING_PAGE', url: slide.imageUrl, altText: slide.title })
+          created.imageUrl = slide.imageUrl
+        }
+        setHeroSlides((s) => [created, ...s])
+      } else {
+        // Update slide
+        const slidePayload = { ...slide, imageUrl: '' }
+        await updateHeroSlide(slide.id, slidePayload)
+        
+        // If image exists, persist it
+        if (slide.imageUrl) {
+          const img = await createImageRecord({ categoria: 'LANDING_PAGE', url: slide.imageUrl, altText: slide.title })
+          slide.imageUrl = slide.imageUrl
+        }
+        setHeroSlides((s) => s.map((x) => (x.id === slide.id ? slide : x)))
+      }
+    } catch (e) {
+      console.error('Error guardando hero slide:', e)
+      alert(`Error: ${e instanceof Error ? e.message : 'No se pudo guardar'}`)
+    } finally {
+      setShowHeroModal(false)
+      setEditingHero(null)
     }
-    setShowHeroModal(false)
-    setEditingHero(null)
   }
 
   if (loading) return <div className="page"><p>Cargando administrador...</p></div>
@@ -208,8 +319,8 @@ const Admin = () => {
     <div className="page admin-page">
       <header className="section">
         <p className="eyebrow">Admin</p>
-        <h1 className="display">Panel administrativo (mock)</h1>
-        <p className="section__copy">Crea, edita o elimina paquetes y vehículos. Las acciones afectan datos en memoria (mocks).</p>
+        <h1 className="display">Panel administrativo</h1>
+        <p className="section__copy">Crea, edita o elimina paquetes, vehículos y contenido. Las acciones pegan a la API.</p>
       </header>
 
       <div className="admin-layout">
@@ -517,113 +628,313 @@ const Admin = () => {
   )
 }
 
-function AdminEventForm({ ev, onCancel, onSave, uploadImage }: { ev: CalendarSlot; onCancel: () => void; onSave: (e: CalendarSlot) => void; uploadImage: (f: string) => Promise<string> }) {
+function AdminEventForm({ ev, onCancel, onSave, uploadImage }: { ev: CalendarSlot; onCancel: () => void; onSave: (e: CalendarSlot) => void; uploadImage: (file: File) => Promise<string> }) {
   const [state, setState] = useState<CalendarSlot>(ev)
-  const [uploading, setUploading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setState(s => ({ ...s, [e.target.name]: e.target.value } as any))
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setState(s => ({ ...s, [name]: value } as any))
+    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
+  }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const url = await uploadImage(file.name)
+  const handleImageChange = (url: string) => {
     setState(s => ({ ...s, imageUrl: url }))
-    setUploading(false)
+    if (errors.imageUrl) setErrors(e => ({ ...e, imageUrl: '' }))
+  }
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {}
+    if (!state.title.trim()) newErrors.title = 'El título es requerido'
+    if (!state.date.trim()) newErrors.date = 'La fecha es requerida'
+    return newErrors
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newErrors = validate()
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    onSave(state)
   }
 
   return (
-    <form className="form" onSubmit={(evForm) => { evForm.preventDefault(); onSave(state) }}>
-      <label className="form__label">Título<input name="title" value={state.title} onChange={handleChange} /></label>
-      <label className="form__label">Fecha<input name="date" type="date" value={state.date} onChange={handleChange} /></label>
-      <label className="form__label">Estado
-        <select name="status" value={state.status} onChange={handleChange}>
-          <option value="evento">Evento</option>
-          <option value="disponible">Disponible</option>
-          <option value="ocupado">Ocupado</option>
-        </select>
-      </label>
-      <label className="form__label">Tag<input name="tag" value={state.tag ?? ''} onChange={handleChange} /></label>
-      <label className="form__label">Detalle<textarea name="detail" value={state.detail ?? ''} onChange={handleChange} /></label>
-      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
-      {uploading && <div>Subiendo imagen...</div>}
-      <div className="stack mt-md">
-        <Button variant="primary" type="submit">Guardar</Button>
-        <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
+    <form className="admin-form" onSubmit={handleSubmit}>
+      <InputField
+        label="Título"
+        required
+        name="title"
+        value={state.title}
+        onChange={handleChange}
+        error={errors.title}
+        placeholder="Ej: Evento especial"
+      />
+      <InputField
+        label="Fecha"
+        required
+        type="date"
+        name="date"
+        value={state.date}
+        onChange={handleChange}
+        error={errors.date}
+      />
+      <SelectField
+        label="Estado"
+        name="status"
+        value={state.status}
+        onChange={handleChange}
+        options={[
+          { value: 'evento', label: 'Evento' },
+          { value: 'disponible', label: 'Disponible' },
+          { value: 'ocupado', label: 'Ocupado' }
+        ]}
+      />
+      <InputField
+        label="Tag"
+        name="tag"
+        value={state.tag ?? ''}
+        onChange={handleChange}
+        placeholder="Ej: especial, promoción"
+      />
+      <TextareaField
+        label="Detalle"
+        name="detail"
+        value={state.detail ?? ''}
+        onChange={handleChange}
+        placeholder="Descripción del evento"
+      />
+      <ImageUpload
+        label="Cargar imagen"
+        value={state.imageUrl}
+        onChange={handleImageChange}
+        onUpload={uploadImage}
+        error={errors.imageUrl}
+      />
+      <div className="admin-form__actions">
+        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+          Guardar
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+          Cancelar
+        </Button>
       </div>
     </form>
   )
 }
 
-function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage }: { pkg: Package; categories?: string[]; onCancel: () => void; onSave: (p: Package) => void; uploadImage: (f: string) => Promise<string> }) {
+function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage }: { pkg: Package; categories?: string[]; onCancel: () => void; onSave: (p: Package) => void; uploadImage: (file: File) => Promise<string> }) {
   const [state, setState] = useState<Package>(pkg)
-  const [uploading, setUploading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setState(s => ({ ...s, [e.target.name]: e.target.value } as any))
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target
+    setState(s => ({ ...s, [name]: type === 'number' ? Number(value) : value } as any))
+    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
+  }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const url = await uploadImage(file.name)
+  const handleImageChange = (url: string) => {
     setState(s => ({ ...s, imageUrl: url }))
-    setUploading(false)
+    if (errors.imageUrl) setErrors(e => ({ ...e, imageUrl: '' }))
+  }
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {}
+    if (!state.name.trim()) newErrors.name = 'El nombre es requerido'
+    if (!state.category.trim()) newErrors.category = 'La categoría es requerida'
+    if (state.price <= 0) newErrors.price = 'El precio debe ser mayor a 0'
+    if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
+    return newErrors
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newErrors = validate()
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    onSave(state)
   }
 
   return (
-    <form className="form" onSubmit={(ev) => { ev.preventDefault(); onSave(state) }}>
-      <label className="form__label">Nombre<input name="name" value={state.name} onChange={handleChange} /></label>
-      <label className="form__label">Categoría
-        <input name="category" list="pkg-cats" value={state.category} onChange={handleChange} />
-        <datalist id="pkg-cats">
-          {categories.map((c) => <option key={c} value={c} />)}
-        </datalist>
-      </label>
-      <label className="form__label">Precio<input name="price" value={String(state.price)} onChange={(e) => setState(s => ({ ...s, price: Number(e.target.value) }))} /></label>
-      <label className="form__label">Vehículo<input name="vehicle" value={state.vehicle} onChange={handleChange} /></label>
-      <label className="form__label">Descripción<textarea name="description" value={state.description} onChange={handleChange} /></label>
-      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
-      {uploading && <div>Subiendo imagen...</div>}
-      <div className="stack mt-md">
-        <Button variant="primary" type="submit">Guardar</Button>
-        <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
+    <form className="admin-form" onSubmit={handleSubmit}>
+      <InputField
+        label="Nombre"
+        required
+        name="name"
+        value={state.name}
+        onChange={handleChange}
+        error={errors.name}
+        placeholder="Ej: Tour privado de 8 horas"
+      />
+      <div className="admin-form__group-row">
+        <InputField
+          label="Categoría"
+          required
+          name="category"
+          value={state.category}
+          onChange={handleChange}
+          error={errors.category}
+          placeholder="Nueva o existente"
+          list="pkg-cats"
+        />
+        <InputField
+          label="Precio"
+          required
+          type="number"
+          name="price"
+          value={state.price}
+          onChange={handleChange}
+          error={errors.price}
+          placeholder="0.00"
+          min="0"
+          step="0.01"
+        />
+      </div>
+      <datalist id="pkg-cats">
+        {categories.map((c) => <option key={c} value={c} />)}
+      </datalist>
+      <InputField
+        label="Vehículo"
+        name="vehicle"
+        value={state.vehicle}
+        onChange={handleChange}
+        placeholder="Ej: Camioneta"
+      />
+      <TextareaField
+        label="Descripción"
+        name="description"
+        value={state.description}
+        onChange={handleChange}
+        placeholder="Descripción detallada del paquete"
+      />
+      <ImageUpload
+        label="Cargar imagen del paquete"
+        required
+        value={state.imageUrl}
+        onChange={handleImageChange}
+        onUpload={uploadImage}
+        error={errors.imageUrl}
+      />
+      <div className="admin-form__actions">
+        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+          Guardar
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+          Cancelar
+        </Button>
       </div>
     </form>
   )
 }
 
-function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadImage }: { vehicle: Vehicle; categories?: string[]; onCancel: () => void; onSave: (v: Vehicle) => void; uploadImage: (f: string) => Promise<string> }) {
+function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadImage }: { vehicle: Vehicle; categories?: string[]; onCancel: () => void; onSave: (v: Vehicle) => void; uploadImage: (file: File) => Promise<string> }) {
   const [state, setState] = useState<Vehicle>(vehicle)
-  const [uploading, setUploading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setState(s => ({ ...s, [e.target.name]: e.target.value } as any))
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target
+    setState(s => ({
+      ...s,
+      [name]: name === 'seats' && type === 'number' ? Number(value) : name === 'features' ? value.split(',').map(x => x.trim()) : value
+    } as any))
+    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
+  }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const url = await uploadImage(file.name)
+  const handleImageChange = (url: string) => {
     setState(s => ({ ...s, imageUrl: url }))
-    setUploading(false)
+    if (errors.imageUrl) setErrors(e => ({ ...e, imageUrl: '' }))
+  }
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {}
+    if (!state.name.trim()) newErrors.name = 'El nombre es requerido'
+    if (!state.category.trim()) newErrors.category = 'La categoría es requerida'
+    if (state.seats < 1) newErrors.seats = 'Mínimo 1 asiento'
+    if (!state.rate.trim()) newErrors.rate = 'La tarifa es requerida'
+    if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
+    return newErrors
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newErrors = validate()
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    onSave(state)
   }
 
   return (
-    <form className="form" onSubmit={(ev) => { ev.preventDefault(); onSave(state) }}>
-      <label className="form__label">Nombre<input name="name" value={state.name} onChange={handleChange} /></label>
-      <label className="form__label">Categoría
-        <input name="category" list="veh-cats" value={state.category} onChange={handleChange} />
-        <datalist id="veh-cats">
-          {categories.map((c) => <option key={c} value={c} />)}
-        </datalist>
-      </label>
-      <label className="form__label">Asientos<input name="seats" value={String(state.seats)} onChange={(e) => setState(s => ({ ...s, seats: Number(e.target.value) }))} /></label>
-      <label className="form__label">Tarifa<input name="rate" value={state.rate} onChange={handleChange} /></label>
-      <label className="form__label">Características<textarea name="features" value={state.features.join(', ')} onChange={(e) => setState(s => ({ ...s, features: e.target.value.split(',').map(x => x.trim()) }))} /></label>
-      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
-      {uploading && <div>Subiendo imagen...</div>}
-      <div className="stack mt-md">
-        <Button variant="primary" type="submit">Guardar</Button>
-        <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
+    <form className="admin-form" onSubmit={handleSubmit}>
+      <InputField
+        label="Nombre"
+        required
+        name="name"
+        value={state.name}
+        onChange={handleChange}
+        error={errors.name}
+        placeholder="Ej: Camioneta Escalade"
+      />
+      <div className="admin-form__group-row">
+        <InputField
+          label="Categoría"
+          required
+          name="category"
+          value={state.category}
+          onChange={handleChange}
+          error={errors.category}
+          placeholder="Nueva o existente"
+          list="veh-cats"
+        />
+        <InputField
+          label="Asientos"
+          required
+          type="number"
+          name="seats"
+          value={state.seats}
+          onChange={handleChange}
+          error={errors.seats}
+          min="1"
+        />
+      </div>
+      <datalist id="veh-cats">
+        {categories.map((c) => <option key={c} value={c} />)}
+      </datalist>
+      <InputField
+        label="Tarifa"
+        required
+        name="rate"
+        value={state.rate}
+        onChange={handleChange}
+        error={errors.rate}
+        placeholder="Ej: $150/hora"
+      />
+      <TextareaField
+        label="Características (separadas por comas)"
+        name="features"
+        value={state.features.join(', ')}
+        onChange={handleChange}
+        placeholder="Aire acondicionado, WiFi, Mini bar"
+      />
+      <ImageUpload
+        label="Cargar imagen del vehículo"
+        required
+        value={state.imageUrl}
+        onChange={handleImageChange}
+        onUpload={uploadImage}
+        error={errors.imageUrl}
+      />
+      <div className="admin-form__actions">
+        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+          Guardar
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+          Cancelar
+        </Button>
       </div>
     </form>
   )
@@ -631,128 +942,300 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
 
 function CreateCategoryForm({ onCreate, onCancel }: { onCreate: (name: string) => void; onCancel: () => void }) {
   const [name, setName] = useState('')
-  return (
-    <form className="form" onSubmit={(e) => { e.preventDefault(); if (name.trim()) onCreate(name.trim()) }}>
-      <label className="form__label">Nombre de categoría<input value={name} onChange={(e) => setName(e.target.value)} /></label>
-      <div className="stack mt-md">
-        <Button variant="primary" type="submit">Crear</Button>
-        <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
-      </div>
-    </form>
-  )
-}
+  const [error, setError] = useState('')
 
-function AdminExperienceForm({ exp, onCancel, onSave, uploadImage }: { exp: Experience; onCancel: () => void; onSave: (e: Experience) => void; uploadImage: (f: string) => Promise<string> }) {
-  const [state, setState] = useState<Experience>(exp)
-  const [uploading, setUploading] = useState(false)
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value)
+    if (error) setError('')
+  }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setState(s => ({ ...s, [e.target.name]: e.target.value }))
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const url = await uploadImage(file.name)
-    setState(s => ({ ...s, imageUrl: url }))
-    setUploading(false)
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) {
+      setError('El nombre de la categoría es requerido')
+      return
+    }
+    onCreate(name.trim())
   }
 
   return (
-    <form className="form" onSubmit={(evForm) => { evForm.preventDefault(); onSave(state) }}>
-      <label className="form__label">Título<input name="title" value={state.title} onChange={handleChange} /></label>
-      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} /></label>
-      {uploading && <div>Subiendo imagen...</div>}
-      <div className="stack mt-md">
-        <Button variant="primary" type="submit">Guardar</Button>
-        <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
+    <form className="admin-form" onSubmit={handleSubmit}>
+      <InputField
+        label="Nombre de categoría"
+        required
+        value={name}
+        onChange={handleChange}
+        error={error}
+        placeholder="Ej: Tours Privados"
+      />
+      <div className="admin-form__actions">
+        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+          Crear
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+          Cancelar
+        </Button>
       </div>
     </form>
   )
 }
 
-function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemImage; onCancel: () => void; onSave: (img: SystemImage) => void; uploadImage: (f: string) => Promise<string> }) {
+function AdminExperienceForm({ exp, onCancel, onSave, uploadImage }: { exp: Experience; onCancel: () => void; onSave: (e: Experience) => void; uploadImage: (file: File) => Promise<string> }) {
+  const [state, setState] = useState<Experience>(exp)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setState(s => ({ ...s, [name]: value }))
+    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
+  }
+
+  const handleImageChange = (url: string) => {
+    setState(s => ({ ...s, imageUrl: url }))
+    if (errors.imageUrl) setErrors(e => ({ ...e, imageUrl: '' }))
+  }
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {}
+    if (!state.title.trim()) newErrors.title = 'El título es requerido'
+    if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
+    return newErrors
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newErrors = validate()
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    onSave(state)
+  }
+
+  return (
+    <form className="admin-form" onSubmit={handleSubmit}>
+      <InputField
+        label="Título"
+        required
+        name="title"
+        value={state.title}
+        onChange={handleChange}
+        error={errors.title}
+        placeholder="Ej: Aventura en la selva"
+      />
+      <ImageUpload
+        label="Cargar imagen de experiencia"
+        required
+        value={state.imageUrl}
+        onChange={handleImageChange}
+        onUpload={uploadImage}
+        error={errors.imageUrl}
+      />
+      <div className="admin-form__actions">
+        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+          Guardar
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemImage; onCancel: () => void; onSave: (img: SystemImage) => void; uploadImage: (file: File) => Promise<string> }) {
   const [state, setState] = useState<SystemImage>(img)
-  const [uploading, setUploading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
-    if (type === 'checkbox') {
-      setState(s => ({ ...s, [name]: (e.target as HTMLInputElement).checked }))
-    } else if (name === 'order') {
-      setState(s => ({ ...s, order: Number(value) }))
-    } else {
-      setState(s => ({ ...s, [name]: value }))
-    }
+    setState(s => ({
+      ...s,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : name === 'order' ? Number(value) : value
+    }))
+    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
   }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const url = await uploadImage(file.name)
+  const handleImageChange = (url: string) => {
     setState(s => ({ ...s, url }))
-    setUploading(false)
+    if (errors.url) setErrors(e => ({ ...e, url: '' }))
+  }
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {}
+    if (!state.name.trim()) newErrors.name = 'El nombre es requerido'
+    if (!state.url) newErrors.url = 'La imagen es requerida'
+    return newErrors
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newErrors = validate()
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    onSave(state)
   }
 
   return (
-    <form className="form" onSubmit={(evForm) => { evForm.preventDefault(); onSave(state) }}>
-      <label className="form__label">Nombre<input name="name" value={state.name} onChange={handleChange} required /></label>
-      <label className="form__label">Descripción<textarea name="description" value={state.description ?? ''} onChange={handleChange} /></label>
-      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} required /></label>
-      {uploading && <div>Subiendo imagen...</div>}
-      <label className="form__label">Texto alternativo<input name="altText" value={state.altText ?? ''} onChange={handleChange} placeholder="Descripción de la imagen" /></label>
-      <label className="form__label">Orden<input name="order" type="number" value={state.order} onChange={handleChange} /></label>
-      <label className="form__label form__label--checkbox">
-        <input name="isActive" type="checkbox" checked={state.isActive} onChange={handleChange} />
-        <span>Mostrar en galería</span>
-      </label>
-      <div className="stack mt-md">
-        <Button variant="primary" type="submit">Guardar</Button>
-        <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
+    <form className="admin-form" onSubmit={handleSubmit}>
+      <InputField
+        label="Nombre"
+        required
+        name="name"
+        value={state.name}
+        onChange={handleChange}
+        error={errors.name}
+        placeholder="Ej: Galería inicio"
+      />
+      <TextareaField
+        label="Descripción"
+        name="description"
+        value={state.description ?? ''}
+        onChange={handleChange}
+        placeholder="Descripción opcional"
+      />
+      <ImageUpload
+        label="Cargar imagen"
+        required
+        value={state.url}
+        onChange={handleImageChange}
+        onUpload={uploadImage}
+        error={errors.url}
+      />
+      <InputField
+        label="Texto alternativo"
+        name="altText"
+        value={state.altText ?? ''}
+        onChange={handleChange}
+        placeholder="Descripción para accesibilidad"
+      />
+      <InputField
+        label="Orden"
+        type="number"
+        name="order"
+        value={state.order}
+        onChange={handleChange}
+        min="0"
+      />
+      <CheckboxField
+        label="Mostrar en galería"
+        name="isActive"
+        checked={state.isActive}
+        onChange={handleChange}
+      />
+      <div className="admin-form__actions">
+        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+          Guardar
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+          Cancelar
+        </Button>
       </div>
     </form>
   )
 }
 
-function AdminHeroSlideForm({ slide, onCancel, onSave, uploadImage }: { slide: HeroSlide; onCancel: () => void; onSave: (slide: HeroSlide) => void; uploadImage: (f: string) => Promise<string> }) {
+function AdminHeroSlideForm({ slide, onCancel, onSave, uploadImage }: { slide: HeroSlide; onCancel: () => void; onSave: (slide: HeroSlide) => void; uploadImage: (file: File) => Promise<string> }) {
   const [state, setState] = useState<HeroSlide>(slide)
-  const [uploading, setUploading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
-    if (type === 'checkbox') {
-      setState(s => ({ ...s, [name]: (e.target as HTMLInputElement).checked }))
-    } else if (name === 'order') {
-      setState(s => ({ ...s, order: Number(value) }))
-    } else {
-      setState(s => ({ ...s, [name]: value }))
-    }
+    setState(s => ({
+      ...s,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : name === 'order' ? Number(value) : value
+    }))
+    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
   }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    const url = await uploadImage(file.name)
+  const handleImageChange = (url: string) => {
     setState(s => ({ ...s, imageUrl: url }))
-    setUploading(false)
+    if (errors.imageUrl) setErrors(e => ({ ...e, imageUrl: '' }))
+  }
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {}
+    if (!state.title.trim()) newErrors.title = 'El título es requerido'
+    if (!(state.subtitle ?? '').trim()) newErrors.subtitle = 'El subtítulo es requerido'
+    if (!(state.description ?? '').trim()) newErrors.description = 'La descripción es requerida'
+    if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
+    return newErrors
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newErrors = validate()
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    onSave(state)
   }
 
   return (
-    <form className="form" onSubmit={(evForm) => { evForm.preventDefault(); onSave(state) }}>
-      <label className="form__label">Título<input name="title" value={state.title} onChange={handleChange} required /></label>
-      <label className="form__label">Subtítulo<input name="subtitle" value={state.subtitle} onChange={handleChange} required /></label>
-      <label className="form__label">Descripción<textarea name="description" value={state.description} onChange={handleChange} required /></label>
-      <label className="form__label">Cargar imagen<input type="file" onChange={handleUpload} required /></label>
-      {uploading && <div>Subiendo imagen...</div>}
-      <label className="form__label">Orden<input name="order" type="number" value={state.order} onChange={handleChange} required /></label>
-      <label className="form__label form__label--checkbox">
-        <input name="isActive" type="checkbox" checked={state.isActive} onChange={handleChange} />
-        <span>Slide activo</span>
-      </label>
-      <div className="stack mt-md">
-        <Button variant="primary" type="submit">Guardar</Button>
-        <Button variant="ghost" type="button" onClick={onCancel}>Cancelar</Button>
+    <form className="admin-form" onSubmit={handleSubmit}>
+      <InputField
+        label="Título"
+        required
+        name="title"
+        value={state.title}
+        onChange={handleChange}
+        error={errors.title}
+        placeholder="Ej: Descubre Momentos"
+      />
+      <InputField
+        label="Subtítulo"
+        required
+        name="subtitle"
+        value={state.subtitle}
+        onChange={handleChange}
+        error={errors.subtitle}
+        placeholder="Ej: Experiencias inolvidables"
+      />
+      <TextareaField
+        label="Descripción"
+        required
+        name="description"
+        value={state.description}
+        onChange={handleChange}
+        error={errors.description}
+        placeholder="Descripción del slide"
+      />
+      <ImageUpload
+        label="Cargar imagen del slide"
+        required
+        value={state.imageUrl}
+        onChange={handleImageChange}
+        onUpload={uploadImage}
+        error={errors.imageUrl}
+      />
+      <div className="admin-form__group-row">
+        <InputField
+          label="Orden"
+          type="number"
+          name="order"
+          value={state.order}
+          onChange={handleChange}
+          min="1"
+        />
+        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          <CheckboxField
+            label="Slide activo"
+            name="isActive"
+            checked={state.isActive}
+            onChange={handleChange}
+          />
+        </div>
+      </div>
+      <div className="admin-form__actions">
+        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+          Guardar
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+          Cancelar
+        </Button>
       </div>
     </form>
   )

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/Button'
 import Card from '../components/Card'
-import { createUser } from '../api/mocks'
+import { createUser } from '../api/api'
 
 const Register = () => {
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' })

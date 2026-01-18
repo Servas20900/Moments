@@ -6,6 +6,15 @@ type CloudinaryOptions = {
 
 export const cloudinaryUrl = (publicId: string, options: CloudinaryOptions = {}) => {
   const { width = 1400, height, quality = 85 } = options
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'demo'
   const size = height ? `c_fill,g_auto,w_${width},h_${height}` : `c_fill,g_auto,w_${width}`
-  return `https://res.cloudinary.com/dcwxslhjf/image/upload/f_auto,q_${quality}/${size}/${publicId}`
+  return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_${quality}/${size}/${publicId}`
+}
+
+export const getCloudinaryCloud = () => {
+  return import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'demo'
+}
+
+export const getCloudinaryUploadPreset = () => {
+  return import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'moments_unsigned'
 }

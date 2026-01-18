@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/Button'
 import Card from '../components/Card'
-import { getCurrentUser, updateUser } from '../api/mocks'
+import { getCurrentUser, updateUser } from '../api/api'
 
 const Profile = () => {
   const [user, setUser] = useState<any>(null)

@@ -4,8 +4,11 @@ import { FaShoppingCart } from 'react-icons/fa'
 import MobileNav from './components/MobileNav'
 import Account from './components/Account'
 import AppRoutes from './routes/Routes'
+import './index.css'
+import './styles/typography.css'
+import './styles/responsive.css'
 import './App.css'
-import './styles/index.css'
+import './styles/admin.css'
 
 const nav = AppRoutes.nav
 

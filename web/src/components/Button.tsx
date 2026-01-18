@@ -8,7 +8,11 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 const Button = ({ variant = 'primary', size = 'md', className = '', children, ...props }: ButtonProps) => {
   const classes = ['btn', `btn-${variant}`, `btn-${size}`, className].filter(Boolean).join(' ')
   return (
-    <button className={classes} {...props}>
+    <button 
+      className={classes} 
+      {...props}
+      type={props.type || 'button'}
+    >
       {children}
     </button>
   )

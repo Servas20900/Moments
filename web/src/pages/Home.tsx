@@ -5,8 +5,7 @@ import Card from '../components/Card'
 import PackageCard from '../components/PackageCard'
 import SafeImage from '../components/SafeImage'
 import VehicleCard from '../components/VehicleCard'
-import { cloudinaryUrl } from '../utils/media'
-import { fetchPackages, fetchVehicles, fetchCalendar, fetchHeroSlides } from '../api/mocks'
+import { fetchPackages, fetchVehicles, fetchCalendar, fetchHeroSlides } from '../api/api'
 import type { HeroSlide } from '../data/content'
 
 const Home = () => {
@@ -54,7 +53,7 @@ const Home = () => {
               </p>
             )}
             <div className="hero__actions">
-              <Link to="/reservar" className="btn btn-primary btn-lg">Reservar ahora</Link>
+              <Link to="/calendario" className="btn btn-primary btn-lg">Reservar ahora</Link>
               <Link to="/paquetes" className="btn btn-ghost btn-lg">Ver paquetes</Link>
               <Link to="/calendario" className="btn btn-ghost btn-lg">Calendario</Link>
             </div>
@@ -156,7 +155,7 @@ const Home = () => {
               <div className="event-preview__title">{ev.title}</div>
               {ev.detail && <div className="event-preview__detail">{ev.detail}</div>}
               <div className="event-preview__actions">
-                <Link to={`/reservar?event=${ev.id}`} className="btn btn-primary btn-sm">Reservar</Link>
+                <Link to="/calendario" className="btn btn-primary btn-sm">Reservar</Link>
                 <Link to={`/paquetes?event=${ev.id}`} className="btn btn-ghost btn-sm">Ver paquetes</Link>
               </div>
             </div>
@@ -171,7 +170,7 @@ const Home = () => {
             <p className="eyebrow">Flota</p>
             <h2 className="section__title">Vehículos para cada escena</h2>
           </div>
-          <Link to="/contacto" className="link">Consultar disponibilidad</Link>
+          <Link to="/calendario" className="link">Consultar disponibilidad</Link>
         </header>
         <div className="grid three">
           {vehicles.map((vehicle) => (
@@ -195,7 +194,7 @@ const Home = () => {
           <div className="media-frame">
             <SafeImage
               className="media-frame__image"
-              src={cloudinaryUrl('v1767670912/P00_wptrgt.png', { width: 1200, height: 520 })}
+              src="https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=520&fit=crop"
               alt="Servicio Moments"
               transformHeight={520}
             />
@@ -211,7 +210,7 @@ const Home = () => {
             <p className="section__copy">50% de anticipo para bloquear tu fecha. Confirmación por email/WhatsApp y contacto del chofer previo al evento.</p>
           </div>
           <div className="cta-band__actions">
-            <Link to="/reservar" className="btn btn-primary btn-lg">Reservar</Link>
+            <Link to="/calendario" className="btn btn-primary btn-lg">Reservar</Link>
             <Link to="/about" className="btn btn-ghost btn-lg">Conocer Moments</Link>
           </div>
         </div>

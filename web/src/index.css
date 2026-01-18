@@ -2,7 +2,7 @@
 
 :root {
   --font-display: 'Playfair Display', serif;
-  --font-body: 'Manrope', system-ui, sans-serif;
+  --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -38,45 +38,119 @@
   --color-accent-hover: #dca94b;
 }
 
+/* Reset and base styles */
 * {
   box-sizing: border-box;
 }
 
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 body {
   margin: 0;
+  padding: 0;
   min-height: 100vh;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+}
+
+/* Typography consistency */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin: 0;
+  line-height: 1.2;
+}
+
+p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
   line-height: 1.6;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+  font-family: var(--font-body);
+  transition: color var(--transition-fast);
 }
 
-p {
-  margin: 0;
-}
-
+/* Image handling */
 img {
   max-width: 100%;
+  height: auto;
   display: block;
+  font-family: var(--font-body);
 }
 
+/* Form elements */
 button,
 input,
 textarea,
-select {
-  font-family: inherit;
+select,
+optgroup {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: none;
+  padding: 0;
+  margin: 0;
+  line-height: inherit;
+  letter-spacing: inherit;
 }
 
+button {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+input,
+textarea,
+select {
+  font-weight: 400;
+}
+
+/* Select option styling */
+option {
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+/* Text selection */
 ::selection {
   background: var(--color-accent);
   color: #0b0c10;
 }
 
+::-moz-selection {
+  background: var(--color-accent);
+  color: #0b0c10;
+}
+
+/* Focus states */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -85,5 +159,18 @@ select {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+
+  a,
+  button {
+    text-decoration: underline;
   }
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SafeImage from '../components/SafeImage'
 import Card from '../components/Card'
-import { fetchCalendar } from '../api/mocks'
+import { fetchCalendar } from '../api/api'
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -68,7 +68,7 @@ const CalendarPage = () => {
   }
 
   const goToReserveForEvent = (eventId: string) => {
-    navigate(`/reservar?event=${encodeURIComponent(eventId)}`)
+    navigate(`/paquetes?event=${encodeURIComponent(eventId)}`)
   }
 
   const isToday = (day: number) => {

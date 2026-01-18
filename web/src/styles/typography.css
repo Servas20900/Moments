@@ -1,0 +1,192 @@
+/* ================================
+   TYPOGRAPHY & GLOBAL CONSISTENCY
+   ================================ */
+
+/* Ensure consistent typography across all elements */
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reset common typography issues */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+p {
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.2px;
+}
+
+a {
+  font-family: var(--font-body);
+  text-decoration: none;
+}
+
+label {
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+button {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+/* Input and Form Elements */
+input,
+select,
+textarea {
+  font-family: var(--font-body);
+  letter-spacing: 0.2px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  font-family: var(--font-body);
+  letter-spacing: 0.2px;
+}
+
+/* Ensure buttons are easily tappable on mobile */
+button,
+a[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+
+/* Consistent focus states for accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid #c9a24d;
+  outline-offset: 2px;
+}
+
+/* Ensure all select options use consistent typography */
+select option {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  padding: 8px;
+}
+
+/* Consistent line height across text elements */
+p, 
+li,
+.text,
+.description {
+  line-height: 1.6;
+  letter-spacing: 0.2px;
+}
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-muted);
+  margin: 0 0 8px 0;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin: 0 0 16px 0;
+}
+
+.section__title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin: 0;
+}
+
+.section__copy {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+}
+
+/* ================================
+   RESPONSIVE TYPOGRAPHY
+   ================================ */
+
+@media (max-width: 768px) {
+  .display {
+    font-size: 1.8rem;
+  }
+
+  .section__title {
+    font-size: 1.4rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+}
+
+@media (max-width: 480px) {
+  .display {
+    font-size: 1.5rem;
+  }
+
+  .section__title {
+    font-size: 1.2rem;
+  }
+
+  .section__copy {
+    font-size: 0.9rem;
+  }
+
+  p {
+    font-size: 0.95rem;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+}
