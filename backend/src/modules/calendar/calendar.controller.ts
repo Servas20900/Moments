@@ -19,6 +19,7 @@ export class CalendarController {
   @ApiBearerAuth('access_token')
   @ApiOperation({ summary: 'Crear evento (admin)' })
   async create(@Body() body: any) {
+    console.log('[CalendarController] POST /eventos received:', body);
     return this.calendarService.create(body);
   }
 

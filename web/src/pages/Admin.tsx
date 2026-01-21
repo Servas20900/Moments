@@ -3,9 +3,10 @@ import { FaEdit, FaTrash } from 'react-icons/fa'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import Modal from '../components/Modal'
-import { InputField, TextareaField, SelectField, CheckboxField } from '../components/FormField'
+import { InputField, TextareaField, CheckboxField } from '../components/FormField'
 import ImageUpload from '../components/ImageUpload'
 import { fetchPackages, fetchVehicles, fetchCalendar, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, createExperience, updateExperience, deleteExperience, fetchSystemImages, createSystemImage, updateSystemImage, deleteSystemImage, fetchHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide, createImageRecord, attachImageToPackage, attachImageToVehicle, attachImageToEvent } from '../api/api'
+import { useCalendarContext } from '../contexts/CalendarContext'
 import type { Package, Vehicle, CalendarSlot, Experience, SystemImage, HeroSlide } from '../data/content'
 
 const Admin = () => {
@@ -18,7 +19,9 @@ const Admin = () => {
   const [vehCategories, setVehCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [notifications, setNotifications] = useState<any[]>([])
-  const [events, setEvents] = useState<CalendarSlot[]>([])
+  
+  // Use Calendar Context
+  const { events, addEvent, updateEvent, removeEvent } = useCalendarContext()
 
   const [showPkgCatModal, setShowPkgCatModal] = useState(false)
   const [showVehCatModal, setShowVehCatModal] = useState(false)
@@ -38,14 +41,13 @@ const Admin = () => {
 
   useEffect(() => {
     let mounted = true
-    Promise.all([fetchPackages(), fetchVehicles(), fetchCalendar(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides()]).then(([p, v, c, n, e, img, h]) => {
+    Promise.all([fetchPackages(), fetchVehicles(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides()]).then(([p, v, n, e, img, h]) => {
       if (!mounted) return
       setPackages(p)
       setVehicles(v)
       setExperiences(e)
       setSystemImages(img)
       setHeroSlides(h)
-      setEvents(c)
       setNotifications(n)
       setPkgCategories(Array.from(new Set(p.map(x => x.category))).filter(Boolean))
       setVehCategories(Array.from(new Set(v.map(x => x.category))).filter(Boolean))
@@ -162,35 +164,45 @@ const Admin = () => {
 
   const onDeleteEvent = async (id: string) => {
     if (!confirm('Eliminar evento?')) return
-    await deleteCalendarEvent(id)
-    setEvents((s) => s.filter((x) => x.id !== id))
+    try {
+      await deleteCalendarEvent(id)
+      removeEvent(id)
+    } catch (e) {
+      console.error('Error eliminando evento:', e)
+      alert(`Error: ${e instanceof Error ? e.message : 'No se pudo eliminar'}`)
+    }
   }
 
   const onSaveEvent = async (ev: CalendarSlot) => {
+    const eventData: CalendarSlot = { ...ev, status: 'evento' }
     try {
       if (!ev.id) {
         // 1. Create event without image URL
-        const evPayload = { ...ev, imageUrl: '' }
+        const evPayload = { ...eventData, imageUrl: '' }
+        console.log('[ADMIN] Creating event with payload:', evPayload)
         const created = await createCalendarEvent(evPayload)
+        console.log('[ADMIN] Event created from server:', created)
+        console.log('[ADMIN] Event status:', created.status)
+        console.log('[ADMIN] Calling addEvent with:', created)
         
         // 2. If image exists, persist it
-        if (ev.imageUrl) {
-          const img = await createImageRecord({ categoria: 'EVENTO', url: ev.imageUrl, altText: created.title })
+        if (eventData.imageUrl) {
+          const img = await createImageRecord({ categoria: 'EVENTO', url: eventData.imageUrl, altText: created.title })
           await attachImageToEvent(img.id, created.id, 0)
-          created.imageUrl = ev.imageUrl
+          created.imageUrl = eventData.imageUrl
         }
-        setEvents((s) => [created, ...s])
+        addEvent(created)
+        console.log('[ADMIN] addEvent called successfully')
       } else {
         // Update event
-        const evPayload = { ...ev, imageUrl: '' }
+        const evPayload = { ...eventData, imageUrl: '' }
         await updateCalendarEvent(ev.id, evPayload)
         
-        if (ev.imageUrl) {
-          const img = await createImageRecord({ categoria: 'EVENTO', url: ev.imageUrl, altText: ev.title })
-          await attachImageToEvent(img.id, ev.id, 0)
-          ev.imageUrl = ev.imageUrl
+        if (eventData.imageUrl) {
+          const img = await createImageRecord({ categoria: 'EVENTO', url: eventData.imageUrl, altText: eventData.title })
+          await attachImageToEvent(img.id, eventData.id, 0)
         }
-        setEvents((s) => s.map((x) => (x.id === ev.id ? ev : x)))
+        updateEvent(eventData.id, eventData)
       }
     } catch (e) {
       console.error('Error guardando evento:', e)
@@ -581,10 +593,8 @@ const Admin = () => {
         </div>
       </div>
 
-      <Modal open={showEventModal} onClose={() => setShowEventModal(false)} title={editingEvent ? 'Editar evento' : 'Crear evento'}>
-        {editingEvent && (
-          <AdminEventForm ev={editingEvent} onCancel={() => { setShowEventModal(false); setEditingEvent(null) }} onSave={onSaveEvent} uploadImage={uploadImage} />
-        )}
+      <Modal open={showEventModal} onClose={() => setShowEventModal(false)} title={editingEvent?.id ? 'Editar evento' : 'Crear evento'}>
+        {editingEvent && <AdminEventForm key={editingEvent.id || 'new'} ev={editingEvent} onCancel={() => { setShowEventModal(false); setEditingEvent(null) }} onSave={onSaveEvent} uploadImage={uploadImage} />}
       </Modal>
 
       <Modal open={showPkgModal} onClose={() => setShowPkgModal(false)} title={editingPackage ? 'Editar paquete' : 'Crear paquete'}>
@@ -631,6 +641,12 @@ const Admin = () => {
 function AdminEventForm({ ev, onCancel, onSave, uploadImage }: { ev: CalendarSlot; onCancel: () => void; onSave: (e: CalendarSlot) => void; uploadImage: (file: File) => Promise<string> }) {
   const [state, setState] = useState<CalendarSlot>(ev)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Update state when ev prop changes (e.g., when editing a different event)
+  useEffect(() => {
+    setState(ev)
+    setErrors({})
+  }, [ev.id])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -679,17 +695,6 @@ function AdminEventForm({ ev, onCancel, onSave, uploadImage }: { ev: CalendarSlo
         value={state.date}
         onChange={handleChange}
         error={errors.date}
-      />
-      <SelectField
-        label="Estado"
-        name="status"
-        value={state.status}
-        onChange={handleChange}
-        options={[
-          { value: 'evento', label: 'Evento' },
-          { value: 'disponible', label: 'Disponible' },
-          { value: 'ocupado', label: 'Ocupado' }
-        ]}
       />
       <InputField
         label="Tag"
@@ -853,7 +858,8 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
     if (!state.name.trim()) newErrors.name = 'El nombre es requerido'
     if (!state.category.trim()) newErrors.category = 'La categoría es requerida'
     if (state.seats < 1) newErrors.seats = 'Mínimo 1 asiento'
-    if (!state.rate.trim()) newErrors.rate = 'La tarifa es requerida'
+    const rateStr = typeof state.rate === 'string' ? state.rate : String(state.rate || '')
+    if (!rateStr.trim()) newErrors.rate = 'La tarifa es requerida'
     if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
     return newErrors
   }

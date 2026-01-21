@@ -54,16 +54,30 @@ const mapVehicle = (v: any): Vehicle => ({
 })
 
 const mapCalendar = (e: any): CalendarSlot => {
-  const estado = (e.estado || '').toUpperCase()
-  const status: CalendarSlot['status'] = estado === 'BOOKED' || estado === 'OCUPADO' ? 'ocupado' : estado === 'EVENT' || estado === 'EVENTO' ? 'evento' : 'disponible'
+  // Prefer already-mapped fields from backend, fall back to legacy ones
+  const status: CalendarSlot['status'] = e.status
+    ? (e.status as CalendarSlot['status'])
+    : (() => {
+        const estado = (e.estado || '').toUpperCase()
+        return estado === 'RESERVADO' || estado === 'BOOKED' ? 'ocupado' : estado === 'BLOQUEADO' ? 'evento' : 'disponible'
+      })()
+
+  let dateStr = ''
+  if (typeof e.date === 'string') {
+    dateStr = e.date.slice(0, 10)
+  } else if (e.fecha) {
+    if (typeof e.fecha === 'string') dateStr = e.fecha.slice(0, 10)
+    else if (e.fecha.toISOString) dateStr = e.fecha.toISOString().slice(0, 10)
+  }
+
   return {
     id: e.id,
-    date: (e.fecha || '').slice(0, 10),
+    date: dateStr,
     status,
-    title: e.titulo || e.detalle || 'Evento',
-    detail: e.detalle,
-    tag: e.etiqueta,
-    imageUrl: e.imagenUrl,
+    title: e.title ?? e.titulo ?? e.detalle ?? 'Evento',
+    detail: e.detail ?? e.detalle,
+    tag: e.tag ?? e.etiqueta,
+    imageUrl: e.imageUrl ?? e.imagenUrl,
   }
 }
 
@@ -156,13 +170,17 @@ export const createCalendarEvent = async (data: Partial<CalendarSlot>) => {
   const payload = {
     titulo: data.title || 'Evento',
     fecha: data.date,
-    estado: data.status?.toUpperCase() || 'EVENTO',
+    estado: data.status === 'evento' ? 'BLOQUEADO' : data.status === 'ocupado' ? 'RESERVADO' : 'DISPONIBLE',
     detalle: data.detail,
     etiqueta: data.tag,
     imagenUrl: data.imageUrl,
   }
+  console.log('[API] Creating event with payload:', payload)
   const created = await http<any>('/eventos', { method: 'POST', body: JSON.stringify(payload) })
-  return mapCalendar(created)
+  console.log('[API] Raw response from server:', created)
+  const mapped = mapCalendar(created)
+  console.log('[API] Mapped event:', mapped)
+  return mapped
 }
 
 export const updateCalendarEvent = async (id: string, patch: Partial<CalendarSlot>) => {

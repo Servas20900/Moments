@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SafeImage from '../components/SafeImage'
 import Card from '../components/Card'
-import { fetchCalendar } from '../api/api'
+import { useCalendarContext } from '../contexts/CalendarContext'
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -11,16 +11,18 @@ const CalendarPage = () => {
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
-  const [calendar, setCalendar] = useState<any[]>([])
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
   const navigate = useNavigate()
 
+  // Use Calendar Context instead of local state
+  const { events: calendar } = useCalendarContext()
+
+  // Debug: log when events change
   useEffect(() => {
-    let mounted = true
-    fetchCalendar().then((c) => mounted && setCalendar(c))
-    return () => { mounted = false }
-  }, [])
+    console.log('[CalendarPage] Events updated:', calendar.length, 'events')
+    console.log('[CalendarPage] Calendar events:', calendar)
+  }, [calendar])
 
   const firstDay = new Date(currentYear, currentMonth, 1)
   const lastDay = new Date(currentYear, currentMonth + 1, 0)
@@ -103,9 +105,7 @@ const CalendarPage = () => {
                   onClick={() => handleEventClick(event.id)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleEventClick(event.id) }}
                   className={`calendar-custom__event calendar-custom__event--${event.status}`}>
-                  <div className="calendar-custom__event-title">{event.title}</div>
-                  {event.detail && <div className="calendar-custom__event-detail">{event.detail}</div>}
-                  {event.tag && <span className="calendar-custom__event-tag">{event.tag}</span>}
+                  <span className="calendar-custom__event-tag">{event.tag || 'Evento'}</span>
                 </div>
               ))}
             </div>
@@ -171,25 +171,36 @@ const CalendarPage = () => {
       <div className="section" ref={listRef}>
         <Card title="Eventos este mes" subtitle={`${MONTHS[currentMonth]} ${currentYear}`}>
           {eventsForMonth().length === 0 && <p>No hay eventos para este mes.</p>}
-          <div className="events-list">
-            {eventsForMonth().map((ev) => (
-              <div key={ev.id} id={`event-${ev.id}`} className={`event-item ${selectedEventId === ev.id ? 'is-selected' : ''}`}>
-                <div className="event-item__wrapper">
-                  {ev.imageUrl && (
-                    <SafeImage className="event-item__image" src={ev.imageUrl} alt={ev.title} width={120} height={80} />
-                  )}
-                  <div className="event-item__content">
-                    <div className="event-item__header">{ev.title} <span className="event-item__date">· {ev.date}</span></div>
-                    {ev.detail && <div className="event-item__detail">{ev.detail}</div>}
-                    {ev.tag && <div className="event-item__tag"><strong>Tag:</strong> {ev.tag}</div>}
-                  </div>
-                  <div className="event-item__actions">
-                    <button className="btn btn-ghost btn-sm" onClick={() => goToPackagesForEvent(ev.id)}>Ver paquetes</button>
-                    <button className="btn btn-primary btn-sm" onClick={() => goToReserveForEvent(ev.id)}>Reservar</button>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="events-table-wrapper">
+            <table className="events-table" aria-label="Eventos del mes">
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Imagen</th>
+                  <th>Detalle</th>
+                  <th>Fecha</th>
+                  <th aria-label="Acciones"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {eventsForMonth().map((ev) => (
+                  <tr key={ev.id} id={`event-${ev.id}`} className={selectedEventId === ev.id ? 'is-selected' : ''}>
+                    <td className="events-table__title">{ev.title}</td>
+                    <td className="events-table__image">
+                      {ev.imageUrl ? (
+                        <SafeImage src={ev.imageUrl} alt={ev.title} width={72} height={48} />
+                      ) : '—'}
+                    </td>
+                    <td className="events-table__detail" title={ev.detail ?? ''}>{ev.detail ?? '—'}</td>
+                    <td className="events-table__date">{ev.date}</td>
+                    <td className="events-table__actions">
+                      <button className="btn btn-ghost btn-sm" onClick={() => goToPackagesForEvent(ev.id)}>Ver paquetes</button>
+                      <button className="btn btn-primary btn-sm" onClick={() => goToReserveForEvent(ev.id)}>Reservar</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
       </div>

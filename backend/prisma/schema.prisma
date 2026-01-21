@@ -244,7 +244,7 @@ model ImagenEvento {
   orden    Int    @default(0)
 
   imagen Imagen           @relation(fields: [imagenId], references: [id], onDelete: Restrict)
-  evento EventoCalendario @relation(fields: [eventoId], references: [id], onDelete: Restrict)
+  evento EventoCalendario @relation(fields: [eventoId], references: [id], onDelete: Cascade)
 
   @@id([imagenId, eventoId])
   @@index([eventoId, orden])

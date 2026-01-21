@@ -1,3 +1,28 @@
+/**
+ * Tipos generados automáticamente desde el backend.
+ * 
+ * Para regenerar cuando el backend cambie:
+ * 1. Asegúrate de que el backend esté corriendo: cd backend && npm run start:dev
+ * 2. Ejecuta: npm run generate:types
+ * 
+ * Los tipos base vienen de @/types/api generados desde OpenAPI.
+ * Aquí solo definimos tipos complementarios específicos del frontend.
+ */
+
+import type { components } from '@/types/api'
+
+// Tipos base del backend - DTOs para autenticación y entidades
+export type RegisterDto = components['schemas']['RegisterDto']
+export type LoginDto = components['schemas']['LoginDto']
+export type CreateVehicleDto = components['schemas']['CreateVehicleDto']
+export type UpdateVehicleDto = components['schemas']['UpdateVehicleDto']
+export type CreateImageDto = components['schemas']['CreateImageDto']
+export type UpdateImageDto = components['schemas']['UpdateImageDto']
+export type CreateReservationDto = components['schemas']['CreateReservationDto']
+
+// Tipos de entidades completas (respuestas de la API)
+// TODO: El backend debería exponer estos DTOs en Swagger usando @ApiBody() en los controladores
+// Por ahora mantenemos definiciones locales para la UI
 export type Package = {
   id: string
   category: string
@@ -57,9 +82,9 @@ export type SystemImage = {
   order: number
   isActive: boolean
 }
+
 export type VehicleOccupancy = {
   vehicleId: string
   date: string
   isOccupied: boolean
 }
-// Tipos compartidos para datos provenientes de la API. No hay datos mock locales.

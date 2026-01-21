@@ -23,9 +23,11 @@ export class CalendarService {
 
   private toResponse(slot: any) {
     const imgUrl = slot.imagenes?.[0]?.imagen?.url || slot.imagenUrl || null;
+    const dateStr = slot.fecha ? slot.fecha.toISOString().slice(0, 10) : '';
+    console.log('[Calendar] toResponse - slot.fecha:', slot.fecha, '=> dateStr:', dateStr);
     return {
       id: slot.id,
-      date: slot.fecha.toISOString().slice(0, 10),
+      date: dateStr,
       status: slot.estado?.toLowerCase() === 'reservado' ? 'ocupado' : slot.estado?.toLowerCase() === 'bloqueado' ? 'evento' : 'disponible',
       title: slot.titulo,
       detail: slot.detalle,
@@ -49,6 +51,7 @@ export class CalendarService {
   }
 
   async create(body: CalendarInput) {
+    console.log('[Calendar] create() called with body:', body);
     const created = await this.prisma.eventoCalendario.create({
       data: {
         fecha: new Date(body.fecha),
@@ -65,6 +68,7 @@ export class CalendarService {
         },
       },
     });
+    console.log('[Calendar] created event:', created);
     return this.toResponse(created);
   }
 

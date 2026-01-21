@@ -23,7 +23,8 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
     "db:seed": "ts-node prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "openapi:export": "ts-node -e \"import('./src/main').then(()=>setTimeout(()=>process.exit(0),2000))\" && curl http://localhost:3000/api/docs-json -o openapi.json"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
