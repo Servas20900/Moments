@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import { FaShoppingCart } from 'react-icons/fa'
-import MobileNav from './components/MobileNav'
 import Account from './components/Account'
 import AppRoutes from './routes/Routes'
 import { CalendarProvider } from './contexts/CalendarContext'
@@ -26,6 +25,96 @@ const CartButton = () => {
   )
 }
 
+const Header = () => {
+  const [open, setOpen] = useState(false)
+  const toggle = () => setOpen((v) => !v)
+  const close = () => setOpen(false)
+
+  const linkBase = 'px-3 py-2 rounded-full text-sm font-medium transition-all duration-200'
+  const active = 'bg-white/10 text-white shadow'
+  const idle = 'text-gray-200 hover:text-white hover:bg-white/5'
+
+  return (
+    <header className="sticky top-0 z-50 bg-[rgba(10,11,15,0.92)] backdrop-blur border-b border-white/10">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
+        <button
+          onClick={toggle}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white transition hover:border-white/30 hover:bg-white/10 md:hidden"
+          aria-label="Abrir menú"
+          aria-expanded={open}
+        >
+          <span className="sr-only">Toggle menu</span>
+          <span className="flex flex-col gap-1.5">
+            <span className={`h-0.5 w-6 rounded-full bg-current transition ${open ? 'translate-y-[7px] rotate-45' : ''}`}></span>
+            <span className={`h-0.5 w-6 rounded-full bg-current transition ${open ? 'opacity-0' : ''}`}></span>
+            <span className={`h-0.5 w-6 rounded-full bg-current transition ${open ? '-translate-y-[7px] -rotate-45' : ''}`}></span>
+          </span>
+        </button>
+
+        <div className="text-lg font-semibold tracking-wide text-white">Moments</div>
+
+        <nav className="ml-auto hidden items-center gap-2 md:flex" aria-label="Navegación principal">
+          {nav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) => [linkBase, isActive ? active : idle].join(' ')}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="ml-2 flex items-center gap-2">
+          <CartButton />
+          <Account />
+        </div>
+      </div>
+
+      {/* Mobile drawer */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 transform bg-[#0f1118] px-4 py-5 shadow-2xl transition-transform duration-250 ease-in-out md:hidden ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="mb-6 flex items-center justify-between">
+          <div className="text-base font-semibold text-white">Menú</div>
+          <button
+            onClick={close}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white hover:border-white/30 hover:bg-white/10"
+            aria-label="Cerrar menú"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {nav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={close}
+              className={({ isActive }) => [
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition',
+                isActive ? 'bg-white/10 text-white shadow' : 'text-gray-200 hover:bg-white/5 hover:text-white',
+              ].join(' ')}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      </div>
+
+      {/* Overlay */}
+      {open && (
+        <button
+          aria-label="Cerrar menú"
+          onClick={close}
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+        />
+      )}
+    </header>
+  )
+}
+
 const App = () => {
   useEffect(() => {
     document.documentElement.dataset.theme = 'dark'
@@ -35,21 +124,7 @@ const App = () => {
     <CalendarProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <div className="app-shell">
-          <header className="topbar">
-            <div className="brand">Moments</div>
-            <nav className="nav" aria-label="Navegacion principal">
-              {nav.map((item) => (
-                <NavLink key={item.to} to={item.to} className={({ isActive }) => ['nav__link', isActive ? 'is-active' : ''].join(' ')}>
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
-            <div className="topbar__cta">
-              <CartButton />
-              <MobileNav />
-              <Account />
-            </div>
-          </header>
+          <Header />
 
           <main className="main">
             <Routes>
