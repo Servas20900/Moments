@@ -44,12 +44,7 @@ const VehicleCard = ({ vehicle, onClick }: VehicleCardProps) => {
           </div>
         </div>
 
-        <button className="flex items-center justify-center gap-2 px-4 py-3 bg-[#c9a24d] border-none rounded-md text-[var(--color-bg)] font-bold cursor-pointer transition-all duration-300 mt-3 hover:bg-[#d4b05f] hover:translate-x-1">
-          Ver disponibilidad
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M3.5 8H12.5M12.5 8L9.5 5M12.5 8L9.5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+        {/* El botón de acción se elimina, la card completa es clickeable */}
       </div>
     </div>
   )

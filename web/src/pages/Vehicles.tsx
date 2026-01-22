@@ -1,30 +1,23 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import VehicleCard from '../components/VehicleCard'
-import VehicleModal from '../components/VehicleModal'
 import { Layout, PageHeader, Section } from '../layout'
 import type { Vehicle } from '../data/content'
 import { fetchVehicles } from '../api/api'
 
 const Vehicles = () => {
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
   const [list, setList] = useState<Vehicle[]>([])
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const navigate = useNavigate();
 
   useEffect(() => {
-    let mounted = true
-    fetchVehicles().then((v) => mounted && setList(v))
-    return () => { mounted = false }
-  }, [])
+    let mounted = true;
+    fetchVehicles().then((v) => mounted && setList(v));
+    return () => { mounted = false; };
+  }, []);
 
   const handleCardClick = (vehicle: Vehicle) => {
-    setSelectedVehicle(vehicle)
-    setIsModalOpen(true)
-  }
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false)
-    setTimeout(() => setSelectedVehicle(null), 300)
-  }
+    navigate(`/vehiculos/${vehicle.id}`);
+  };
 
   return (
     <Layout>
@@ -45,14 +38,8 @@ const Vehicles = () => {
           ))}
         </div>
       </Section>
-
-      <VehicleModal
-        vehicle={selectedVehicle}
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-      />
     </Layout>
-  )
+  );
 }
 
 export default Vehicles

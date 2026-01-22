@@ -1,6 +1,8 @@
 import Home from '../pages/Home'
 import Packages from '../pages/Packages'
 import Vehicles from '../pages/Vehicles'
+import VehicleDetail from '../pages/VehicleDetail'
+import PackageDetail from '../pages/PackageDetail'
 import CalendarPage from '../pages/CalendarPage'
 import About from '../pages/About'
 import Gallery from '../pages/Gallery'
@@ -26,7 +28,9 @@ export class AppRoutes {
   static list = [
     { path: '/', element: <Home /> },
     { path: '/paquetes', element: <Packages /> },
+    { path: '/paquetes/:id', element: <PackageDetail /> },
     { path: '/vehiculos', element: <Vehicles /> },
+    { path: '/vehiculos/:id', element: <VehicleDetail /> },
     { path: '/calendario', element: <CalendarPage /> },
     { path: '/galeria', element: <Gallery /> },
     { path: '/admin', element: <ProtectedRoute element={<Admin />} /> },
