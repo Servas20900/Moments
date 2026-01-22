@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import SafeImage from '../components/SafeImage'
 import { Layout, PageHeader, Section } from '../layout'
 import { fetchExperiences } from '../api/api'
@@ -78,6 +78,12 @@ const About = () => {
         <div className="space-y-2">
           <span className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-300/80">Momentos reales</span>
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">Experiencias con nuestros clientes</h2>
+          <Link
+            to="/galeria"
+            className="inline-flex items-center justify-center rounded-full bg-amber-400 px-5 py-2.5 text-sm font-semibold text-black shadow-lg shadow-amber-400/25 transition hover:bg-amber-300 mt-2"
+          >
+            Ver galería de imágenes
+          </Link>
           <p className="max-w-2xl text-sm text-gray-300 sm:text-base">
             Cada evento tiene su propia historia. Aquí algunos de los momentos que hemos tenido el privilegio de acompañar.
           </p>

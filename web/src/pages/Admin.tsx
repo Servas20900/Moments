@@ -12,7 +12,6 @@ import type { Package, Vehicle, CalendarSlot, Experience, SystemImage, HeroSlide
 const Admin = () => {
   const [packages, setPackages] = useState<Package[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [experiences, setExperiences] = useState<Experience[]>([])
   const [systemImages, setSystemImages] = useState<SystemImage[]>([])
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([])
   const [pkgCategories, setPkgCategories] = useState<string[]>([])
@@ -26,14 +25,12 @@ const Admin = () => {
   const [showPkgCatModal, setShowPkgCatModal] = useState(false)
   const [showVehCatModal, setShowVehCatModal] = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
-  const [showExpModal, setShowExpModal] = useState(false)
   const [showImgModal, setShowImgModal] = useState(false)
   const [showHeroModal, setShowHeroModal] = useState(false)
 
   const [editingPackage, setEditingPackage] = useState<Package | null>(null)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [editingEvent, setEditingEvent] = useState<CalendarSlot | null>(null)
-  const [editingExp, setEditingExp] = useState<Experience | null>(null)
   const [editingImage, setEditingImage] = useState<SystemImage | null>(null)
   const [editingHero, setEditingHero] = useState<HeroSlide | null>(null)
   const [showPkgModal, setShowPkgModal] = useState(false)
@@ -47,7 +44,6 @@ const Admin = () => {
       if (!mounted) return
       setPackages(p)
       setVehicles(v)
-      setExperiences(e)
       setSystemImages(img)
       setHeroSlides(h)
       setNotifications(n)
@@ -215,46 +211,6 @@ const Admin = () => {
     }
   }
 
-  const onCreateExp = () => {
-    setEditingExp({ id: '', title: '', imageUrl: '' })
-    setShowExpModal(true)
-  }
-
-  const onEditExp = (exp: Experience) => { setEditingExp(exp); setShowExpModal(true) }
-
-  const onDeleteExp = async (id: string) => {
-    if (!confirm('Eliminar experiencia?')) return
-    await deleteExperience(id)
-    setExperiences((s) => s.filter((x) => x.id !== id))
-  }
-
-  const onSaveExp = async (exp: Experience) => {
-    if (!exp.id) {
-      const created = await createExperience(exp)
-      // Persist image for experience
-      if (created.imageUrl) {
-        try {
-          const img = await createImageRecord({ categoria: 'EXPERIENCIA', url: created.imageUrl, altText: created.title })
-        } catch (e) {
-          console.warn('No se pudo persistir imagen de experiencia', e)
-        }
-      }
-      setExperiences((s) => [created, ...s])
-    } else {
-      await updateExperience(exp.id, exp)
-      if (exp.imageUrl) {
-        try {
-          const img = await createImageRecord({ categoria: 'EXPERIENCIA', url: exp.imageUrl, altText: exp.title })
-        } catch (e) {
-          console.warn('No se pudo persistir imagen de experiencia (update)', e)
-        }
-      }
-      setExperiences((s) => s.map((x) => (x.id === exp.id ? exp : x)))
-    }
-    setShowExpModal(false)
-    setEditingExp(null)
-  }
-
   const onCreateImage = () => {
     setEditingImage({ id: '', category: 'LANDING_PAGE', name: '', description: '', url: '', altText: '', order: 0, isActive: true })
     setShowImgModal(true)
@@ -290,33 +246,25 @@ const Admin = () => {
   const onDeleteHero = async (id: string) => {
     if (!confirm('Eliminar slide?')) return
     await deleteHeroSlide(id)
-    setHeroSlides((s) => s.filter((x) => x.id !== id))
+    // Recargar slides desde el backend para reflejar el estado real
+    const updatedSlides = await fetchHeroSlides()
+    setHeroSlides(updatedSlides)
   }
 
   const onSaveHero = async (slide: HeroSlide) => {
     try {
+      let updatedSlides: HeroSlide[] = []
       if (!slide.id) {
-        // 1. Create hero slide without image URL
-        const slidePayload = { ...slide, imageUrl: '' }
+        // Crear slide
+        const slidePayload = { ...slide }
         const created = await createHeroSlide(slidePayload)
-        
-        // 2. If image exists, persist it
-        if (slide.imageUrl) {
-          const img = await createImageRecord({ categoria: 'LANDING_PAGE', url: slide.imageUrl, altText: slide.title })
-          created.imageUrl = slide.imageUrl
-        }
-        setHeroSlides((s) => [created, ...s])
+        updatedSlides = await fetchHeroSlides()
+        setHeroSlides(updatedSlides)
       } else {
-        // Update slide
-        const slidePayload = { ...slide, imageUrl: '' }
-        await updateHeroSlide(slide.id, slidePayload)
-        
-        // If image exists, persist it
-        if (slide.imageUrl) {
-          const img = await createImageRecord({ categoria: 'LANDING_PAGE', url: slide.imageUrl, altText: slide.title })
-          slide.imageUrl = slide.imageUrl
-        }
-        setHeroSlides((s) => s.map((x) => (x.id === slide.id ? slide : x)))
+        // Editar slide
+        await updateHeroSlide(slide.id, slide)
+        updatedSlides = await fetchHeroSlides()
+        setHeroSlides(updatedSlides)
       }
     } catch (e) {
       console.error('Error guardando hero slide:', e)
@@ -346,7 +294,6 @@ const Admin = () => {
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-events')?.scrollIntoView({ behavior: 'smooth' })}>Eventos</button>
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-packages')?.scrollIntoView({ behavior: 'smooth' })}>Paquetes</button>
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-vehicles')?.scrollIntoView({ behavior: 'smooth' })}>Vehículos</button>
-              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-experiences')?.scrollIntoView({ behavior: 'smooth' })}>Experiencias</button>
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-images')?.scrollIntoView({ behavior: 'smooth' })}>Imágenes del Sistema</button>
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-notifications')?.scrollIntoView({ behavior: 'smooth' })}>Notificaciones</button>
             </div>
@@ -556,46 +503,6 @@ const Admin = () => {
             </div>
           </section>
 
-          <section className="section" id="admin-experiences">
-            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="eyebrow">Contenido</p>
-                <h2 className="section__title">Experiencias</h2>
-              </div>
-              <div>
-                <Button variant="primary" onClick={onCreateExp}>Nueva experiencia</Button>
-              </div>
-            </div>
-
-            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
-              <div className="hidden md:grid grid-cols-[1.6fr_1.8fr_0.8fr] gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
-                <span>Título</span>
-                <span>Imagen URL</span>
-                <span>Acciones</span>
-              </div>
-              {experiences.map((exp) => (
-                <div key={exp.id} className="grid grid-cols-1 md:grid-cols-[1.6fr_1.8fr_0.8fr] gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Título</span>
-                    <span>{exp.title}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Imagen URL</span>
-                    <span className="text-sm text-gray-400 truncate" title={exp.imageUrl}>{exp.imageUrl.substring(0, 40)}...</span>
-                  </div>
-                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
-                    <button className={iconButtonClasses} aria-label={`Editar ${exp.title}`} onClick={() => onEditExp(exp)}>
-                      <FaEdit size={16} />
-                    </button>
-                    <button className={iconButtonClasses} aria-label={`Eliminar ${exp.title}`} onClick={() => onDeleteExp(exp.id)}>
-                      <FaTrash size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
           <section className="section" id="admin-images">
             <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -679,12 +586,6 @@ const Admin = () => {
       <Modal open={showVehModal} onClose={() => setShowVehModal(false)} title={editingVehicle ? 'Editar vehículo' : 'Crear vehículo'}>
         {editingVehicle && (
           <AdminVehicleForm vehicle={editingVehicle} categories={vehCategories} onCancel={() => { setShowVehModal(false); setEditingVehicle(null) }} onSave={onSaveVehicle} uploadImage={uploadImage} />
-        )}
-      </Modal>
-
-      <Modal open={showExpModal} onClose={() => setShowExpModal(false)} title={editingExp ? 'Editar experiencia' : 'Crear experiencia'}>
-        {editingExp && (
-          <AdminExperienceForm exp={editingExp} onCancel={() => { setShowExpModal(false); setEditingExp(null) }} onSave={onSaveExp} uploadImage={uploadImage} />
         )}
       </Modal>
 
@@ -1064,69 +965,6 @@ function CreateCategoryForm({ onCreate, onCancel }: { onCreate: (name: string) =
   )
 }
 
-function AdminExperienceForm({ exp, onCancel, onSave, uploadImage }: { exp: Experience; onCancel: () => void; onSave: (e: Experience) => void; uploadImage: (file: File) => Promise<string> }) {
-  const [state, setState] = useState<Experience>(exp)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setState(s => ({ ...s, [name]: value }))
-    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
-  }
-
-  const handleImageChange = (url: string) => {
-    setState(s => ({ ...s, imageUrl: url }))
-    if (errors.imageUrl) setErrors(e => ({ ...e, imageUrl: '' }))
-  }
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {}
-    if (!state.title.trim()) newErrors.title = 'El título es requerido'
-    if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
-    return newErrors
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const newErrors = validate()
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      return
-    }
-    onSave(state)
-  }
-
-  return (
-    <form className="admin-form" onSubmit={handleSubmit}>
-      <InputField
-        label="Título"
-        required
-        name="title"
-        value={state.title}
-        onChange={handleChange}
-        error={errors.title}
-        placeholder="Ej: Aventura en la selva"
-      />
-      <ImageUpload
-        label="Cargar imagen de experiencia"
-        required
-        value={state.imageUrl}
-        onChange={handleImageChange}
-        onUpload={uploadImage}
-        error={errors.imageUrl}
-      />
-      <div className="admin-form__actions">
-        <Button variant="primary" type="submit" className="admin-form__actions-primary">
-          Guardar
-        </Button>
-        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
-          Cancelar
-        </Button>
-      </div>
-    </form>
-  )
-}
-
 function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemImage; onCancel: () => void; onSave: (img: SystemImage) => void; uploadImage: (file: File) => Promise<string> }) {
   const [state, setState] = useState<SystemImage>(img)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -1152,14 +990,17 @@ function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemIma
     return newErrors
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const newErrors = validate()
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
-    onSave(state)
+    // Siempre guardar como imagen de galería
+    const imgToSave = { ...state, categoria: 'GALERIA' }
+    await createImageRecord({ categoria: 'GALERIA', url: imgToSave.url, altText: imgToSave.name })
+    onSave(imgToSave)
   }
 
   return (

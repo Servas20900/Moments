@@ -145,32 +145,34 @@ export const fetchExperiences = async (): Promise<Experience[]> => {
 }
 
 export const fetchSystemImages = async (): Promise<SystemImage[]> => {
-  const exps = await fetchExperiences()
-  return exps.map((e, idx) => ({
-    id: e.id,
-    category: 'EXPERIENCIA',
-    name: e.title,
-    url: e.imageUrl,
-    description: '',
-    altText: e.title,
-    order: idx,
-    isActive: true,
+  // Traer imágenes de la galería activas
+  const data = await http<any>(`/imagenes?categoria=GALERIA&estado=ACTIVO`)
+  const images = data?.data || data || []
+  return images.map((img: any, idx: number) => ({
+    id: img.id,
+    category: 'GALERIA',
+    name: img.altText || img.name || 'Imagen',
+    url: img.url,
+    description: img.description || '',
+    altText: img.altText || img.name || '',
+    order: img.order ?? idx,
+    isActive: img.estado === 'ACTIVO',
   }))
 }
 
 export const fetchHeroSlides = async (): Promise<HeroSlide[]> => {
   try {
-    // Cargar imágenes con categoría LANDING_PAGE desde la tabla Imagen
-    const data = await http<any>('/imagenes?categoria=LANDING_PAGE&take=10')
+    // Solo traer slides activos
+    const data = await http<any>(`/imagenes?categoria=LANDING_PAGE&estado=ACTIVO&take=10`)
     const images = data?.data || data || []
     return images.map((img: any, idx: number) => ({
       id: img.id,
       title: img.altText || 'Momentos Especiales',
-      subtitle: 'Transporte de Lujo',
-      description: 'Vive la experiencia de ser trasladado en el máximo confort',
+      subtitle: img.subtitle || 'Transporte de Lujo',
+      description: img.description || 'Vive la experiencia de ser trasladado en el máximo confort',
       imageUrl: img.url || FALLBACK_IMG,
-      order: idx,
-      isActive: true,
+      order: img.order ?? idx,
+      isActive: img.estado === 'ACTIVO',
     }))
   } catch (err) {
     console.warn('No se pudieron cargar hero slides', err)
@@ -526,10 +528,49 @@ export const deleteExperience = async (id: string) => {
 
 export const createSystemImage = async (data: Partial<SystemImage>) => ({ ...data, id: crypto.randomUUID() }) as SystemImage
 export const updateSystemImage = async (_id: string, _data: Partial<SystemImage>) => true
-export const deleteSystemImage = async (_id: string) => true
-export const createHeroSlide = async (data: Partial<HeroSlide>) => ({ ...data, id: crypto.randomUUID(), order: 0, isActive: true }) as HeroSlide
-export const updateHeroSlide = async (_id: string, _data: Partial<HeroSlide>) => true
-export const deleteHeroSlide = async (_id: string) => true
+export const deleteSystemImage = async (id: string) => {
+  await http(`/imagenes/${id}`, { method: 'DELETE' })
+  return true
+}
+export const createHeroSlide = async (data: Partial<HeroSlide>) => {
+  // Crear registro de imagen en la tabla Imagen con categoria LANDING_PAGE
+  const payload = {
+    categoria: 'LANDING_PAGE',
+    url: data.imageUrl,
+    altText: data.title,
+  }
+  const imgRes = await http<any>('/imagenes', { method: 'POST', body: JSON.stringify(payload) })
+  // Crear slide en la tabla HeroSlide si existe, o usar el registro de imagen como slide
+  // Si el backend solo usa la tabla Imagen para los slides, solo retorna el registro
+  return {
+    id: imgRes.id,
+    title: data.title ?? '',
+    subtitle: data.subtitle ?? '',
+    description: data.description ?? '',
+    imageUrl: imgRes.url,
+    order: data.order ?? 0,
+    isActive: data.isActive ?? true,
+  } as HeroSlide
+}
+
+export const updateHeroSlide = async (id: string, data: Partial<HeroSlide>) => {
+  // Actualizar registro de imagen en la tabla Imagen
+  const payload: any = {}
+  if (data.title) payload.altText = data.title
+  if (data.imageUrl) payload.url = data.imageUrl
+  if (data.subtitle) payload.subtitle = data.subtitle
+  if (data.description) payload.description = data.description
+  if (data.order !== undefined) payload.order = data.order
+  if (data.isActive !== undefined) payload.isActive = data.isActive
+  await http(`/imagenes/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  return true
+}
+
+export const deleteHeroSlide = async (id: string) => {
+  // Elimina la imagen completamente de la base de datos
+  await http(`/imagenes/${id}`, { method: 'DELETE' })
+  return true
+}
 
 export default {
   fetchPackages,

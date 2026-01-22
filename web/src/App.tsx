@@ -90,7 +90,8 @@ const Header = () => {
       </div>
 
       {/* Mobile drawer */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-72 transform bg-[#0f1118] px-4 py-5 shadow-2xl transition-transform duration-250 ease-in-out md:hidden ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 transform px-4 py-5 shadow-2xl transition-transform duration-250 ease-in-out md:hidden ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        style={{background: '#181a20', boxShadow: '0 8px 32px 0 rgba(0,0,0,0.85)', opacity: 1}}>
         <div className="mb-6 flex items-center justify-between">
           <div className="text-base font-semibold text-white">Menú</div>
           <button
@@ -119,7 +120,7 @@ const Header = () => {
             </NavLink>
           ))}
         </div>
-      </div>
+      </aside>
 
       {/* Overlay */}
       {open && (
