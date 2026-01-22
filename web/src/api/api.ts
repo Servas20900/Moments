@@ -12,22 +12,45 @@ const authHeaders = () => {
 }
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path.startsWith('/') ? path : `/${path}`}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-      ...(init?.headers as Record<string, string> || {}),
-    } as Record<string, string>,
-  })
+  try {
+    const res = await fetch(`${API_URL}${path.startsWith('/') ? path : `/${path}`}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+        ...(init?.headers as Record<string, string> || {}),
+      } as Record<string, string>,
+    })
 
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`)
+    if (!res.ok) {
+      // Si es 401, limpiar token y redirigir
+      if (res.status === 401) {
+        const { clearToken } = await import('../utils/auth')
+        clearToken()
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login'
+        }
+      }
+      
+      let errorMessage = res.statusText
+      try {
+        const errorData = await res.json()
+        errorMessage = errorData.message || errorData.error || errorMessage
+      } catch {
+        const text = await res.text()
+        errorMessage = text || errorMessage
+      }
+      throw new Error(errorMessage)
+    }
+
+    if (res.status === 204) return undefined as T
+    return (await res.json()) as T
+  } catch (error) {
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error('No se pudo conectar con el servidor. Verifica tu conexión.')
+    }
+    throw error
   }
-
-  if (res.status === 204) return undefined as T
-  return (await res.json()) as T
 }
 
 const mapPackage = (p: any): Package => ({
@@ -356,16 +379,31 @@ export const fetchNotifications = async () => {
 }
 
 export const createUser = async (payload: { name: string; email: string; phone?: string; password?: string }) => {
-  const res = await http<any>('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({
-      nombre: payload.name,
-      email: payload.email,
-      contrasena: payload.password || 'Moments123!',
-      telefono: payload.phone || '00000000',
-    }),
-  })
-  if (res?.token || res?.access_token) {
+  try {
+    if (!payload.name || payload.name.trim().length < 2) {
+      throw new Error('El nombre debe tener al menos 2 caracteres')
+    }
+    if (!payload.email) {
+      throw new Error('El email es requerido')
+    }
+    if (!payload.password || payload.password.length < 6) {
+      throw new Error('La contraseña debe tener al menos 6 caracteres')
+    }
+
+    const res = await http<any>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        nombre: payload.name.trim(),
+        email: payload.email.toLowerCase().trim(),
+        telefono: payload.phone?.trim() || '00000000',
+        contrasena: payload.password,
+      }),
+    })
+    
+    if (!res?.token && !res?.access_token) {
+      throw new Error('Respuesta inválida del servidor')
+    }
+    
     saveToken({
       token: res.token ?? res.access_token,
       expiresIn: res.expiresIn || 86400,
@@ -379,16 +417,35 @@ export const createUser = async (payload: { name: string; email: string; phone?:
       telefono: payload.phone,
       estaActivo: true,
     })
+    
+    return { ok: true, id: res.user?.id ?? res.id }
+  } catch (error) {
+    console.error('[API] Register error:', error)
+    throw error
   }
-  return { ok: true, id: res.user?.id ?? res.id }
 }
 
 export const loginUser = async (payload: { email: string; password?: string }) => {
-  const res = await http<any>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email: payload.email, contrasena: payload.password || 'Moments123!' }),
-  })
-  if (res?.token || res?.access_token) {
+  try {
+    if (!payload.email) {
+      throw new Error('El email es requerido')
+    }
+    if (!payload.password) {
+      throw new Error('La contraseña es requerida')
+    }
+
+    const res = await http<any>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        email: payload.email.toLowerCase().trim(), 
+        contrasena: payload.password 
+      }),
+    })
+    
+    if (!res?.token && !res?.access_token) {
+      throw new Error('Respuesta inválida del servidor')
+    }
+    
     saveToken({
       token: res.token ?? res.access_token,
       expiresIn: res.expiresIn || 86400,
@@ -401,8 +458,12 @@ export const loginUser = async (payload: { email: string; password?: string }) =
       nombre: res.user?.nombre ?? res.email,
       estaActivo: true,
     })
+    
+    return { ok: true, id: res.user?.id ?? res.id }
+  } catch (error) {
+    console.error('[API] Login error:', error)
+    throw error
   }
-  return { ok: true, id: res.user?.id ?? res.id }
 }
 
 export const getCurrentUser = async () => {
@@ -422,6 +483,18 @@ export const updateUser = async (_id: string, patch: Partial<{ name: string; pho
     body: JSON.stringify({
       ...(patch.name && { nombre: patch.name }),
       ...(patch.phone && { telefono: patch.phone }),
+    }),
+  })
+  return true
+}
+
+export const changePassword = async (passwordAntigua: string, nuevaPassword: string, confirmarPassword: string) => {
+  await http('/usuarios/cambiar-contrasena', {
+    method: 'POST',
+    body: JSON.stringify({
+      passwordAntigua,
+      nuevaPassword,
+      confirmarPassword,
     }),
   })
   return true

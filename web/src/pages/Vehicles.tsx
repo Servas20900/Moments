@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import VehicleCard from '../components/VehicleCard'
 import VehicleModal from '../components/VehicleModal'
+import { Layout, PageHeader, Section } from '../layout'
 import type { Vehicle } from '../data/content'
 import { fetchVehicles } from '../api/api'
 
@@ -26,15 +27,15 @@ const Vehicles = () => {
   }
 
   return (
-    <div className="page">
-      <header className="section">
-        <p className="eyebrow">Flota Premium</p>
-        <h1 className="display">Lujo, confort y disponibilidad garantizada</h1>
-        <p className="section__copy">Cada vehículo está seleccionado por su elegancia, confort y performance. Consulta disponibilidad en tiempo real y reserva con confianza.</p>
-      </header>
+    <Layout>
+      <PageHeader
+        eyebrow="Flota Premium"
+        title="Lujo, confort y disponibilidad garantizada"
+        description="Cada vehículo está seleccionado por su elegancia, confort y performance. Consulta disponibilidad en tiempo real y reserva con confianza."
+      />
 
-      <section className="section">
-        <div className="grid vehicles">
+      <Section spacing="lg">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-8 md:gap-6 items-stretch">
           {list.map((vehicle) => (
             <VehicleCard
               key={vehicle.id}
@@ -43,14 +44,14 @@ const Vehicles = () => {
             />
           ))}
         </div>
-      </section>
+      </Section>
 
       <VehicleModal
         vehicle={selectedVehicle}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
       />
-    </div>
+    </Layout>
   )
 }
 

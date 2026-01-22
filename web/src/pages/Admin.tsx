@@ -39,6 +39,8 @@ const Admin = () => {
   const [showPkgModal, setShowPkgModal] = useState(false)
   const [showVehModal, setShowVehModal] = useState(false)
 
+  const iconButtonClasses = 'inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:border-white/30 hover:bg-white/20'
+
   useEffect(() => {
     let mounted = true
     Promise.all([fetchPackages(), fetchVehicles(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides()]).then(([p, v, n, e, img, h]) => {
@@ -329,74 +331,88 @@ const Admin = () => {
 
   return (
     <div className="page admin-page">
-      <header className="section">
-        <p className="eyebrow">Admin</p>
-        <h1 className="display">Panel administrativo</h1>
-        <p className="section__copy">Crea, edita o elimina paquetes, vehículos y contenido. Las acciones pegan a la API.</p>
-      </header>
+      <div className="mx-auto max-w-6xl px-4 md:px-6">
+        <header className="section">
+          <p className="eyebrow">Admin</p>
+          <h1 className="display">Panel administrativo</h1>
+          <p className="section__copy">Crea, edita o elimina paquetes, vehículos y contenido. Las acciones pegan a la API.</p>
+        </header>
 
-      <div className="admin-layout">
-        <aside className="admin-sidebar">
-          <p className="admin-sidebar__title">Secciones</p>
-          <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-hero')?.scrollIntoView({ behavior: 'smooth' })}>Hero Carousel</button>
-          <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-events')?.scrollIntoView({ behavior: 'smooth' })}>Eventos</button>
-          <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-packages')?.scrollIntoView({ behavior: 'smooth' })}>Paquetes</button>
-          <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-vehicles')?.scrollIntoView({ behavior: 'smooth' })}>Vehículos</button>
-          <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-experiences')?.scrollIntoView({ behavior: 'smooth' })}>Experiencias</button>
-          <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-images')?.scrollIntoView({ behavior: 'smooth' })}>Imágenes del Sistema</button>
-          <button className="admin-sidebar__link" onClick={() => document.getElementById('admin-notifications')?.scrollIntoView({ behavior: 'smooth' })}>Notificaciones</button>
-        </aside>
+        <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-6 lg:gap-8 items-start">
+          <aside className="bg-[var(--card-bg,#11131a)] border border-white/10 rounded-2xl p-4 flex flex-col gap-2.5 shadow-[0_12px_30px_rgba(0,0,0,0.3)] self-start max-w-xs">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-gray-400">Secciones</p>
+            <div className="grid gap-2">
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-hero')?.scrollIntoView({ behavior: 'smooth' })}>Hero Carousel</button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-events')?.scrollIntoView({ behavior: 'smooth' })}>Eventos</button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-packages')?.scrollIntoView({ behavior: 'smooth' })}>Paquetes</button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-vehicles')?.scrollIntoView({ behavior: 'smooth' })}>Vehículos</button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-experiences')?.scrollIntoView({ behavior: 'smooth' })}>Experiencias</button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-images')?.scrollIntoView({ behavior: 'smooth' })}>Imágenes del Sistema</button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-notifications')?.scrollIntoView({ behavior: 'smooth' })}>Notificaciones</button>
+            </div>
+          </aside>
 
-        <div className="admin-main">
+          <div className="min-w-0">
           <section className="section" id="admin-hero">
-            <div className="section__header">
+            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="eyebrow">Landing</p>
                 <h2 className="section__title">Hero Carousel</h2>
               </div>
               <div>
-                <Button variant="ghost" onClick={onCreateHero}>Nuevo slide</Button>
+                <Button variant="primary" onClick={onCreateHero}>Nuevo slide</Button>
               </div>
             </div>
 
-            <div className="admin-table">
-              <div className="admin-table__head">
+            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
+              <div className="hidden md:grid grid-cols-4 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
                 <span>Título</span>
                 <span>Orden</span>
                 <span>Estado</span>
                 <span>Acciones</span>
               </div>
               {heroSlides.map((slide) => (
-                <div key={slide.id} className="admin-table__row">
-                  <span>{slide.title}</span>
-                  <span>{slide.order}</span>
-                  <span>{slide.isActive ? '✓ Activo' : '✗ Inactivo'}</span>
-                  <span className="admin-table__actions">
-                    <button className="btn btn-ghost btn-sm" aria-label={`Editar ${slide.title}`} onClick={() => onEditHero(slide)}>
+                <div key={slide.id} className="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Título</span>
+                    <span>{slide.title}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Orden</span>
+                    <span>{slide.order}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Estado</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${slide.isActive ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300'}`}>
+                      {slide.isActive ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
+                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
+                    <button className={iconButtonClasses} aria-label={`Editar ${slide.title}`} onClick={() => onEditHero(slide)}>
                       <FaEdit size={16} />
                     </button>
-                    <button className="btn btn-ghost btn-sm" aria-label={`Eliminar ${slide.title}`} onClick={() => onDeleteHero(slide.id)}>
+                    <button className={iconButtonClasses} aria-label={`Eliminar ${slide.title}`} onClick={() => onDeleteHero(slide.id)}>
                       <FaTrash size={16} />
                     </button>
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="section" id="admin-events">
-            <div className="section__header">
+            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="eyebrow">Calendario</p>
                 <h2 className="section__title">Eventos</h2>
               </div>
               <div>
-                <Button variant="ghost" onClick={onCreateEvent}>Nuevo evento</Button>
+                <Button variant="primary" onClick={onCreateEvent}>Nuevo evento</Button>
               </div>
             </div>
 
-            <div className="admin-table">
-              <div className="admin-table__head">
+            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
+              <div className="hidden md:grid grid-cols-5 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
                 <span>Fecha</span>
                 <span>Título</span>
                 <span>Tag</span>
@@ -404,38 +420,52 @@ const Admin = () => {
                 <span>Acciones</span>
               </div>
               {events.map((e) => (
-                <div key={e.id} className="admin-table__row">
-                  <span>{e.date}</span>
-                  <span>{e.title}</span>
-                  <span>{e.tag || '-'}</span>
-                  <span>{e.status}</span>
-                  <span className="admin-table__actions">
-                    <button className="btn btn-ghost btn-sm" aria-label={`Editar ${e.title}`} onClick={() => onEditEvent(e)}>
+                <div key={e.id} className="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Fecha</span>
+                    <span>{e.date}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Título</span>
+                    <span>{e.title}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Tag</span>
+                    <span className="inline-flex px-2 py-1 text-xs rounded-full bg-white/10 text-white">{e.tag || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Estado</span>
+                    <span className="inline-flex px-2 py-1 text-xs rounded-full bg-amber-500/15 text-amber-200">{e.status}</span>
+                  </div>
+                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
+                    <button className={iconButtonClasses} aria-label={`Editar ${e.title}`} onClick={() => onEditEvent(e)}>
                       <FaEdit size={16} />
                     </button>
-                    <button className="btn btn-ghost btn-sm" aria-label={`Eliminar ${e.title}`} onClick={() => onDeleteEvent(e.id)}>
+                    <button className={iconButtonClasses} aria-label={`Eliminar ${e.title}`} onClick={() => onDeleteEvent(e.id)}>
                       <FaTrash size={16} />
                     </button>
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="section" id="admin-packages">
-            <div className="section__header">
+            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="eyebrow">Contenido</p>
                 <h2 className="section__title">Paquetes</h2>
               </div>
               <div>
-                <Button variant="ghost" onClick={onCreatePackage}>Nuevo paquete</Button>
-                <Button variant="ghost" onClick={() => setShowPkgCatModal(true)} className="ml-sm">Nueva categoría</Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="primary" onClick={onCreatePackage}>Nuevo paquete</Button>
+                  <Button variant="ghost" onClick={() => setShowPkgCatModal(true)}>Nueva categoría</Button>
+                </div>
               </div>
             </div>
 
-            <div className="admin-table">
-              <div className="admin-table__head">
+            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
+              <div className="hidden md:grid grid-cols-5 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
                 <span>Nombre</span>
                 <span>Categoría</span>
                 <span>Precio</span>
@@ -443,38 +473,52 @@ const Admin = () => {
                 <span>Acciones</span>
               </div>
               {packages.map((p) => (
-                <div key={p.id} className="admin-table__row">
-                  <span>{p.name}</span>
-                  <span>{p.category}</span>
-                  <span>${p.price}</span>
-                  <span>{p.vehicle}</span>
-                  <span className="admin-table__actions">
-                    <button className="btn btn-ghost btn-sm" aria-label={`Editar ${p.name}`} onClick={() => onEditPackage(p)}>
+                <div key={p.id} className="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Nombre</span>
+                    <span>{p.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Categoría</span>
+                    <span>{p.category}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Precio</span>
+                    <span className="font-semibold">${p.price.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Vehículo</span>
+                    <span>{p.vehicle}</span>
+                  </div>
+                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
+                    <button className={iconButtonClasses} aria-label={`Editar ${p.name}`} onClick={() => onEditPackage(p)}>
                       <FaEdit size={16} />
                     </button>
-                    <button className="btn btn-ghost btn-sm" aria-label={`Eliminar ${p.name}`} onClick={() => onDeletePackage(p.id)}>
+                    <button className={iconButtonClasses} aria-label={`Eliminar ${p.name}`} onClick={() => onDeletePackage(p.id)}>
                       <FaTrash size={16} />
                     </button>
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="section" id="admin-vehicles">
-            <div className="section__header">
+            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="eyebrow">Contenido</p>
                 <h2 className="section__title">Vehículos</h2>
               </div>
               <div>
-                <Button variant="ghost" onClick={onCreateVehicle}>Nuevo vehículo</Button>
-                <Button variant="ghost" onClick={() => setShowVehCatModal(true)} className="ml-sm">Nueva categoría</Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="primary" onClick={onCreateVehicle}>Nuevo vehículo</Button>
+                  <Button variant="ghost" onClick={() => setShowVehCatModal(true)}>Nueva categoría</Button>
+                </div>
               </div>
             </div>
 
-            <div className="admin-table">
-              <div className="admin-table__head">
+            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
+              <div className="hidden md:grid grid-cols-5 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
                 <span>Nombre</span>
                 <span>Categoría</span>
                 <span>Tarifa</span>
@@ -482,106 +526,135 @@ const Admin = () => {
                 <span>Acciones</span>
               </div>
               {vehicles.map((v) => (
-                <div key={v.id} className="admin-table__row">
-                  <span>{v.name}</span>
-                  <span>{v.category}</span>
-                  <span>{v.rate}</span>
-                  <span>{v.seats}</span>
-                  <span className="admin-table__actions">
-                    <button className="btn btn-ghost btn-sm" aria-label={`Editar ${v.name}`} onClick={() => onEditVehicle(v)}>
+                <div key={v.id} className="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Nombre</span>
+                    <span>{v.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Categoría</span>
+                    <span>{v.category}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Tarifa</span>
+                    <span>{v.rate}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Asientos</span>
+                    <span>{v.seats}</span>
+                  </div>
+                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
+                    <button className={iconButtonClasses} aria-label={`Editar ${v.name}`} onClick={() => onEditVehicle(v)}>
                       <FaEdit size={16} />
                     </button>
-                    <button className="btn btn-ghost btn-sm" aria-label={`Eliminar ${v.name}`} onClick={() => onDeleteVehicle(v.id)}>
+                    <button className={iconButtonClasses} aria-label={`Eliminar ${v.name}`} onClick={() => onDeleteVehicle(v.id)}>
                       <FaTrash size={16} />
                     </button>
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="section" id="admin-experiences">
-            <div className="section__header">
+            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="eyebrow">Contenido</p>
                 <h2 className="section__title">Experiencias</h2>
               </div>
               <div>
-                <Button variant="ghost" onClick={onCreateExp}>Nueva experiencia</Button>
+                <Button variant="primary" onClick={onCreateExp}>Nueva experiencia</Button>
               </div>
             </div>
 
-            <div className="admin-table">
-              <div className="admin-table__head">
+            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
+              <div className="hidden md:grid grid-cols-[1.6fr_1.8fr_0.8fr] gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
                 <span>Título</span>
                 <span>Imagen URL</span>
                 <span>Acciones</span>
               </div>
               {experiences.map((exp) => (
-                <div key={exp.id} className="admin-table__row">
-                  <span>{exp.title}</span>
-                  <span className="text-sm text-muted">{exp.imageUrl.substring(0, 40)}...</span>
-                  <span className="admin-table__actions">
-                    <button className="btn btn-ghost btn-sm" aria-label={`Editar ${exp.title}`} onClick={() => onEditExp(exp)}>
+                <div key={exp.id} className="grid grid-cols-1 md:grid-cols-[1.6fr_1.8fr_0.8fr] gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Título</span>
+                    <span>{exp.title}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Imagen URL</span>
+                    <span className="text-sm text-gray-400 truncate" title={exp.imageUrl}>{exp.imageUrl.substring(0, 40)}...</span>
+                  </div>
+                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
+                    <button className={iconButtonClasses} aria-label={`Editar ${exp.title}`} onClick={() => onEditExp(exp)}>
                       <FaEdit size={16} />
                     </button>
-                    <button className="btn btn-ghost btn-sm" aria-label={`Eliminar ${exp.title}`} onClick={() => onDeleteExp(exp.id)}>
+                    <button className={iconButtonClasses} aria-label={`Eliminar ${exp.title}`} onClick={() => onDeleteExp(exp.id)}>
                       <FaTrash size={16} />
                     </button>
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="section" id="admin-images">
-            <div className="section__header">
+            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="eyebrow">Contenido</p>
                 <h2 className="section__title">Galería y Experiencias</h2>
               </div>
               <div>
-                <Button variant="ghost" onClick={onCreateImage}>Nueva imagen</Button>
+                <Button variant="primary" onClick={onCreateImage}>Nueva imagen</Button>
               </div>
             </div>
 
-            <div className="admin-table">
-              <div className="admin-table__head">
+            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
+              <div className="hidden md:grid grid-cols-4 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
                 <span>Nombre</span>
                 <span>Orden</span>
                 <span>Estado</span>
                 <span>Acciones</span>
               </div>
               {systemImages.map((img) => (
-                <div key={img.id} className="admin-table__row">
-                  <span>{img.name}</span>
-                  <span>{img.order}</span>
-                  <span>{img.isActive ? '✓ Activa' : '✗ Inactiva'}</span>
-                  <span className="admin-table__actions">
-                    <button className="btn btn-ghost btn-sm" aria-label={`Editar ${img.name}`} onClick={() => onEditImage(img)}>
+                <div key={img.id} className="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Nombre</span>
+                    <span>{img.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Orden</span>
+                    <span>{img.order}</span>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Estado</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${img.isActive ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300'}`}>
+                      {img.isActive ? 'Activa' : 'Inactiva'}
+                    </span>
+                  </div>
+                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
+                    <button className={iconButtonClasses} aria-label={`Editar ${img.name}`} onClick={() => onEditImage(img)}>
                       <FaEdit size={16} />
                     </button>
-                    <button className="btn btn-ghost btn-sm" aria-label={`Eliminar ${img.name}`} onClick={() => onDeleteImage(img.id)}>
+                    <button className={iconButtonClasses} aria-label={`Eliminar ${img.name}`} onClick={() => onDeleteImage(img.id)}>
                       <FaTrash size={16} />
                     </button>
-                  </span>
+                  </div>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="section" id="admin-notifications">
-            <div className="section__header">
+            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="eyebrow">Sistema</p>
                 <h2 className="section__title">Notificaciones</h2>
               </div>
               <div>
-                <Button variant="ghost" onClick={async () => setNotifications(await fetchNotifications())}>Refrescar</Button>
+                <Button variant="primary" onClick={async () => setNotifications(await fetchNotifications())}>Refrescar</Button>
               </div>
             </div>
 
-            <div className="grid one">
+            <div className="grid grid-cols-1 gap-4">
               {notifications.length === 0 && <Card><p>No hay notificaciones aún.</p></Card>}
               {notifications.map((n) => (
                 <Card key={n.id} title={`${n.channel.toUpperCase()} · ${new Date(n.timestamp).toLocaleString()}`} subtitle={n.to}>
@@ -634,29 +707,34 @@ const Admin = () => {
           <AdminHeroSlideForm slide={editingHero} onCancel={() => { setShowHeroModal(false); setEditingHero(null) }} onSave={onSaveHero} uploadImage={uploadImage} />
         )}
       </Modal>
+      </div>
     </div>
   )
 }
 
-function AdminEventForm({ ev, onCancel, onSave, uploadImage }: { ev: CalendarSlot; onCancel: () => void; onSave: (e: CalendarSlot) => void; uploadImage: (file: File) => Promise<string> }) {
+;
+
+function AdminEventForm(
+  { ev, onCancel, onSave, uploadImage }: { ev: CalendarSlot; onCancel: () => void; onSave: (e: CalendarSlot) => void; uploadImage: (file: File) => Promise<string> }
+) {
   const [state, setState] = useState<CalendarSlot>(ev)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Update state when ev prop changes (e.g., when editing a different event)
+  // Sync form when switching between events
   useEffect(() => {
     setState(ev)
     setErrors({})
-  }, [ev.id])
+  }, [ev.id, ev])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setState(s => ({ ...s, [name]: value } as any))
-    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
+    setState((s) => ({ ...s, [name]: value } as CalendarSlot))
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
   }
 
   const handleImageChange = (url: string) => {
-    setState(s => ({ ...s, imageUrl: url }))
-    if (errors.imageUrl) setErrors(e => ({ ...e, imageUrl: '' }))
+    setState((s) => ({ ...s, imageUrl: url }))
+    if (errors.imageUrl) setErrors((prev) => ({ ...prev, imageUrl: '' }))
   }
 
   const validate = () => {

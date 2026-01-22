@@ -118,92 +118,146 @@ const CalendarPage = () => {
   }
 
   return (
-    <div className="page">
-      <header className="section">
-        <p className="eyebrow">Calendario</p>
-        <h1 className="display">Disponibilidad y eventos referencia</h1>
-        <p className="section__copy">Consulta fechas ocupadas y ventanas abiertas. El calendario muestra conciertos, bodas y galas para planificar con claridad.</p>
+    <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 pb-16 sm:px-6 lg:px-8">
+      <header className="space-y-4">
+        <span className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-300/80">Calendario</span>
+        <h1 className="text-3xl font-semibold text-white sm:text-4xl md:text-5xl">Disponibilidad y eventos referencia</h1>
+        <p className="max-w-3xl text-sm text-gray-300 sm:text-base">Consulta fechas ocupadas y ventanas abiertas. El calendario muestra conciertos, bodas y galas para planificar con claridad.</p>
       </header>
 
-      <div className="calendar-custom">
-        <div className="calendar-custom__header">
-          <h2 className="calendar-custom__title">
-            {MONTHS[currentMonth]} {currentYear}
-          </h2>
-          <div className="calendar-custom__controls">
-            <button className="calendar-custom__btn" onClick={previousMonth} aria-label="Mes anterior">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 15L7 10L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <button className="calendar-custom__btn" onClick={nextMonth} aria-label="Siguiente mes">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8 5L13 10L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+      <section className="space-y-6">
+        <div className="mx-auto max-w-3xl px-4">
+          <div className="calendar-custom">
+          <div className="calendar-custom__header">
+            <h2 className="calendar-custom__title">
+              {MONTHS[currentMonth]} {currentYear}
+            </h2>
+            <div className="calendar-custom__controls">
+              <button className="calendar-custom__btn" onClick={previousMonth} aria-label="Mes anterior">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 15L7 10L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <button className="calendar-custom__btn" onClick={nextMonth} aria-label="Siguiente mes">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 5L13 10L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="calendar-custom__legend">
+            <div className="calendar-custom__legend-item">
+              <div className="calendar-custom__legend-dot calendar-custom__legend-dot--evento" />
+              <span>Evento país</span>
+            </div>
+          </div>
+
+          <div className="calendar-custom__weekdays">
+            {DAYS.map(day => (
+              <div key={day} className="calendar-custom__weekday">{day}</div>
+            ))}
+          </div>
+
+          <div className="calendar-custom__grid">
+            {renderCalendarDays()}
+          </div>
           </div>
         </div>
+      </section>
 
-        <div className="calendar-custom__legend">
-          <div className="calendar-custom__legend-item">
-            <div className="calendar-custom__legend-dot calendar-custom__legend-dot--evento" />
-            <span>Evento país</span>
-          </div>
+      <section className="space-y-6">
+        <div className="mx-auto max-w-3xl px-4">
+          <Card title="Necesitas otra fecha" subtitle="Contáctanos para abrir agenda prioritaria en fechas especiales o fuera de horario">
+            <p className="section__copy">Manejamos listas de espera y producción bajo solicitud. Si el día que buscas ya está tomado, escríbenos para evaluar opciones con flota extendida.</p>
+          </Card>
         </div>
+      </section>
 
-        <div className="calendar-custom__weekdays">
-          {DAYS.map(day => (
-            <div key={day} className="calendar-custom__weekday">{day}</div>
-          ))}
-        </div>
+      <section className="space-y-6" ref={listRef}>
+        <div className="mx-auto max-w-3xl px-4">
+          <Card title="Eventos este mes" subtitle={`${MONTHS[currentMonth]} ${currentYear}`}>
+            {eventsForMonth().length === 0 && <p>No hay eventos para este mes.</p>}
+            
+            {/* Desktop view - Table */}
+            <div className="hidden md:block max-h-[420px] overflow-y-auto overflow-x-hidden pr-2">
+              <table className="w-full border-collapse text-sm" aria-label="Eventos del mes">
+                <thead>
+                  <tr>
+                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold">Título</th>
+                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold">Imagen</th>
+                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold">Detalle</th>
+                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold">Fecha</th>
+                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5" aria-label="Acciones"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eventsForMonth().map((ev) => (
+                    <tr 
+                      key={ev.id} 
+                      id={`event-${ev.id}`} 
+                      className={`border-b border-white/5 transition-colors ${selectedEventId === ev.id ? 'bg-[rgba(201,162,77,0.06)]' : 'hover:bg-white/[0.02]'}`}
+                    >
+                      <td className="px-3 py-2.5 font-bold">{ev.title}</td>
+                      <td className="px-3 py-2.5 w-[90px]">
+                        {ev.imageUrl ? (
+                          <SafeImage src={ev.imageUrl} alt={ev.title} width={72} height={48} />
+                        ) : '—'}
+                      </td>
+                      <td className="px-3 py-2.5 max-w-[360px] text-gray-400 truncate" title={ev.detail ?? ''}>{ev.detail ?? '—'}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap text-gray-400">{ev.date}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex gap-2 justify-end whitespace-nowrap">
+                          <button className="btn btn-ghost btn-sm rounded-lg" onClick={() => goToPackagesForEvent(ev.id)}>Ver paquetes</button>
+                          <button className="btn btn-primary btn-sm rounded-lg" onClick={() => goToReserveForEvent(ev.id)}>Reservar</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-        <div className="calendar-custom__grid">
-          {renderCalendarDays()}
-        </div>
-      </div>
-
-      <div className="section">
-        <Card title="Necesitas otra fecha" subtitle="Contáctanos para abrir agenda prioritaria en fechas especiales o fuera de horario">
-          <p className="section__copy">Manejamos listas de espera y producción bajo solicitud. Si el día que buscas ya está tomado, escríbenos para evaluar opciones con flota extendida.</p>
-        </Card>
-      </div>
-
-      <div className="section" ref={listRef}>
-        <Card title="Eventos este mes" subtitle={`${MONTHS[currentMonth]} ${currentYear}`}>
-          {eventsForMonth().length === 0 && <p>No hay eventos para este mes.</p>}
-          <div className="events-table-wrapper">
-            <table className="events-table" aria-label="Eventos del mes">
-              <thead>
-                <tr>
-                  <th>Título</th>
-                  <th>Imagen</th>
-                  <th>Detalle</th>
-                  <th>Fecha</th>
-                  <th aria-label="Acciones"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {eventsForMonth().map((ev) => (
-                  <tr key={ev.id} id={`event-${ev.id}`} className={selectedEventId === ev.id ? 'is-selected' : ''}>
-                    <td className="events-table__title">{ev.title}</td>
-                    <td className="events-table__image">
+            {/* Mobile view - Cards */}
+            <div className="md:hidden space-y-3 max-h-[600px] overflow-y-auto pr-1">
+              {eventsForMonth().map((ev) => (
+                <div 
+                  key={ev.id} 
+                  id={`event-${ev.id}`}
+                  className={`p-4 rounded-lg border transition-all ${
+                    selectedEventId === ev.id 
+                      ? 'bg-[rgba(201,162,77,0.06)] border-[rgba(201,162,77,0.3)]' 
+                      : 'bg-white/[0.02] border-white/10 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex gap-3 mb-3">
+                    <div className="flex-shrink-0">
                       {ev.imageUrl ? (
                         <SafeImage src={ev.imageUrl} alt={ev.title} width={72} height={48} />
-                      ) : '—'}
-                    </td>
-                    <td className="events-table__detail" title={ev.detail ?? ''}>{ev.detail ?? '—'}</td>
-                    <td className="events-table__date">{ev.date}</td>
-                    <td className="events-table__actions">
-                      <button className="btn btn-ghost btn-sm" onClick={() => goToPackagesForEvent(ev.id)}>Ver paquetes</button>
-                      <button className="btn btn-primary btn-sm" onClick={() => goToReserveForEvent(ev.id)}>Reservar</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
+                      ) : (
+                        <div className="w-[72px] h-[48px] bg-white/5 rounded-lg flex items-center justify-center text-gray-500">—</div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-base mb-1">{ev.title}</h3>
+                      <p className="text-xs text-gray-400 mb-2">{ev.date}</p>
+                    </div>
+                  </div>
+                  
+                  {ev.detail && (
+                    <p className="text-sm text-gray-400 mb-3 line-clamp-2">{ev.detail}</p>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <button className="btn btn-ghost btn-sm flex-1 rounded-lg" onClick={() => goToPackagesForEvent(ev.id)}>Ver paquetes</button>
+                    <button className="btn btn-primary btn-sm flex-1 rounded-lg" onClick={() => goToReserveForEvent(ev.id)}>Reservar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </section>
     </div>
   )
 }

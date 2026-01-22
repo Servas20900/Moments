@@ -69,20 +69,22 @@ const ImageUpload = ({ label = 'Cargar imagen', value, onChange, onUpload, error
     }
   }
 
+  const zoneBase = 'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-white/15 bg-white/5 px-4 py-8 text-center transition cursor-pointer'
+  const zoneDragging = 'border-amber-300/60 bg-amber-500/5'
+  const zoneDisabled = 'pointer-events-none opacity-70'
+
   return (
-    <div className="admin-form__group">
+    <div className="flex flex-col gap-2">
       {label && (
-        <label className="admin-form__label">
-          <span className="admin-form__label-text">
-            {label}
-            {required && <span className="admin-form__required">*</span>}
-          </span>
+        <label className="text-sm font-medium text-gray-200 flex items-center gap-1">
+          <span>{label}</span>
+          {required && <span className="text-rose-400 text-sm">*</span>}
         </label>
       )}
 
       {!value ? (
         <div
-          className={`admin-form__image-upload-zone ${isDragging ? 'drag-active' : ''} ${isUploading ? 'uploading' : ''}`}
+          className={[zoneBase, isDragging ? zoneDragging : '', isUploading ? zoneDisabled : ''].filter(Boolean).join(' ')}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
@@ -90,26 +92,21 @@ const ImageUpload = ({ label = 'Cargar imagen', value, onChange, onUpload, error
           onClick={() => fileInputRef.current?.click()}
         >
           {isUploading ? (
-            <>
-              <div className="admin-form__loading" style={{ borderBottom: 'none' }}>
-                Subiendo imagen...
-              </div>
-            </>
+            <div className="text-sm text-gray-300">Subiendo imagen...</div>
           ) : (
             <>
-              <div className="admin-form__image-upload-icon">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/80">
                 <FaImage />
               </div>
-              <div className="admin-form__image-upload-text">
-                <div className="admin-form__image-upload-title">Arrastra tu imagen aquí</div>
-                <div className="admin-form__image-upload-subtitle">
-                  o haz clic para seleccionar (JPG, PNG, WebP - Máximo 5MB)
-                </div>
+              <div className="space-y-1">
+                <div className="text-base font-semibold text-white">Arrastra tu imagen aquí</div>
+                <div className="text-sm text-gray-400">o haz clic para seleccionar (JPG, PNG, WebP - Máximo 5MB)</div>
               </div>
             </>
           )}
           <input
             ref={fileInputRef}
+            className="hidden"
             type="file"
             accept="image/*"
             onChange={handleFileInput}
@@ -118,19 +115,19 @@ const ImageUpload = ({ label = 'Cargar imagen', value, onChange, onUpload, error
           />
         </div>
       ) : (
-        <div className="admin-form__image-preview">
-          <div className="admin-form__image-preview-container">
-            <img src={value} alt="Preview" />
+        <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+          <div className="overflow-hidden rounded-lg border border-white/10">
+            <img src={value} alt="Preview" className="w-full max-h-56 object-cover" />
           </div>
-          <div className="admin-form__image-preview-actions">
+          <div className="flex justify-end">
             <button
               type="button"
-              className="admin-form__image-remove-btn"
+              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-sm text-white transition hover:border-white/30 hover:bg-white/20"
               onClick={() => onChange('')}
               disabled={isUploading}
               aria-label="Eliminar imagen"
             >
-              <FaTrash style={{ marginRight: '6px' }} />
+              <FaTrash size={14} />
               Eliminar
             </button>
           </div>
@@ -138,7 +135,7 @@ const ImageUpload = ({ label = 'Cargar imagen', value, onChange, onUpload, error
       )}
 
       {error && (
-        <div className="admin-form__error">
+        <div className="mt-1 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
           <span>{error}</span>
         </div>
       )}

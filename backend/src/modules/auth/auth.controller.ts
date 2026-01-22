@@ -13,13 +13,23 @@ export class AuthController {
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
   async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+    try {
+      return await this.authService.register(dto);
+    } catch (error) {
+      console.error('[AUTH CONTROLLER] Register error:', error);
+      throw error;
+    }
   }
 
   @Post('login')
   @ApiOperation({ summary: 'Login user' })
   async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+    try {
+      return await this.authService.login(dto);
+    } catch (error) {
+      console.error('[AUTH CONTROLLER] Login error:', error);
+      throw error;
+    }
   }
 
   @Get('profile')

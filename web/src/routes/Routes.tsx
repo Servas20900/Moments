@@ -9,6 +9,8 @@ import Login from '../pages/Login'
 import Register from '../pages/Register'
 import Profile from '../pages/Profile'
 import Cart from '../pages/Cart'
+import NotFound from '../pages/NotFound'
+import Error from '../pages/Error'
 
 export class AppRoutes {
   static nav = [
@@ -32,6 +34,8 @@ export class AppRoutes {
     { path: '/register', element: <Register /> },
     { path: '/profile', element: <Profile /> },
     { path: '/carrito', element: <Cart /> },
+    { path: '/error', element: <Error /> },
+    { path: '*', element: <NotFound /> }, // Catch-all para 404
   ]
 }
 

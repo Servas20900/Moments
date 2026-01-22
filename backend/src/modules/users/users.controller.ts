@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Put,
+  Post,
   Query,
   Request,
   UseGuards,
@@ -13,6 +14,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UpdateUserDto } from './dtos/update-user.dto';
+import { ChangePasswordDto } from './dtos/change-password.dto';
 
 @ApiTags('Usuarios')
 @Controller('usuarios')
@@ -70,5 +72,13 @@ export class UsersController {
   @ApiOperation({ summary: 'Eliminar usuario' })
   async delete(@Param('id') id: string) {
     return this.usersService.delete(id);
+  }
+
+  @Post('cambiar-contrasena')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Cambiar contraseña del usuario autenticado' })
+  async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
+    return this.usersService.changePassword(req.user.id, dto);
   }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PackageCard from '../components/PackageCard'
 import PackageModal from '../components/PackageModal'
+import { Layout, PageHeader, Section } from '../layout'
 import type { Package } from '../data/content'
 import { fetchPackages } from '../api/api'
 
@@ -17,23 +18,20 @@ const Packages = () => {
   const categories = Array.from(new Set(packages.map(pkg => pkg.category)))
 
   return (
-    <div className="page">
-      <header className="section">
-        <p className="eyebrow">Paquetes Moments</p>
-        <h1 className="display">Diseñados para eventos que no admiten improvisación</h1>
-        <p className="section__copy">
-          Selecciona el paquete que mejor se ajusta a tu evento. Todos incluyen chofer profesional, 
-          atención personalizada y la garantía Moments.
-        </p>
-      </header>
+    <Layout>
+      <PageHeader
+        eyebrow="Paquetes Moments"
+        title="Diseñados para eventos que no admiten improvisación"
+        description="Bodas, graduaciones, conciertos, eventos corporativos. Cada paquete incluye coordinación completa, conductor profesional y soporte 24/7 el día del evento."
+      />
 
       {categories.map((category) => (
-        <section key={category} className="section">
-          <div className="section__header">
+        <Section key={category} spacing="lg">
+          <div className="mb-0">
             <h2 className="heading">{category}</h2>
           </div>
           
-          <div className="packages-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-8 md:gap-6 items-stretch">
             {packages
               .filter((pkg) => pkg.category === category)
               .map((pkg) => (
@@ -44,7 +42,7 @@ const Packages = () => {
                 />
               ))}
           </div>
-        </section>
+        </Section>
       ))}
 
       <PackageModal 
@@ -52,7 +50,7 @@ const Packages = () => {
         isOpen={!!selectedPackage}
         onClose={() => setSelectedPackage(null)}
       />
-    </div>
+    </Layout>
   )
 }
 
