@@ -11,6 +11,7 @@ import Profile from '../pages/Profile'
 import Cart from '../pages/Cart'
 import NotFound from '../pages/NotFound'
 import Error from '../pages/Error'
+import ProtectedRoute from '../components/ProtectedRoute'
 
 export class AppRoutes {
   static nav = [
@@ -28,7 +29,7 @@ export class AppRoutes {
     { path: '/vehiculos', element: <Vehicles /> },
     { path: '/calendario', element: <CalendarPage /> },
     { path: '/galeria', element: <Gallery /> },
-    { path: '/admin', element: <Admin /> },
+    { path: '/admin', element: <ProtectedRoute element={<Admin />} /> },
     { path: '/login', element: <Login /> },
     { path: '/about', element: <About /> },
     { path: '/register', element: <Register /> },

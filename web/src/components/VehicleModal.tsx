@@ -15,12 +15,12 @@ interface VehicleModalProps {
 }
 
 const VehicleModal = ({ vehicle, isOpen, onClose }: VehicleModalProps) => {
+  if (!isOpen || !vehicle) return null
+
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(today.getMonth())
   const [currentYear, setCurrentYear] = useState(today.getFullYear())
   const navigate = useNavigate()
-
-  if (!isOpen || !vehicle) return null
 
   const firstDay = new Date(currentYear, currentMonth, 1)
   const lastDay = new Date(currentYear, currentMonth + 1, 0)

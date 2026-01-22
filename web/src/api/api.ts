@@ -457,6 +457,7 @@ export const loginUser = async (payload: { email: string; password?: string }) =
       email: res.user?.email ?? res.email,
       nombre: res.user?.nombre ?? res.email,
       estaActivo: true,
+      roles: res.user?.roles ?? [],
     })
     
     return { ok: true, id: res.user?.id ?? res.id }

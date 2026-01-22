@@ -36,10 +36,12 @@ async function main() {
 
   // 2. Crear usuario administrador
   console.log('Creando usuario administrador...');
-  const hashedPasswordAdmin = await bcrypt.hash('admin123', 10);
+  const hashedPasswordAdmin = await bcrypt.hash('Admin123!', 10);
   const adminUser = await prisma.usuario.upsert({
     where: { email: 'admin@moments.com' },
-    update: {},
+    update: {
+      contrasena: hashedPasswordAdmin,
+    },
     create: {
       email: 'admin@moments.com',
       contrasena: hashedPasswordAdmin,
@@ -173,7 +175,7 @@ async function main() {
   console.log('Seed completado exitosamente!');
   console.log('');
   console.log('Credenciales de prueba:');
-  console.log('  Admin: admin@moments.com / admin123');
+  console.log('  Admin: admin@moments.com / Admin123!');
   console.log('  Usuario 1: juan@example.com / password123');
   console.log('  Usuario 2: maria@example.com / password123');
   console.log('');

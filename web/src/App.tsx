@@ -5,13 +5,12 @@ import Account from './components/Account'
 import ErrorBoundary from './components/ErrorBoundary'
 import AppRoutes from './routes/Routes'
 import { CalendarProvider } from './contexts/CalendarContext'
+import { isAdmin } from './utils/auth'
 import './index.css'
 import './styles/typography.css'
 import './styles/responsive.css'
 import './App.css'
 import './styles/admin.css'
-
-const nav = AppRoutes.nav
 
 const CartButton = () => {
   const navigate = useNavigate()
@@ -28,8 +27,26 @@ const CartButton = () => {
 
 const Header = () => {
   const [open, setOpen] = useState(false)
+  const [userIsAdmin, setUserIsAdmin] = useState(isAdmin())
   const toggle = () => setOpen((v) => !v)
   const close = () => setOpen(false)
+
+  // Actualizar el estado de admin cuando cambie la autenticación
+  useEffect(() => {
+    const checkAdmin = () => {
+      setUserIsAdmin(isAdmin())
+    }
+    
+    // Escuchar evento personalizado de cambio de autenticación
+    window.addEventListener('auth-change', checkAdmin)
+    
+    return () => {
+      window.removeEventListener('auth-change', checkAdmin)
+    }
+  }, [])
+
+  const allNav = AppRoutes.nav
+  const nav = allNav.filter(item => item.to !== '/admin' || userIsAdmin)
 
   const linkBase = 'px-3 py-2 rounded-full text-sm font-medium transition-all duration-200'
   const active = 'bg-white/10 text-white shadow'

@@ -13,6 +13,7 @@ export interface User {
   identificacion?: string
   estaActivo: boolean
   createdAt?: string
+  roles?: string[]
 }
 
 const TOKEN_STORAGE_KEY = 'moments_token'
@@ -51,6 +52,8 @@ export const hasValidToken = (): boolean => {
 // Guardar usuario
 export const saveUser = (user: User): void => {
   localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+  // Disparar evento de cambio de autenticación
+  window.dispatchEvent(new Event('auth-change'))
 }
 
 // Obtener usuario guardado
@@ -74,6 +77,12 @@ export const isAuthenticated = (): boolean => {
 export const getCurrentUser = (): User | null => {
   if (!isAuthenticated()) return null
   return getStoredUser()
+}
+
+// Verificar si el usuario actual es administrador
+export const isAdmin = (): boolean => {
+  const user = getCurrentUser()
+  return user ? (user.roles?.includes('ADMIN') || user.roles?.includes('ADMINISTRADOR')) ?? false : false
 }
 
 // Limpiar autenticación (logout)
