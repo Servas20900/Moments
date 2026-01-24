@@ -656,7 +656,7 @@ function AdminEventForm(
   }
 
   return (
-    <form className="admin-form" onSubmit={handleSubmit}>
+    <form className="grid gap-5 p-2" onSubmit={handleSubmit}>
       <InputField
         label="Título"
         required
@@ -753,7 +753,7 @@ function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage 
         error={errors.name}
         placeholder="Ej: Tour privado de 8 horas"
       />
-      <div className="admin-form__group-row">
+      <div className="grid gap-4 sm:grid-cols-2">
         <InputField
           label="Categoría"
           required
