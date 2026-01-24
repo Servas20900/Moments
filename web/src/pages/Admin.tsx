@@ -696,11 +696,11 @@ function AdminEventForm(
         onUpload={uploadImage}
         error={errors.imageUrl}
       />
-      <div className="admin-form__actions">
-        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+      <div className="flex gap-3 pt-3 border-t border-white/10">
+        <Button variant="primary" type="submit" className="flex-1">
           Guardar
         </Button>
-        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+        <Button variant="ghost" type="button" onClick={onCancel} className="flex-1">
           Cancelar
         </Button>
       </div>
@@ -802,11 +802,11 @@ function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage 
         onUpload={uploadImage}
         error={errors.imageUrl}
       />
-      <div className="admin-form__actions">
-        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+      <div className="flex gap-3 pt-3 border-t border-white/10">
+        <Button variant="primary" type="submit" className="flex-1">
           Guardar
         </Button>
-        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+        <Button variant="ghost" type="button" onClick={onCancel} className="flex-1">
           Cancelar
         </Button>
       </div>
@@ -913,11 +913,11 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
         onUpload={uploadImage}
         error={errors.imageUrl}
       />
-      <div className="admin-form__actions">
-        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+      <div className="flex gap-3 pt-3 border-t border-white/10">
+        <Button variant="primary" type="submit" className="flex-1">
           Guardar
         </Button>
-        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+        <Button variant="ghost" type="button" onClick={onCancel} className="flex-1">
           Cancelar
         </Button>
       </div>
@@ -953,11 +953,11 @@ function CreateCategoryForm({ onCreate, onCancel }: { onCreate: (name: string) =
         error={error}
         placeholder="Ej: Tours Privados"
       />
-      <div className="admin-form__actions">
-        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+      <div className="flex gap-3 pt-3 border-t border-white/10">
+        <Button variant="primary" type="submit" className="flex-1">
           Crear
         </Button>
-        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+        <Button variant="ghost" type="button" onClick={onCancel} className="flex-1">
           Cancelar
         </Button>
       </div>
@@ -1050,11 +1050,11 @@ function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemIma
         checked={state.isActive}
         onChange={handleChange}
       />
-      <div className="admin-form__actions">
-        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+      <div className="flex gap-3 pt-3 border-t border-white/10">
+        <Button variant="primary" type="submit" className="flex-1">
           Guardar
         </Button>
-        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+        <Button variant="ghost" type="button" onClick={onCancel} className="flex-1">
           Cancelar
         </Button>
       </div>

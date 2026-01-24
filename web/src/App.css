@@ -2149,3 +2149,346 @@ div[class*="max-h-"]::-webkit-scrollbar-thumb {
 div[class*="max-h-"]::-webkit-scrollbar-thumb:hover {
   background: rgba(201, 162, 77, 0.8);
 }
+
+/* ============================================
+   ADMIN PANEL - IMAGE UPLOAD STYLES
+   ============================================ */
+
+/* Image Upload Zone */
+.admin-form__image-upload-zone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  padding: 32px;
+  border: 2px dashed rgba(201, 162, 77, 0.3);
+  border-radius: var(--radius-lg);
+  background: rgba(201, 162, 77, 0.02);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  min-height: 200px;
+}
+
+.admin-form__image-upload-zone:hover {
+  border-color: rgba(201, 162, 77, 0.5);
+  background: rgba(201, 162, 77, 0.05);
+}
+
+.admin-form__image-upload-zone.drag-active {
+  border-color: #c9a24d;
+  background: rgba(201, 162, 77, 0.08);
+}
+
+.admin-form__image-upload-icon {
+  font-size: 3rem;
+  color: #c9a24d;
+  opacity: 0.7;
+}
+
+.admin-form__image-upload-text {
+  text-align: center;
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+.admin-form__image-upload-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.admin-form__image-upload-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.admin-form__image-upload input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Image Preview */
+.admin-form__image-preview {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-form__image-preview-container {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.admin-form__image-preview-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-form__image-preview-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Responsive Design for Admin Forms */
+@media (max-width: 1200px) {
+  .admin-form__group-row,
+  .admin-form__group-row-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================
+   RESPONSIVE DESIGN - MINIMAL OVERRIDES
+   ============================================ */
+
+/* Keep .section for Admin.tsx layout */
+.section {
+  padding: 40px 0;
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 32px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .section {
+    padding: 24px 0;
+  }
+}
+
+/* Ensure touch targets are adequate on mobile */
+@media (max-width: 768px) {
+  button,
+  a[role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  .admin-table__action-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Prevent font scaling on landscape orientation */
+
+/* Fondo sólido para aside en pantallas pequeñas */
+@media (max-width: 768px) {
+  aside {
+    background: #181a20 !important;
+    backdrop-filter: none !important;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Viewport meta helper styles */
+@supports (height: 100dvh) {
+  html,
+  body {
+    height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+}
+
+/* Safe area support for notched devices */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+
+  .modal {
+    padding: max(16px, env(safe-area-inset-left));
+  }
+}
+
+/* Responsive heading adjustments */
+@media (max-width: 1024px) {
+  .display {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .display {
+    font-size: 1.6rem;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .display {
+    font-size: 1.3rem;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+  }
+
+  h2 {
+    font-size: 1rem;
+  }
+
+  h3 {
+    font-size: 0.95rem;
+  }
+}
+
+/* ================================
+   LANDSCAPE ORIENTATION
+   ================================ */
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .section {
+    padding: 20px 0;
+  }
+
+  .topbar {
+    padding: 10px 16px;
+  }
+
+  .modal__panel {
+    max-height: 90vh;
+  }
+}
+
+/* ============================================
+   TYPOGRAPHY - ADMIN SPECIFIC
+   ============================================ */
+
+/* Base typography for consistency */
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Consistent focus states for accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid #c9a24d;
+  outline-offset: 2px;
+}
+
+/* Admin-specific typography classes */
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-muted);
+  margin: 0 0 8px 0;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin: 0 0 16px 0;
+}
+
+.section__title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin: 0;
+}
+
+.section__copy {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  color: var(--color-muted);
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+}
+
+/* Responsive typography adjustments */
+@media (max-width: 768px) {
+  .display {
+    font-size: 1.8rem;
+  }
+
+  .section__title {
+    font-size: 1.4rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+}
+
+@media (max-width: 480px) {
+  .display {
+    font-size: 1.5rem;
+  }
+
+  .section__title {
+    font-size: 1.2rem;
+  }
+
+  .section__copy {
+    font-size: 0.9rem;
+  }
+}
