@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Layout, PageHeader, Section } from '../layout'
+import { Layout, PageHeader, Section } from '../components/Layout'
 import { getCurrentUser, updateUser, changePassword } from '../api/api'
 
 interface User {

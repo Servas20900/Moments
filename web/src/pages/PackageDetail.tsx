@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Layout, PageHeader, Section } from '../layout';
+import { Layout, PageHeader, Section } from '../components/Layout';
 import SafeImage from '../components/SafeImage';
 import Button from '../components/Button';
 import type { Package } from '../data/content';

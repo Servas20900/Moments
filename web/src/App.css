@@ -2291,14 +2291,6 @@ div[class*="max-h-"]::-webkit-scrollbar-thumb:hover {
 
 /* Prevent font scaling on landscape orientation */
 
-/* Fondo sólido para aside en pantallas pequeñas */
-@media (max-width: 768px) {
-  aside {
-    background: #181a20 !important;
-    backdrop-filter: none !important;
-  }
-}
-
 html {
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;

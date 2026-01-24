@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import SafeImage from '../components/SafeImage'
-import { Layout, PageHeader, Section } from '../layout'
+import { Layout, PageHeader, Section } from '../components/Layout'
 import { fetchSystemImages } from '../api/api'
 import type { SystemImage } from '../data/content'
 

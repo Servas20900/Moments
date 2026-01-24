@@ -12,7 +12,7 @@ interface LayoutProps {
  * @param variant - 'default' (max-w-6xl), 'wide' (max-w-7xl), 'narrow' (max-w-4xl)
  * @param noPadding - Remueve padding vertical (útil para páginas con hero sections)
  */
-export default function Layout({ children, variant = 'default', noPadding = false }: LayoutProps) {
+export function Layout({ children, variant = 'default', noPadding = false }: LayoutProps) {
   const maxWidthClass = {
     default: 'max-w-6xl',
     wide: 'max-w-7xl',
