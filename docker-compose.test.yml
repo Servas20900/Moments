@@ -1,0 +1,73 @@
+version: "3.9"
+
+# Docker Compose para testing local que simula producción
+# Usa base de datos local pero con configuraciones de producción
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: moments_postgres_test
+    environment:
+      POSTGRES_USER: moments_user
+      POSTGRES_PASSWORD: moments_test_password
+      POSTGRES_DB: moments_db_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moments_user -d moments_db_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: moments_backend_test
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://moments_user:moments_test_password@db:5432/moments_db_test
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-30d}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      COMPANY_EMAIL: ${COMPANY_EMAIL}
+      FILE_UPLOAD_PATH: /app/uploads
+      MAX_FILE_SIZE: 5242880
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3001
+    container_name: moments_web_test
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  test_db_data:
+
+networks:
+  default:
+    name: moments_test_network

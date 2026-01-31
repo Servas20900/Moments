@@ -3,6 +3,7 @@
 .env.local
 .env.docker
 .env.*.local
+.env.production
 
 # IDEs
 .vscode/

@@ -36,7 +36,7 @@ async function main() {
 
   // 2. Crear usuario administrador
   console.log('Creando usuario administrador...');
-  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Admin123!';
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Moments2026!Secure#Admin';
   if (!process.env.ADMIN_DEFAULT_PASSWORD) {
     console.warn('  ADVERTENCIA: Usando contraseña por defecto para admin. Configura ADMIN_DEFAULT_PASSWORD en .env');
   }

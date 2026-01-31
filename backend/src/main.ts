@@ -39,8 +39,15 @@ async function bootstrap() {
   // app.setGlobalPrefix('api');
 
   // Enable CORS - Estricto en producción
+  const allowedOrigins = process.env.FRONTEND_URL?.split(',') || ['http://localhost:5173'];
   app.enableCors({
-    origin: process.env.FRONTEND_URL,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
