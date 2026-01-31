@@ -17,7 +17,6 @@ import { CalendarModule } from "./modules/calendar/calendar.module";
 import { ImagesModule } from "./modules/images/images.module";
 import { ExtrasModule } from "./modules/extras/extras.module";
 import { HealthController } from "./common/health/health.controller";
-import { StaticController } from "./common/static/static.controller";
 import { validate } from "./config/env.validation";
 
 @Module({
@@ -34,19 +33,12 @@ import { validate } from "./config/env.validation";
     }),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), "..", "public"),
-      exclude: [
-        "/api*",
-        "/auth*",
-        "/usuarios*",
-        "/paquetes*",
-        "/vehiculos*",
-        "/experiencias*",
-        "/reservas*",
-        "/eventos*",
-        "/imagenes*",
-        "/extras*",
-        "/health*",
-      ],
+      serveRoot: "/",
+      exclude: ["/api*", "/auth*", "/usuarios*", "/paquetes*", "/vehiculos*", "/experiencias*", "/reservas*", "/eventos*", "/imagenes*", "/extras*", "/health*"],
+      serveStaticOptions: {
+        index: ["index.html"],
+        fallthrough: false,
+      },
     }),
     ThrottlerModule.forRoot([
       {
@@ -73,6 +65,6 @@ import { validate } from "./config/env.validation";
     ImagesModule,
     ExtrasModule,
   ],
-  controllers: [HealthController, StaticController],
+  controllers: [HealthController],
 })
 export class AppModule {}
