@@ -5,6 +5,7 @@ import helmet from "helmet";
 import compression from "compression";
 import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
 import * as Sentry from "@sentry/node";
+import { join } from "path";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
@@ -34,6 +35,32 @@ async function bootstrap() {
 
   // Compresión de respuestas
   app.use(compression());
+
+  // SPA fallback middleware - sirve index.html para rutas que no existen y no son APIs
+  app.use((req, res, next) => {
+    // Si ya fue manejado por un controller (tiene status != undefined), seguir
+    if (res.statusCode !== 404) {
+      return next();
+    }
+    
+    // Si es una ruta API, no interceptar
+    if (req.path.startsWith('/api') || req.path.startsWith('/auth') || 
+        req.path.startsWith('/usuarios') || req.path.startsWith('/paquetes') ||
+        req.path.startsWith('/vehiculos') || req.path.startsWith('/experiencias') ||
+        req.path.startsWith('/reservas') || req.path.startsWith('/eventos') ||
+        req.path.startsWith('/imagenes') || req.path.startsWith('/extras') ||
+        req.path.startsWith('/health') || req.path.startsWith('/assets')) {
+      return next();
+    }
+
+    // Si tiene extensión de archivo, no interceptar
+    if (req.path.includes('.')) {
+      return next();
+    }
+
+    // Sirve index.html para SPA routing
+    res.sendFile(join(process.cwd(), "..", "public", "index.html"));
+  });
 
   // Set global prefix
   // app.setGlobalPrefix('api');
