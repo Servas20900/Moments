@@ -102,6 +102,47 @@ export class VehiclesService {
     return { message: "Vehiculo desactivado" };
   }
 
+  async getAvailability(params: { fecha?: string; horaInicio?: string; horaFin?: string }) {
+    const { fecha, horaInicio, horaFin } = params;
+    const start = this.parseDateTime(fecha, horaInicio, false);
+    const end = this.parseDateTime(fecha, horaFin, true);
+
+    if (!start || !end) {
+      return { occupiedIds: [] };
+    }
+
+    const reservations = await this.prisma.reserva.findMany({
+      where: {
+        estado: { in: ["PAGO_PENDIENTE", "CONFIRMADA", "COMPLETADA"] },
+        horaInicio: { lt: end },
+        horaFin: { gt: start },
+      },
+      select: { vehiculoId: true },
+    });
+
+    const occupiedIds = Array.from(new Set(reservations.map((r) => r.vehiculoId)));
+    return { occupiedIds };
+  }
+
+  private parseDateTime(fecha?: string, hora?: string, isEnd = false) {
+    if (hora && hora.includes("T")) {
+      const dt = new Date(hora);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    if (fecha && hora) {
+      const dt = new Date(`${fecha}T${hora}`);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    if (fecha && !hora) {
+      const dt = new Date(`${fecha}T${isEnd ? "23:59:59" : "00:00:00"}`);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    return null;
+  }
+
   private toResponse(v: any) {
     const imgUrl = v.imagenes?.[0]?.imagen?.url || v.imagenUrl || null;
     return {

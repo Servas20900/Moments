@@ -8,14 +8,14 @@ export type FormFieldProps = {
   children: ReactNode
 }
 
-const baseInput = 'w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 transition focus:outline-none focus:ring-2 focus:ring-[#c9a24d] focus:border-[#c9a24d]/60'
+const baseInput = 'w-full rounded-xl border border-[color:var(--color-input-border)] bg-[var(--color-input-bg)] px-4 py-2.5 text-sm text-[color:var(--color-text)] placeholder-[color:var(--color-input-placeholder)] transition focus:outline-none focus:ring-2 focus:ring-[#c9a24d] focus:border-[#c9a24d]/60'
 const errorInput = 'border-rose-400/60 focus:ring-rose-400 focus:border-rose-400/60'
 
 const FormField = ({ label, error, help, required, children }: FormFieldProps) => {
   return (
     <div className="flex flex-col gap-2">
       {label && (
-        <label className="text-sm font-medium text-gray-200 flex items-center gap-1">
+        <label className="text-sm font-medium text-[color:var(--color-text)] flex items-center gap-1">
           <span>{label}</span>
           {required && <span className="text-rose-400 text-sm">*</span>}
         </label>
@@ -26,7 +26,7 @@ const FormField = ({ label, error, help, required, children }: FormFieldProps) =
           <span>{error}</span>
         </div>
       )}
-      {help && !error && <div className="text-xs text-gray-400">{help}</div>}
+      {help && !error && <div className="text-xs text-[color:var(--color-muted)]">{help}</div>}
     </div>
   )
 }
@@ -91,7 +91,7 @@ export type CheckboxFieldProps = InputHTMLAttributes<HTMLInputElement> & {
 export const CheckboxField = ({ label, error, className = '', ...props }: CheckboxFieldProps) => {
   return (
     <div className="flex flex-col gap-2">
-      <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white">
+      <label className="flex items-center gap-3 rounded-xl border border-[color:var(--color-input-border)] bg-[var(--color-input-bg)] px-4 py-3 text-sm text-[color:var(--color-text)]">
         <input
           type="checkbox"
           className={['h-4 w-4 accent-[#c9a24d]', className].filter(Boolean).join(' ')}

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from "@nestjs/common";
+import { Injectable, NotFoundException, Logger, BadRequestException } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { EmailService } from "../../common/email/email.service";
@@ -27,8 +27,46 @@ export class ReservationsService {
     const horaInicio = new Date(dto.horaInicio);
     const horaFin = new Date(dto.horaFin);
 
-      // Placeholder for future enhancement: consider including extras in reservation creation
-      const created = await this.prisma.reserva.create({
+    if (!(horaInicio instanceof Date) || isNaN(horaInicio.getTime())) {
+      throw new BadRequestException("horaInicio inválida");
+    }
+    if (!(horaFin instanceof Date) || isNaN(horaFin.getTime())) {
+      throw new BadRequestException("horaFin inválida");
+    }
+    if (horaFin <= horaInicio) {
+      throw new BadRequestException("horaFin debe ser mayor que horaInicio");
+    }
+
+    const paquete = await this.prisma.paquete.findUnique({
+      where: { id: paqueteId },
+      include: { vehiculos: true },
+    });
+
+    if (!paquete) {
+      throw new NotFoundException("Paquete no encontrado");
+    }
+
+    const allowedVehicleIds = paquete.vehiculos?.map((v) => v.vehiculoId) ?? [];
+    if (allowedVehicleIds.length > 0 && !allowedVehicleIds.includes(vehiculoId)) {
+      throw new BadRequestException("El vehículo no pertenece al paquete seleccionado");
+    }
+
+    const conflicting = await this.prisma.reserva.findFirst({
+      where: {
+        vehiculoId,
+        estado: { in: ["PAGO_PENDIENTE", "CONFIRMADA", "COMPLETADA"] },
+        horaInicio: { lt: horaFin },
+        horaFin: { gt: horaInicio },
+      },
+      select: { id: true },
+    });
+
+    if (conflicting) {
+      throw new BadRequestException("El vehículo ya está reservado en ese horario");
+    }
+
+    // Placeholder for future enhancement: consider including extras in reservation creation
+    const created = await this.prisma.reserva.create({
       data: {
         usuarioId: userId,
         paqueteId,

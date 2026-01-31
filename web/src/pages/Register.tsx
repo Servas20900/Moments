@@ -10,6 +10,8 @@ const Register = () => {
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
 
+  const inputClasses = 'w-full rounded-xl border border-[color:var(--color-input-border)] bg-[var(--color-input-bg)] px-4 py-2 text-[color:var(--color-text)] placeholder-[color:var(--color-input-placeholder)] transition focus:outline-none focus:ring-2 focus:ring-[#c9a24d] focus:border-[#c9a24d]/60'
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setForm(s => ({ ...s, [e.target.name]: e.target.value }))
 
   const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
@@ -69,30 +71,30 @@ const Register = () => {
   return (
     <div className="px-4 py-12 sm:px-6 lg:px-8">
       <header className="mx-auto max-w-6xl mb-12">
-        <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#c9a24d' }}>Registro</p>
-        <h1 className="text-4xl sm:text-5xl font-bold mb-3" style={{ color: '#f4f6fb' }}>Crea tu cuenta</h1>
-        <p className="text-lg" style={{ color: '#b3b7c2' }}>Regístrate para completar reservas y ver tu historial.</p>
+        <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-[color:var(--color-accent)]">Registro</p>
+        <h1 className="text-4xl sm:text-5xl font-bold mb-3 text-[color:var(--color-text)]">Crea tu cuenta</h1>
+        <p className="text-lg text-[color:var(--color-muted)]">Regístrate para completar reservas y ver tu historial.</p>
       </header>
 
       <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card title="Crear cuenta">
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            {error && <div className="rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'rgba(244, 67, 54, 0.3)', background: 'rgba(244, 67, 54, 0.1)', color: '#ef5350' }}>{error}</div>}
+            {error && <div className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400">{error}</div>}
             <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium" style={{ color: '#f4f6fb' }}>Nombre</span>
-              <input name="name" value={form.name} onChange={handleChange} className="rounded-xl border px-4 py-2 transition" style={{ borderColor: 'rgba(201, 162, 77, 0.2)', background: 'rgba(255, 255, 255, 0.06)', color: '#f4f6fb' }} />
+              <span className="text-sm font-medium text-[color:var(--color-text)]">Nombre</span>
+              <input name="name" value={form.name} onChange={handleChange} className={inputClasses} />
             </label>
             <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium" style={{ color: '#f4f6fb' }}>Email</span>
-              <input name="email" type="email" value={form.email} onChange={handleChange} className="rounded-xl border px-4 py-2 transition" style={{ borderColor: 'rgba(201, 162, 77, 0.2)', background: 'rgba(255, 255, 255, 0.06)', color: '#f4f6fb' }} />
+              <span className="text-sm font-medium text-[color:var(--color-text)]">Email</span>
+              <input name="email" type="email" value={form.email} onChange={handleChange} className={inputClasses} />
             </label>
             <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium" style={{ color: '#f4f6fb' }}>Teléfono</span>
-              <input name="phone" value={form.phone} onChange={handleChange} className="rounded-xl border px-4 py-2 transition" style={{ borderColor: 'rgba(201, 162, 77, 0.2)', background: 'rgba(255, 255, 255, 0.06)', color: '#f4f6fb' }} />
+              <span className="text-sm font-medium text-[color:var(--color-text)]">Teléfono</span>
+              <input name="phone" value={form.phone} onChange={handleChange} className={inputClasses} />
             </label>
             <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium" style={{ color: '#f4f6fb' }}>Contraseña</span>
-              <input name="password" type="password" value={form.password} onChange={handleChange} required className="rounded-xl border px-4 py-2 transition" style={{ borderColor: 'rgba(201, 162, 77, 0.2)', background: 'rgba(255, 255, 255, 0.06)', color: '#f4f6fb' }} />
+              <span className="text-sm font-medium text-[color:var(--color-text)]">Contraseña</span>
+              <input name="password" type="password" value={form.password} onChange={handleChange} required className={inputClasses} />
               {form.password && (
                 <div className="space-y-1 text-xs">
                   <div className={form.password.length >= 6 ? 'text-green-400' : 'text-gray-500'}>
@@ -118,9 +120,9 @@ const Register = () => {
 
         <Card title="Beneficios">
           <ul className="flex flex-col gap-3">
-            <li className="flex items-center gap-2" style={{ color: '#b3b7c2' }}><span style={{ color: '#c9a24d' }}>✓</span> Guardar reservas</li>
-            <li className="flex items-center gap-2" style={{ color: '#b3b7c2' }}><span style={{ color: '#c9a24d' }}>✓</span> Recibir confirmaciones</li>
-            <li className="flex items-center gap-2" style={{ color: '#b3b7c2' }}><span style={{ color: '#c9a24d' }}>✓</span> Historial y perfiles</li>
+            <li className="flex items-center gap-2 text-[color:var(--color-muted)]"><span className="text-[color:var(--color-accent)]">✓</span> Guardar reservas</li>
+            <li className="flex items-center gap-2 text-[color:var(--color-muted)]"><span className="text-[color:var(--color-accent)]">✓</span> Recibir confirmaciones</li>
+            <li className="flex items-center gap-2 text-[color:var(--color-muted)]"><span className="text-[color:var(--color-accent)]">✓</span> Historial y perfiles</li>
           </ul>
         </Card>
       </div>

@@ -43,6 +43,16 @@ export class VehiclesController {
     });
   }
 
+  @Get("disponibilidad")
+  @ApiOperation({ summary: "Consultar disponibilidad por rango horario" })
+  async availability(
+    @Query("fecha") fecha?: string,
+    @Query("horaInicio") horaInicio?: string,
+    @Query("horaFin") horaFin?: string,
+  ) {
+    return this.vehiclesService.getAvailability({ fecha, horaInicio, horaFin });
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Obtener vehiculo por ID" })
   async findById(@Param("id") id: string) {

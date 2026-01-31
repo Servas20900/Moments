@@ -7,9 +7,322 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =========================
-// ENUMS
-// =========================
+model Usuario {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  contrasena     String
+  nombre         String
+  telefono       String
+  identificacion String?
+  distritoId     Int?
+  ultimoAcceso   DateTime?
+  creadoEn       DateTime     @default(now())
+  actualizadoEn  DateTime     @updatedAt
+  estado         EstadoActivo @default(ACTIVO)
+  reservas       Reserva[]
+  distrito       Distrito?    @relation(fields: [distritoId], references: [id])
+  roles          UsuarioRol[]
+
+  @@map("usuarios")
+}
+
+model Rol {
+  id       Int          @id @default(autoincrement())
+  codigo   String       @unique
+  nombre   String
+  creadoEn DateTime     @default(now())
+  estado   EstadoActivo @default(ACTIVO)
+  usuarios UsuarioRol[]
+
+  @@map("roles")
+}
+
+model UsuarioRol {
+  usuarioId String
+  rolId     Int
+  rol       Rol     @relation(fields: [rolId], references: [id])
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@id([usuarioId, rolId])
+  @@map("usuarios_roles")
+}
+
+model CategoriaPaquete {
+  id       Int          @id @default(autoincrement())
+  nombre   String       @unique
+  creadoEn DateTime     @default(now())
+  estado   EstadoActivo @default(ACTIVO)
+  paquetes Paquete[]
+
+  @@map("categorias_paquetes")
+}
+
+model Paquete {
+  id            String            @id @default(cuid())
+  categoriaId   Int
+  nombre        String
+  descripcion   String
+  precioBase    Decimal           @db.Decimal(10, 2)
+  maxPersonas   Int
+  creadoEn      DateTime          @default(now())
+  actualizadoEn DateTime          @updatedAt
+  estado        EstadoActivo      @default(ACTIVO)
+  imagenes      ImagenPaquete[]
+  categoria     CategoriaPaquete  @relation(fields: [categoriaId], references: [id])
+  extras        PaqueteExtra[]
+  vehiculos     PaqueteVehiculo[]
+  reservas      Reserva[]
+
+  @@map("paquetes")
+}
+
+model Vehiculo {
+  id            String            @id @default(cuid())
+  nombre        String
+  categoria     String
+  asientos      Int
+  tarifaPorHora Decimal           @db.Decimal(10, 2)
+  creadoEn      DateTime          @default(now())
+  actualizadoEn DateTime          @updatedAt
+  estado        EstadoActivo      @default(ACTIVO)
+  imagenes      ImagenVehiculo[]
+  paquetes      PaqueteVehiculo[]
+  reservas      Reserva[]
+
+  @@map("vehiculos")
+}
+
+model PaqueteVehiculo {
+  paqueteId  String
+  vehiculoId String
+  asignadoEn DateTime @default(now())
+  paquete    Paquete  @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+
+  @@id([paqueteId, vehiculoId])
+  @@map("paquetes_vehiculos")
+}
+
+model Conductor {
+  id       String       @id @default(cuid())
+  nombre   String
+  telefono String
+  creadoEn DateTime     @default(now())
+  estado   EstadoActivo @default(ACTIVO)
+  reservas Reserva[]
+
+  @@map("conductores")
+}
+
+model Imagen {
+  id            String           @id @default(cuid())
+  url           String
+  altText       String?
+  estado        EstadoActivo     @default(ACTIVO)
+  creadoEn      DateTime         @default(now())
+  actualizadoEn DateTime         @updatedAt
+  categoria     CategoriaImagen
+  eventos       ImagenEvento[]
+  paquetes      ImagenPaquete[]
+  vehiculos     ImagenVehiculo[]
+
+  @@map("imagenes")
+}
+
+model ImagenPaquete {
+  paqueteId String
+  orden     Int     @default(0)
+  imagenId  String
+  imagen    Imagen  @relation(fields: [imagenId], references: [id])
+  paquete   Paquete @relation(fields: [paqueteId], references: [id])
+
+  @@id([imagenId, paqueteId])
+  @@index([paqueteId, orden])
+  @@map("imagenes_paquetes")
+}
+
+model ImagenVehiculo {
+  imagenId   String
+  vehiculoId String
+  orden      Int      @default(0)
+  imagen     Imagen   @relation(fields: [imagenId], references: [id])
+  vehiculo   Vehiculo @relation(fields: [vehiculoId], references: [id])
+
+  @@id([imagenId, vehiculoId])
+  @@index([vehiculoId, orden])
+  @@map("imagenes_vehiculos")
+}
+
+model ImagenEvento {
+  imagenId String
+  eventoId String
+  orden    Int              @default(0)
+  evento   EventoCalendario @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  imagen   Imagen           @relation(fields: [imagenId], references: [id])
+
+  @@id([imagenId, eventoId])
+  @@index([eventoId, orden])
+  @@map("imagenes_eventos")
+}
+
+model Reserva {
+  id               String                   @id @default(cuid())
+  usuarioId        String?
+  paqueteId        String
+  vehiculoId       String
+  conductorId      String?
+  nombre           String
+  email            String
+  telefono         String
+  identificacion   String?
+  tipoEvento       String
+  fechaEvento      DateTime
+  horaInicio       DateTime
+  horaFin          DateTime
+  origen           String
+  destino          String
+  numeroPersonas   Int
+  precioBase       Decimal                  @db.Decimal(10, 2)
+  precioTotal      Decimal                  @db.Decimal(10, 2)
+  anticipo         Decimal                  @db.Decimal(10, 2)
+  restante         Decimal                  @db.Decimal(10, 2)
+  estado           EstadoReserva
+  tipoPago         TipoPago?
+  creadoEn         DateTime                 @default(now())
+  actualizadoEn    DateTime                 @updatedAt
+  eventoCalendario EventoCalendario?
+  historialEstados HistorialEstadoReserva[]
+  pagos            PagoReserva[]
+  conductor        Conductor?               @relation(fields: [conductorId], references: [id])
+  paquete          Paquete                  @relation(fields: [paqueteId], references: [id])
+  usuario          Usuario?                 @relation(fields: [usuarioId], references: [id])
+  vehiculo         Vehiculo                 @relation(fields: [vehiculoId], references: [id])
+  extras           ReservaExtra[]
+
+  @@index([fechaEvento])
+  @@index([estado])
+  @@index([vehiculoId, fechaEvento])
+  @@map("reservas")
+}
+
+model PagoReserva {
+  id                String     @id @default(cuid())
+  reservaId         String
+  monto             Decimal    @db.Decimal(10, 2)
+  tipoPago          TipoPago
+  referenciaExterna String?
+  comprobantePago   String?
+  pagadoEn          DateTime?
+  creadoEn          DateTime   @default(now())
+  estado            EstadoPago @default(PENDIENTE)
+  reserva           Reserva    @relation(fields: [reservaId], references: [id])
+
+  @@map("pagos_reservas")
+}
+
+model EventoCalendario {
+  id        String         @id @default(cuid())
+  fecha     DateTime
+  titulo    String
+  estado    EstadoEvento
+  etiqueta  String?
+  detalle   String?
+  reservaId String?        @unique
+  creadoEn  DateTime       @default(now())
+  reserva   Reserva?       @relation(fields: [reservaId], references: [id])
+  imagenes  ImagenEvento[]
+
+  @@map("eventos_calendario")
+}
+
+model Extra {
+  id            String         @id @default(cuid())
+  nombre        String
+  descripcion   String?
+  precio        Decimal        @db.Decimal(10, 2)
+  estado        EstadoActivo   @default(ACTIVO)
+  creadoEn      DateTime       @default(now())
+  actualizadoEn DateTime       @updatedAt
+  paquetes      PaqueteExtra[]
+  reservas      ReservaExtra[]
+
+  @@map("extras")
+}
+
+model PaqueteExtra {
+  paqueteId String
+  extraId   String
+  extra     Extra   @relation(fields: [extraId], references: [id])
+  paquete   Paquete @relation(fields: [paqueteId], references: [id])
+
+  @@id([paqueteId, extraId])
+  @@map("paquetes_extras")
+}
+
+model ReservaExtra {
+  id             String   @id @default(cuid())
+  reservaId      String
+  extraId        String
+  cantidad       Int      @default(1)
+  precioUnitario Decimal  @db.Decimal(10, 2)
+  creadoEn       DateTime @default(now())
+  extra          Extra    @relation(fields: [extraId], references: [id])
+  reserva        Reserva  @relation(fields: [reservaId], references: [id])
+
+  @@map("reservas_extras")
+}
+
+model Provincia {
+  id       Int          @id @default(autoincrement())
+  codigo   String       @unique
+  nombre   String
+  creadoEn DateTime     @default(now())
+  estado   EstadoActivo @default(ACTIVO)
+  cantones Canton[]
+
+  @@map("provincias")
+}
+
+model Canton {
+  id          Int          @id @default(autoincrement())
+  provinciaId Int
+  codigo      String       @unique
+  nombre      String
+  creadoEn    DateTime     @default(now())
+  estado      EstadoActivo @default(ACTIVO)
+  provincia   Provincia    @relation(fields: [provinciaId], references: [id])
+  distritos   Distrito[]
+
+  @@map("cantones")
+}
+
+model Distrito {
+  id       Int          @id @default(autoincrement())
+  cantonId Int
+  codigo   String       @unique
+  nombre   String
+  creadoEn DateTime     @default(now())
+  estado   EstadoActivo @default(ACTIVO)
+  canton   Canton       @relation(fields: [cantonId], references: [id])
+  usuarios Usuario[]
+
+  @@map("distritos")
+}
+
+model HistorialEstadoReserva {
+  id         String        @id @default(cuid())
+  reservaId  String
+  estado     EstadoReserva
+  comentario String?
+  cambiadoEn DateTime      @default(now())
+  activo     EstadoActivo  @default(ACTIVO)
+  reserva    Reserva       @relation(fields: [reservaId], references: [id])
+
+  @@index([reservaId])
+  @@index([cambiadoEn])
+  @@map("historial_estados_reserva")
+}
+
 enum EstadoReserva {
   PAGO_PENDIENTE
   CONFIRMADA
@@ -49,389 +362,4 @@ enum EstadoActivo {
   ACTIVO
   INACTIVO
   SUSPENDIDO
-}
-
-model Usuario {
-  id             String  @id @default(cuid())
-  email          String  @unique
-  contrasena     String
-  nombre         String
-  telefono       String
-  identificacion String?
-  distritoId     Int?
-
-  // Estado funcional del usuario
-  estado EstadoActivo @default(ACTIVO)
-
-  // Auditoría
-  ultimoAcceso  DateTime?
-  creadoEn      DateTime  @default(now())
-  actualizadoEn DateTime  @updatedAt
-
-  // Relaciones
-  distrito Distrito? @relation(fields: [distritoId], references: [id])
-  roles    UsuarioRol[]
-  reservas Reserva[]
-
-  @@map("usuarios")
-}
-
-model Rol {
-  id     Int          @id @default(autoincrement())
-  codigo String       @unique
-  nombre String
-  estado EstadoActivo @default(ACTIVO)
-
-  usuarios UsuarioRol[]
-
-  creadoEn DateTime @default(now())
-
-  @@map("roles")
-}
-
-model UsuarioRol {
-  usuarioId String
-  rolId     Int
-
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
-  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Restrict)
-
-  @@id([usuarioId, rolId])
-  @@map("usuarios_roles")
-}
-
-// =========================
-// CATÁLOGO Y SERVICIOS
-// =========================
-
-model CategoriaPaquete {
-  id     Int          @id @default(autoincrement())
-  nombre String       @unique
-  estado EstadoActivo @default(ACTIVO)
-
-  paquetes Paquete[]
-
-  creadoEn DateTime @default(now())
-
-  @@map("categorias_paquetes")
-}
-
-model Paquete {
-  id          String       @id @default(cuid())
-  categoriaId Int
-  nombre      String
-  descripcion String
-  precioBase  Decimal      @db.Decimal(10, 2)
-  maxPersonas Int
-  estado      EstadoActivo @default(ACTIVO)
-
-  categoria    CategoriaPaquete @relation(fields: [categoriaId], references: [id])
-  reservas     Reserva[]
-  imagenes     ImagenPaquete[]
-  extras       PaqueteExtra[]
-  vehiculos    PaqueteVehiculo[]
-
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  @@map("paquetes")
-}
-
-model Vehiculo {
-  id            String       @id @default(cuid())
-  nombre        String
-  categoria     String
-  asientos      Int
-  tarifaPorHora Decimal      @db.Decimal(10, 2)
-  estado        EstadoActivo @default(ACTIVO)
-
-  reservas Reserva[]
-  imagenes ImagenVehiculo[]
-  paquetes PaqueteVehiculo[]
-
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  @@map("vehiculos")
-}
-
-// Relación Paquetes - Vehículos (muchos a muchos)
-model PaqueteVehiculo {
-  paqueteId  String
-  vehiculoId String
-  asignadoEn DateTime @default(now())
-
-  paquete  Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
-  vehiculo Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
-
-  @@id([paqueteId, vehiculoId])
-  @@map("paquetes_vehiculos")
-}
-
-model Conductor {
-  id       String       @id @default(cuid())
-  nombre   String
-  telefono String
-  estado   EstadoActivo @default(ACTIVO)
-
-  reservas Reserva[]
-
-  creadoEn DateTime @default(now())
-
-  @@map("conductores")
-}
-
-// =========================
-// IMÁGENES (MODELO GENÉRICO + PUENTES CLOUDINARY-BASED)
-// =========================
-model Imagen {
-  id        String          @id @default(cuid())
-  categoria CategoriaImagen
-  url       String // URL retornada por Cloudinary
-  altText   String?
-  estado    EstadoActivo    @default(ACTIVO)
-
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  // Relaciones a tablas puente
-  paquetes  ImagenPaquete[]
-  vehiculos ImagenVehiculo[]
-  eventos   ImagenEvento[]
-
-  @@map("imagenes")
-}
-
-model ImagenPaquete {
-  imagenId  String
-  paqueteId String
-  orden     Int    @default(0)
-
-  imagen  Imagen  @relation(fields: [imagenId], references: [id], onDelete: Restrict)
-  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Restrict)
-
-  @@id([imagenId, paqueteId])
-  @@index([paqueteId, orden])
-  @@map("imagenes_paquetes")
-}
-
-model ImagenVehiculo {
-  imagenId   String
-  vehiculoId String
-  orden      Int    @default(0)
-
-  imagen   Imagen   @relation(fields: [imagenId], references: [id], onDelete: Restrict)
-  vehiculo Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Restrict)
-
-  @@id([imagenId, vehiculoId])
-  @@index([vehiculoId, orden])
-  @@map("imagenes_vehiculos")
-}
-
-model ImagenEvento {
-  imagenId String
-  eventoId String
-  orden    Int    @default(0)
-
-  imagen Imagen           @relation(fields: [imagenId], references: [id], onDelete: Restrict)
-  evento EventoCalendario @relation(fields: [eventoId], references: [id], onDelete: Cascade)
-
-  @@id([imagenId, eventoId])
-  @@index([eventoId, orden])
-  @@map("imagenes_eventos")
-}
-
-// =========================
-// OPERACIÓN Y RESERVAS
-// =========================
-model Reserva {
-  id          String  @id @default(cuid())
-  usuarioId   String?
-  paqueteId   String
-  vehiculoId  String
-  conductorId String?
-
-  nombre         String
-  email          String
-  telefono       String
-  identificacion String?
-
-  tipoEvento     String
-  fechaEvento    DateTime
-  horaInicio     DateTime
-  horaFin        DateTime
-  origen         String
-  destino        String
-  numeroPersonas Int
-
-  precioBase  Decimal @db.Decimal(10, 2)
-  precioTotal Decimal @db.Decimal(10, 2)
-  anticipo    Decimal @db.Decimal(10, 2)
-  restante    Decimal @db.Decimal(10, 2)
-
-  estado   EstadoReserva
-  tipoPago TipoPago?
-
-  usuario   Usuario?   @relation(fields: [usuarioId], references: [id])
-  paquete   Paquete    @relation(fields: [paqueteId], references: [id])
-  vehiculo  Vehiculo   @relation(fields: [vehiculoId], references: [id])
-  conductor Conductor? @relation(fields: [conductorId], references: [id])
-
-  pagos            PagoReserva[]
-  eventoCalendario EventoCalendario?
-  historialEstados HistorialEstadoReserva[]
-  extras           ReservaExtra[]
-
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  @@index([fechaEvento])
-  @@index([estado])
-  @@index([vehiculoId, fechaEvento])
-  @@map("reservas")
-}
-
-model PagoReserva {
-  id                String     @id @default(cuid())
-  reservaId         String
-  monto             Decimal    @db.Decimal(10, 2)
-  tipoPago          TipoPago
-  estado            EstadoPago @default(PENDIENTE)
-  referenciaExterna String?
-  comprobantePago   String?
-  pagadoEn          DateTime?
-
-  reserva Reserva @relation(fields: [reservaId], references: [id], onDelete: Restrict)
-
-  creadoEn DateTime @default(now())
-
-  @@map("pagos_reservas")
-}
-
-model EventoCalendario {
-  id        String       @id @default(cuid())
-  fecha     DateTime
-  titulo    String
-  estado    EstadoEvento
-  etiqueta  String?
-  detalle   String?
-  reservaId String?      @unique
-
-  reserva  Reserva?       @relation(fields: [reservaId], references: [id])
-  imagenes ImagenEvento[]
-
-  creadoEn DateTime @default(now())
-
-  @@map("eventos_calendario")
-}
-
-// =========================
-// EXTRAS (AD-ONS)
-// =========================
-
-model Extra {
-  id          String       @id @default(cuid())
-  nombre      String
-  descripcion String?
-  precio      Decimal      @db.Decimal(10, 2)
-  estado      EstadoActivo @default(ACTIVO)
-
-  paquetes PaqueteExtra[]
-  reservas ReservaExtra[]
-
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  @@map("extras")
-}
-
-model PaqueteExtra {
-  paqueteId String
-  extraId   String
-
-  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Restrict)
-  extra   Extra   @relation(fields: [extraId], references: [id], onDelete: Restrict)
-
-  @@id([paqueteId, extraId])
-  @@map("paquetes_extras")
-}
-
-model ReservaExtra {
-  id             String  @id @default(cuid())
-  reservaId      String
-  extraId        String
-  cantidad       Int     @default(1)
-  precioUnitario Decimal @db.Decimal(10, 2)
-
-  reserva Reserva @relation(fields: [reservaId], references: [id], onDelete: Restrict)
-  extra   Extra   @relation(fields: [extraId], references: [id], onDelete: Restrict)
-
-  creadoEn DateTime @default(now())
-
-  @@map("reservas_extras")
-}
-
-// =========================
-// UBICACIÓN
-// =========================
-model Provincia {
-  id     Int          @id @default(autoincrement())
-  codigo String       @unique
-  nombre String
-  estado EstadoActivo @default(ACTIVO)
-
-  cantones Canton[]
-
-  creadoEn DateTime @default(now())
-
-  @@map("provincias")
-}
-
-model Canton {
-  id          Int          @id @default(autoincrement())
-  provinciaId Int
-  codigo      String       @unique
-  nombre      String
-  estado      EstadoActivo @default(ACTIVO)
-
-  provincia Provincia  @relation(fields: [provinciaId], references: [id])
-  distritos Distrito[]
-
-  creadoEn DateTime @default(now())
-
-  @@map("cantones")
-}
-
-model Distrito {
-  id       Int          @id @default(autoincrement())
-  cantonId Int
-  codigo   String       @unique
-  nombre   String
-  estado   EstadoActivo @default(ACTIVO)
-
-  canton   Canton    @relation(fields: [cantonId], references: [id])
-  usuarios Usuario[]
-
-  creadoEn DateTime @default(now())
-
-  @@map("distritos")
-}
-
-// =========================
-// HISTORIAL Y TRAZABILIDAD
-// =========================
-model HistorialEstadoReserva {
-  id         String        @id @default(cuid())
-  reservaId  String
-  estado     EstadoReserva
-  comentario String?       @db.Text
-  activo     EstadoActivo  @default(ACTIVO)
-
-  reserva Reserva @relation(fields: [reservaId], references: [id], onDelete: Restrict)
-
-  cambiadoEn DateTime @default(now())
-
-  @@index([reservaId])
-  @@index([cambiadoEn])
-  @@map("historial_estados_reserva")
 }

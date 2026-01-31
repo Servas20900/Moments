@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Layout, PageHeader, Section } from '../components/Layout'
 import Button from '../components/Button'
 import SafeImage from '../components/SafeImage'
-import { fetchPackages, fetchVehicles, fetchPackageExtras, fetchExtras } from '../api/api'
+import { fetchPackages, fetchVehicles, fetchPackageExtras, fetchExtras, fetchVehicleAvailability } from '../api/api'
 import type { PackageView, VehicleView } from '../data/content'
 import { useReservation, type ExtraOption } from '../contexts/ReservationContext'
 import { useCalendarContext } from '../contexts/CalendarContext'
@@ -43,6 +43,7 @@ const Reserve = () => {
 
   const [pkg, setPkg] = useState<PackageView | null>(selectedPackage)
   const [vehicles, setVehicles] = useState<VehicleView[]>([])
+  const [occupiedVehicleIds, setOccupiedVehicleIds] = useState<string[]>([])
   const [extras, setExtras] = useState<ExtraOption[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -111,12 +112,61 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
     }
   }, [location.state, selectedPackage, startReservation])
 
+  useEffect(() => {
+    let active = true
+
+    if (!form.date || !form.time) {
+      setOccupiedVehicleIds([])
+      return () => { active = false }
+    }
+
+    const start = `${form.date}T${form.time}:00`
+    const [hh, mm] = form.time.split(':').map(Number)
+    const endDate = new Date(`${form.date}T${form.time}:00`)
+    endDate.setHours(hh + 2, mm || 0, 0, 0)
+    const isoEnd = endDate.toISOString()
+    const end = `${isoEnd.slice(0, 10)}T${isoEnd.slice(11, 19)}`
+
+    fetchVehicleAvailability({ date: form.date, start, end })
+      .then((ids) => {
+        if (active) setOccupiedVehicleIds(ids)
+      })
+      .catch(() => {
+        if (active) setOccupiedVehicleIds([])
+      })
+
+    return () => {
+      active = false
+    }
+  }, [form.date, form.time])
+
   const peopleCount = Number(form.people)
 
+  const packageVehicleIds = useMemo(() => {
+    if (pkg?.vehicleIds?.length) return pkg.vehicleIds
+    if (pkg?.vehicles?.length) return pkg.vehicles.map((v) => v.id)
+    return []
+  }, [pkg])
+
+  const baseVehicles = useMemo(() => {
+    if (packageVehicleIds.length === 0) return vehicles
+    return vehicles.filter((v) => packageVehicleIds.includes(v.id))
+  }, [vehicles, packageVehicleIds])
+
   const compatibleVehicles = useMemo(
-    () => vehicles.filter((v) => !peopleCount || v.seats >= peopleCount),
-    [vehicles, peopleCount],
+    () => baseVehicles.filter((v) => {
+      const seatsOk = !peopleCount || v.seats >= peopleCount
+      const availabilityOk = !form.date || !form.time || !occupiedVehicleIds.includes(v.id)
+      return seatsOk && availabilityOk
+    }),
+    [baseVehicles, peopleCount, form.date, form.time, occupiedVehicleIds],
   )
+
+  useEffect(() => {
+    if (form.vehicleId && !compatibleVehicles.some((v) => v.id === form.vehicleId)) {
+      setForm((prev) => ({ ...prev, vehicleId: undefined }))
+    }
+  }, [compatibleVehicles, form.vehicleId])
 
   const selectedExtras = useMemo(
     () => extras.filter((extra) => form.extras.includes(extra.id)),
@@ -132,6 +182,14 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
   const vehicleFee = 0 // Dejarlo listo para integrar tarifas por vehículo más adelante
   const total = packagePrice + extrasTotal + vehicleFee
   const deposit = total * 0.5
+
+  const availabilityHint = !form.date || !form.time
+    ? 'Selecciona fecha y hora para validar disponibilidad.'
+    : 'Mostrando solo vehículos disponibles en ese horario.'
+
+  const noVehiclesMessage = !form.date || !form.time
+    ? `No hay vehículos compatibles con ${form.people} personas.`
+    : `No hay vehículos disponibles para ${form.people} personas en ese horario.`
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -343,14 +401,17 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-200">Selecciona vehículo (compatible con pasajeros)</p>
-                  <span className="text-xs text-gray-400">Solo se muestran opciones con suficientes asientos</span>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-200">Selecciona vehículo</p>
+                    <span className="text-xs text-gray-400">Solo opciones del paquete con suficientes asientos</span>
+                  </div>
+                  <p className="text-xs text-gray-500">{availabilityHint}</p>
                 </div>
                 <div className="space-y-3">
                   {compatibleVehicles.length === 0 && (
                     <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
-                      No hay vehículos compatibles con {form.people} personas. Reduce el número o contáctanos para opciones especiales.
+                      {noVehiclesMessage} Reduce el número o contáctanos para opciones especiales.
                     </div>
                   )}
                   {compatibleVehicles.map((vehicle) => (

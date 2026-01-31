@@ -148,6 +148,16 @@ export const fetchVehicles = async (): Promise<VehicleView[]> => {
   return list.map(mapVehicle)
 }
 
+export const fetchVehicleAvailability = async (params: { date: string; start: string; end: string }) => {
+  const query = new URLSearchParams({
+    fecha: params.date,
+    horaInicio: params.start,
+    horaFin: params.end,
+  }).toString()
+  const data = await http<{ occupiedIds?: string[] }>(`/vehiculos/disponibilidad?${query}`)
+  return data?.occupiedIds ?? []
+}
+
 export const fetchCalendar = async (): Promise<CalendarSlotView[]> => {
   const data = await http<any[]>('/eventos')
   return data.map(mapCalendar)

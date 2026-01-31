@@ -71,6 +71,8 @@ async function main() {
   });
 
   console.log('Usuario admin creado:', adminUser.email);
+  console.log('Seed completado exitosamente!');
+}
 
 main()
   .catch((e) => {
@@ -80,4 +82,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-}
