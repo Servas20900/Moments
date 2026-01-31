@@ -140,9 +140,6 @@ export function validate(config: Record<string, unknown>) {
       );
     }
 
-    if (!validatedConfig.SENTRY_DSN) {
-      extraErrors.push("SENTRY_DSN es requerido en production");
-    }
   }
 
   if (errors.length > 0) {
