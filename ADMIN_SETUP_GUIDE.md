@@ -156,7 +156,7 @@
 ### GRUPO 5: Ocasión Especial - Tahoe & Suburban (Bodas, Propuestas Matrimoniales)
 
 #### 5.1 Special - Ocasión Especial
-- **Nombre**: Special - Ocasión Especial (Bodas, Propuestas)
+- **Nombre**: Especial - Ocasión Especial (Bodas, Propuestas)
 - **Descripción**: Paquete romántico ideal para bodas y propuestas matrimoniales
 - **Precio**: $500
 - **Capacidad**: 2 personas (pareja)

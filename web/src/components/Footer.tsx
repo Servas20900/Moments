@@ -13,7 +13,7 @@ export default function Footer() {
             <h3 className="font-bold text-lg">Moments</h3>
             <p className="text-sm text-[color:var(--color-muted)]">Transporte de lujo para momentos especiales. Chofer profesional, confort premium y disponibilidad garantizada.</p>
             <div className="flex gap-4 pt-2">
-              <a href="https://wa.me/50699999999" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">WhatsApp</a>
+              <a href="https://wa.me/506 8703 2112" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">WhatsApp</a>
               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">Facebook</a>
               <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">Instagram</a>
             </div>
@@ -37,7 +37,7 @@ export default function Footer() {
               <li><Link to="/about" className="hover:text-[color:var(--color-accent)] transition">Sobre nosotros</Link></li>
               <li><Link to="/terms" className="hover:text-[color:var(--color-accent)] transition">Términos</Link></li>
               <li><a href="mailto:info@moments.cr" className="hover:text-[color:var(--color-accent)] transition">Contacto</a></li>
-              <li><a href="tel:+50699999999" className="hover:text-[color:var(--color-accent)] transition">+506 9999 9999</a></li>
+              <li><a href="tel:+506 8703 2112" className="hover:text-[color:var(--color-accent)] transition">+506 8703 2112</a></li>
             </ul>
           </div>
 
@@ -55,7 +55,7 @@ export default function Footer() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[color:var(--color-accent)] mt-0.5">📞</span>
-                <a href="tel:+50699999999" className="hover:text-[color:var(--color-accent)] transition">+506 9999 9999</a>
+                <a href="tel:+50687032112" className="hover:text-[color:var(--color-accent)] transition">+506 8703 2112</a>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[color:var(--color-accent)] mt-0.5">🕐</span>
