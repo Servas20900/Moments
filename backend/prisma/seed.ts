@@ -71,6 +71,29 @@ async function main() {
   });
 
   console.log('Usuario admin creado:', adminUser.email);
+
+  // 3. Crear categorías de paquetes
+  console.log('Creando categorías de paquetes...');
+  const categories = [
+    { nombre: 'Días Normales', codigo: 'DIAS_NORMALES' },
+    { nombre: 'Días de Evento', codigo: 'DIAS_EVENTO' },
+    { nombre: 'Ocasión Especial', codigo: 'OCASION_ESPECIAL' },
+    { nombre: 'Celebración', codigo: 'CELEBRACION' },
+  ];
+
+  for (const cat of categories) {
+    await prisma.categoriaPaquete.upsert({
+      where: { nombre: cat.nombre },
+      update: {},
+      create: {
+        nombre: cat.nombre,
+        estado: 'ACTIVO',
+      },
+    });
+  }
+
+  console.log('Categorías de paquetes creadas');
+
   console.log('Seed completado exitosamente!');
 }
 

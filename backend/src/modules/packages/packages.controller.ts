@@ -22,6 +22,12 @@ import { UpdatePackageDto } from "./dtos/update-package.dto";
 export class PackagesController {
   constructor(private packagesService: PackagesService) {}
 
+  @Get("categorias/list")
+  @ApiOperation({ summary: "Listar categorías de paquetes" })
+  async getCategories() {
+    return this.packagesService.getCategories();
+  }
+
   @Get()
   @ApiOperation({ summary: "Listar paquetes (solo activos)" })
   @UseInterceptors(CacheInterceptor)

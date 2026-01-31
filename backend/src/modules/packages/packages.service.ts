@@ -8,6 +8,13 @@ import { UpdatePackageDto } from "./dtos/update-package.dto";
 export class PackagesService {
   constructor(private prisma: PrismaService) {}
 
+  async getCategories() {
+    return this.prisma.categoriaPaquete.findMany({
+      where: { estado: "ACTIVO" },
+      orderBy: { id: "asc" },
+    });
+  }
+
   async create(dto: CreatePackageDto) {
     // Verificar que la categoría existe
     const categoria = await this.prisma.categoriaPaquete.findUnique({

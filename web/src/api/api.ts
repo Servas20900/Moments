@@ -269,9 +269,19 @@ export const deleteCalendarEvent = async (id: string) => {
 }
 
 export const createPackage = async (data: Partial<PackageView>) => {
+  // Obtener categorías y usar la primera disponible
+  let categoriaId = 1
+  try {
+    const categories = await http<any[]>('/paquetes/categorias/list')
+    if (categories && categories.length > 0) {
+      categoriaId = categories[0].id
+    }
+  } catch (e) {
+    console.warn('No se pudieron cargar categorías, usando ID 1 por defecto', e)
+  }
+
   const payload = {
-    categoriaId: 1, // Asignar categoría por defecto
-    categoria: data.category,
+    categoriaId,
     nombre: data.name,
     descripcion: data.description || '',
     precioBase: data.price ?? 0,
