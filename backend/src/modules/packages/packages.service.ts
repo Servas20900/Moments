@@ -9,25 +9,55 @@ export class PackagesService {
   constructor(private prisma: PrismaService) {}
 
   async getCategories() {
-    return this.prisma.categoriaPaquete.findMany({
+    const categories = await this.prisma.categoriaPaquete.findMany({
       where: { estado: "ACTIVO" },
       orderBy: { id: "asc" },
     });
+
+    // Si no hay categorías, crear la categoría por defecto
+    if (categories.length === 0) {
+      const defaultCategory = await this.prisma.categoriaPaquete.create({
+        data: {
+          nombre: "General",
+          estado: "ACTIVO",
+        },
+      });
+      return [defaultCategory];
+    }
+
+    return categories;
   }
 
   async create(dto: CreatePackageDto) {
-    // Verificar que la categoría existe
-    const categoria = await this.prisma.categoriaPaquete.findUnique({
+    // Verificar que la categoría existe, si no, usar o crear la categoría por defecto
+    let categoria = await this.prisma.categoriaPaquete.findUnique({
       where: { id: dto.categoriaId },
     });
 
     if (!categoria) {
-      throw new NotFoundException("Category not found");
+      // Intentar obtener la primera categoría activa
+      const categories = await this.prisma.categoriaPaquete.findMany({
+        where: { estado: "ACTIVO" },
+        orderBy: { id: "asc" },
+        take: 1,
+      });
+
+      if (categories.length === 0) {
+        // Si no existe ninguna categoría, crear una por defecto
+        categoria = await this.prisma.categoriaPaquete.create({
+          data: {
+            nombre: "General",
+            estado: "ACTIVO",
+          },
+        });
+      } else {
+        categoria = categories[0];
+      }
     }
 
     const created = await this.prisma.paquete.create({
       data: {
-        categoriaId: dto.categoriaId,
+        categoriaId: categoria.id,
         nombre: dto.nombre,
         descripcion: dto.descripcion,
         precioBase: dto.precioBase,
