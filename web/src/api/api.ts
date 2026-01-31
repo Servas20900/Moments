@@ -428,13 +428,8 @@ export const fetchNotifications = async () => {
   if (!token) {
     return []
   }
-  try {
-    const data = await http<any[]>('/usuarios/notificaciones')
-    return data
-  } catch (err) {
-    console.warn('No se pudieron cargar notificaciones', err)
-    return []
-  }
+  // Notificaciones deshabilitadas temporalmente - endpoint no implementado
+  return []
 }
 
 export const createUser = async (payload: { name: string; email: string; phone?: string; password?: string }) => {
