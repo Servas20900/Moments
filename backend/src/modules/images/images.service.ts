@@ -1,14 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { CategoriaImagen, EstadoActivo, Prisma } from '@prisma/client';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { CreateImageDto } from './dtos/create-image.dto';
-import { UpdateImageDto } from './dtos/update-image.dto';
-import { AttachImageToPackageDto } from './dtos/attach-image-to-package.dto';
-import { AttachImageToVehicleDto } from './dtos/attach-image-to-vehicle.dto';
-import { AttachImageToEventDto } from './dtos/attach-image-to-event.dto';
-import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
-import type { Multer } from 'multer';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { CategoriaImagen, EstadoActivo, Prisma } from "@prisma/client";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { CreateImageDto } from "./dtos/create-image.dto";
+import { UpdateImageDto } from "./dtos/update-image.dto";
+import { AttachImageToPackageDto } from "./dtos/attach-image-to-package.dto";
+import { AttachImageToVehicleDto } from "./dtos/attach-image-to-vehicle.dto";
+import { AttachImageToEventDto } from "./dtos/attach-image-to-event.dto";
+import { ConfigService } from "@nestjs/config";
+import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
+import type { Express } from "express";
 
 @Injectable()
 export class ImagesService {
@@ -16,34 +20,51 @@ export class ImagesService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    const cloudName = this.config.get<string>('CLOUDINARY_CLOUD_NAME');
-    const apiKey = this.config.get<string>('CLOUDINARY_API_KEY');
-    const apiSecret = this.config.get<string>('CLOUDINARY_API_SECRET');
+    const cloudName = this.config.get<string>("CLOUDINARY_CLOUD_NAME");
+    const apiKey = this.config.get<string>("CLOUDINARY_API_KEY");
+    const apiSecret = this.config.get<string>("CLOUDINARY_API_SECRET");
     if (!cloudName || !apiKey || !apiSecret) {
       // Do not throw on boot; allow app to run without Cloudinary uploads
       // Upload endpoint will validate config presence at call-time
       // eslint-disable-next-line no-console
-      console.warn('[ImagesService] CLOUDINARY_* env vars are not fully set. Uploads will fail until configured.');
+      console.warn(
+        "[ImagesService] CLOUDINARY_* env vars are not fully set. Uploads will fail until configured.",
+      );
     } else {
-      cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret });
+      cloudinary.config({
+        cloud_name: cloudName,
+        api_key: apiKey,
+        api_secret: apiSecret,
+      });
     }
   }
 
-  async uploadBuffer(file: Multer.File, folder?: string): Promise<{ url: string; response: UploadApiResponse }> {
-    const cloudName = this.config.get<string>('CLOUDINARY_CLOUD_NAME');
-    const apiKey = this.config.get<string>('CLOUDINARY_API_KEY');
-    const apiSecret = this.config.get<string>('CLOUDINARY_API_SECRET');
+  async uploadBuffer(
+    file: Express.Multer.File,
+    folder?: string,
+  ): Promise<{ url: string; response: UploadApiResponse }> {
+    const cloudName = this.config.get<string>("CLOUDINARY_CLOUD_NAME");
+    const apiKey = this.config.get<string>("CLOUDINARY_API_KEY");
+    const apiSecret = this.config.get<string>("CLOUDINARY_API_SECRET");
     if (!cloudName || !apiKey || !apiSecret) {
-      throw new BadRequestException('Cloudinary no está configurado en el servidor');
+      throw new BadRequestException(
+        "Cloudinary no está configurado en el servidor",
+      );
     }
 
-    const targetFolder = folder || this.config.get<string>('CLOUDINARY_FOLDER') || 'moments';
+    const targetFolder =
+      folder || this.config.get<string>("CLOUDINARY_FOLDER") || "moments";
 
     return new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { folder: targetFolder, resource_type: 'auto' },
+        { folder: targetFolder, resource_type: "auto" },
         (err, result) => {
-          if (err || !result) return reject(new BadRequestException(err?.message || 'Error al subir a Cloudinary'));
+          if (err || !result)
+            return reject(
+              new BadRequestException(
+                err?.message || "Error al subir a Cloudinary",
+              ),
+            );
           resolve({ url: result.secure_url, response: result });
         },
       );
@@ -80,7 +101,7 @@ export class ImagesService {
         where,
         skip,
         take,
-        orderBy: { creadoEn: 'desc' },
+        orderBy: { creadoEn: "desc" },
       }),
       this.prisma.imagen.count({ where }),
     ]);
@@ -99,23 +120,23 @@ export class ImagesService {
       include: {
         paquetes: {
           include: { paquete: { select: { id: true, nombre: true } } },
-          orderBy: { orden: 'asc' },
+          orderBy: { orden: "asc" },
         },
         vehiculos: {
           include: { vehiculo: { select: { id: true, nombre: true } } },
-          orderBy: { orden: 'asc' },
+          orderBy: { orden: "asc" },
         },
         eventos: {
           include: {
             evento: { select: { id: true, titulo: true, fecha: true } },
           },
-          orderBy: { orden: 'asc' },
+          orderBy: { orden: "asc" },
         },
       },
     });
 
     if (!imagen) {
-      throw new NotFoundException('Imagen no encontrada');
+      throw new NotFoundException("Imagen no encontrada");
     }
 
     return this.toImageWithRelations(imagen);
@@ -144,7 +165,7 @@ export class ImagesService {
       data: { estado: EstadoActivo.INACTIVO },
     });
 
-    return { message: 'Imagen desactivada correctamente' };
+    return { message: "Imagen desactivada correctamente" };
   }
 
   async attachToPackage(imagenId: string, dto: AttachImageToPackageDto) {
@@ -232,24 +253,24 @@ export class ImagesService {
 
   private async ensureImageExists(id: string) {
     const exists = await this.prisma.imagen.findUnique({ where: { id } });
-    if (!exists) throw new NotFoundException('Imagen no encontrada');
+    if (!exists) throw new NotFoundException("Imagen no encontrada");
   }
 
   private async ensurePackageExists(id: string) {
     const exists = await this.prisma.paquete.findUnique({ where: { id } });
-    if (!exists) throw new NotFoundException('Paquete no encontrado');
+    if (!exists) throw new NotFoundException("Paquete no encontrado");
   }
 
   private async ensureVehicleExists(id: string) {
     const exists = await this.prisma.vehiculo.findUnique({ where: { id } });
-    if (!exists) throw new NotFoundException('Vehículo no encontrado');
+    if (!exists) throw new NotFoundException("Vehículo no encontrado");
   }
 
   private async ensureEventExists(id: string) {
     const exists = await this.prisma.eventoCalendario.findUnique({
       where: { id },
     });
-    if (!exists) throw new NotFoundException('Evento no encontrado');
+    if (!exists) throw new NotFoundException("Evento no encontrado");
   }
 
   private toImageResponse(img: any) {

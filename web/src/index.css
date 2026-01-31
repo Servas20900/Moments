@@ -25,6 +25,7 @@
   --color-muted: #b3b7c2;
   --color-accent: #c9a24d;
   --color-accent-hover: #e0bc6a;
+  --card-bg: #11131a;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -40,6 +41,7 @@
   --color-muted: #4f5565;
   --color-accent: #c2912d;
   --color-accent-hover: #dca94b;
+  --card-bg: #ffffff;
 }
 
 /* Reset and base styles */

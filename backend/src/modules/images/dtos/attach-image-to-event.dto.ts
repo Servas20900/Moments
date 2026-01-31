@@ -1,9 +1,9 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsInt, IsOptional, IsString, Min } from "class-validator";
+import { Type } from "class-transformer";
 
 export class AttachImageToEventDto {
-  @ApiProperty({ example: 'evento-id' })
+  @ApiProperty({ example: "evento-id" })
   @IsString()
   eventoId: string;
 

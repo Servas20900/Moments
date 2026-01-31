@@ -1,9 +1,9 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsInt, IsOptional, IsString, Min } from "class-validator";
+import { Type } from "class-transformer";
 
 export class AttachImageToVehicleDto {
-  @ApiProperty({ example: 'vehiculo-id' })
+  @ApiProperty({ example: "vehiculo-id" })
   @IsString()
   vehiculoId: string;
 

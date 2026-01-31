@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../common/prisma/prisma.service';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../../common/prisma/prisma.service";
 
 export interface CreateExperienceInput {
   titulo: string;
@@ -17,16 +17,16 @@ export class ExperiencesService {
     return [];
   }
 
-  async create(body: CreateExperienceInput) {
-    throw new NotFoundException('Experiences module is temporarily disabled');
+  async create(_body: CreateExperienceInput) {
+    throw new NotFoundException("Experiences module is temporarily disabled");
   }
 
-  async update(id: string, body: UpdateExperienceInput) {
-    throw new NotFoundException('Experiences module is temporarily disabled');
+  async update(_id: string, _body: UpdateExperienceInput) {
+    throw new NotFoundException("Experiences module is temporarily disabled");
   }
 
-  async delete(id: string) {
-    throw new NotFoundException('Experiences module is temporarily disabled');
+  async delete(_id: string) {
+    throw new NotFoundException("Experiences module is temporarily disabled");
   }
 
   private toResponse(x: any) {

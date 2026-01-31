@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { UpdateUserDto } from './dtos/update-user.dto';
-import { ChangePasswordDto } from './dtos/change-password.dto';
-import * as bcrypt from 'bcrypt';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { UpdateUserDto } from "./dtos/update-user.dto";
+import { ChangePasswordDto } from "./dtos/change-password.dto";
+import * as bcrypt from "bcrypt";
 
 @Injectable()
 export class UsersService {
@@ -30,10 +35,10 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
-    const { contrasena, ...userWithoutPassword } = user;
+    const { contrasena: _password, ...userWithoutPassword } = user;
     return {
       ...userWithoutPassword,
       roles: user.roles.map((ur) => ur.rol),
@@ -43,7 +48,7 @@ export class UsersService {
   async findAll(skip: number = 0, take: number = 10) {
     const [users, total] = await Promise.all([
       this.prisma.usuario.findMany({
-        where: { estado: 'ACTIVO' },
+        where: { estado: "ACTIVO" },
         skip,
         take,
         include: {
@@ -53,13 +58,13 @@ export class UsersService {
             },
           },
         },
-        orderBy: { creadoEn: 'desc' },
+        orderBy: { creadoEn: "desc" },
       }),
-      this.prisma.usuario.count({ where: { estado: 'ACTIVO' } }),
+      this.prisma.usuario.count({ where: { estado: "ACTIVO" } }),
     ]);
 
     const usersWithoutPassword = users.map((user) => {
-      const { contrasena, ...userWithoutPassword } = user;
+      const { contrasena: _password, ...userWithoutPassword } = user;
       return {
         ...userWithoutPassword,
         roles: user.roles.map((ur) => ur.rol),
@@ -80,7 +85,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     const updated = await this.prisma.usuario.update({
@@ -100,7 +105,7 @@ export class UsersService {
       },
     });
 
-    const { contrasena, ...userWithoutPassword } = updated;
+    const { contrasena: _password, ...userWithoutPassword } = updated;
     return {
       ...userWithoutPassword,
       roles: updated.roles.map((ur) => ur.rol),
@@ -113,26 +118,28 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     await this.prisma.usuario.update({
       where: { id },
-      data: { estado: 'INACTIVO' },
+      data: { estado: "INACTIVO" },
     });
 
-    return { message: 'User deactivated successfully' };
+    return { message: "User deactivated successfully" };
   }
 
   async changePassword(id: string, dto: ChangePasswordDto) {
     // Validar que las contraseñas coincidan
     if (dto.nuevaPassword !== dto.confirmarPassword) {
-      throw new BadRequestException('Las contraseñas no coinciden');
+      throw new BadRequestException("Las contraseñas no coinciden");
     }
 
     // Validar que la nueva contraseña sea diferente a la actual
     if (dto.passwordAntigua === dto.nuevaPassword) {
-      throw new BadRequestException('La nueva contraseña debe ser diferente a la actual');
+      throw new BadRequestException(
+        "La nueva contraseña debe ser diferente a la actual",
+      );
     }
 
     const user = await this.prisma.usuario.findUnique({
@@ -140,13 +147,16 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     // Verificar que la contraseña actual es correcta
-    const passwordMatches = await bcrypt.compare(dto.passwordAntigua, user.contrasena);
+    const passwordMatches = await bcrypt.compare(
+      dto.passwordAntigua,
+      user.contrasena,
+    );
     if (!passwordMatches) {
-      throw new UnauthorizedException('La contraseña actual es incorrecta');
+      throw new UnauthorizedException("La contraseña actual es incorrecta");
     }
 
     // Hashear la nueva contraseña
@@ -161,6 +171,6 @@ export class UsersService {
       },
     });
 
-    return { message: 'Contraseña actualizada correctamente' };
+    return { message: "Contraseña actualizada correctamente" };
   }
 }

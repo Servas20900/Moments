@@ -5,9 +5,9 @@ import Card from '../components/Card'
 import Modal from '../components/Modal'
 import { InputField, TextareaField, CheckboxField } from '../components/FormField'
 import ImageUpload from '../components/ImageUpload'
-import { fetchPackages, fetchVehicles, fetchCalendar, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, createExperience, updateExperience, deleteExperience, fetchSystemImages, createSystemImage, updateSystemImage, deleteSystemImage, fetchHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide, createImageRecord, attachImageToPackage, attachImageToVehicle, attachImageToEvent } from '../api/api'
+import { fetchPackages, fetchVehicles, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, fetchSystemImages, createSystemImage, updateSystemImage, deleteSystemImage, fetchHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide, createImageRecord, attachImageToPackage, attachImageToVehicle, attachImageToEvent } from '../api/api'
 import { useCalendarContext } from '../contexts/CalendarContext'
-import type { Package, Vehicle, CalendarSlot, Experience, SystemImage, HeroSlide } from '../data/content'
+import type { Package, Vehicle, CalendarSlotView, SystemImage, HeroSlide } from '../data/content'
 
 const Admin = () => {
   const [packages, setPackages] = useState<Package[]>([])
@@ -16,6 +16,12 @@ const Admin = () => {
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([])
   const [pkgCategories, setPkgCategories] = useState<string[]>([])
   const [vehCategories, setVehCategories] = useState<string[]>([])
+  const [pkgCatInputs, setPkgCatInputs] = useState<Record<string, string>>({})
+  const [vehCatInputs, setVehCatInputs] = useState<Record<string, string>>({})
+  const [pkgCatEditing, setPkgCatEditing] = useState<Record<string, boolean>>({})
+  const [vehCatEditing, setVehCatEditing] = useState<Record<string, boolean>>({})
+  const [newPkgCategory, setNewPkgCategory] = useState('')
+  const [newVehCategory, setNewVehCategory] = useState('')
   const [loading, setLoading] = useState(true)
   const [notifications, setNotifications] = useState<any[]>([])
   
@@ -30,7 +36,7 @@ const Admin = () => {
 
   const [editingPackage, setEditingPackage] = useState<Package | null>(null)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
-  const [editingEvent, setEditingEvent] = useState<CalendarSlot | null>(null)
+  const [editingEvent, setEditingEvent] = useState<CalendarSlotView | null>(null)
   const [editingImage, setEditingImage] = useState<SystemImage | null>(null)
   const [editingHero, setEditingHero] = useState<HeroSlide | null>(null)
   const [showPkgModal, setShowPkgModal] = useState(false)
@@ -40,7 +46,7 @@ const Admin = () => {
 
   useEffect(() => {
     let mounted = true
-    Promise.all([fetchPackages(), fetchVehicles(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides()]).then(([p, v, n, e, img, h]) => {
+    Promise.all([fetchPackages(), fetchVehicles(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides()]).then(([p, v, n, _exp, img, h]) => {
       if (!mounted) return
       setPackages(p)
       setVehicles(v)
@@ -54,12 +60,197 @@ const Admin = () => {
     return () => { mounted = false }
   }, [])
 
+  useEffect(() => {
+    setPkgCategories(Array.from(new Set(packages.map((x) => x.category))).filter(Boolean))
+  }, [packages])
+
+  useEffect(() => {
+    setVehCategories(Array.from(new Set(vehicles.map((x) => x.category))).filter(Boolean))
+  }, [vehicles])
+
+  useEffect(() => {
+    setPkgCatInputs((prev) => {
+      const next: Record<string, string> = {}
+      pkgCategories.forEach((c) => { next[c] = prev[c] ?? c })
+      return next
+    })
+    setVehCatInputs((prev) => {
+      const next: Record<string, string> = {}
+      vehCategories.forEach((c) => { next[c] = prev[c] ?? c })
+      return next
+    })
+    setPkgCatEditing((prev) => {
+      const next: Record<string, boolean> = {}
+      pkgCategories.forEach((c) => { next[c] = prev[c] ?? false })
+      return next
+    })
+    setVehCatEditing((prev) => {
+      const next: Record<string, boolean> = {}
+      vehCategories.forEach((c) => { next[c] = prev[c] ?? false })
+      return next
+    })
+  }, [pkgCategories, vehCategories])
+
+  const fallbackCategory = 'Sin categoría'
+
+  const addCategory = (type: 'package' | 'vehicle', name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) {
+      alert('Ingresa un nombre de categoría')
+      return
+    }
+    if (type === 'package') {
+      if (pkgCategories.includes(trimmed)) {
+        alert('Ya existe esa categoría de paquete')
+        return
+      }
+      setPkgCategories((s) => [...s, trimmed])
+      setPkgCatInputs((s) => ({ ...s, [trimmed]: trimmed }))
+      setPkgCatEditing((s) => ({ ...s, [trimmed]: false }))
+      setNewPkgCategory('')
+    } else {
+      if (vehCategories.includes(trimmed)) {
+        alert('Ya existe esa categoría de vehículo')
+        return
+      }
+      setVehCategories((s) => [...s, trimmed])
+      setVehCatInputs((s) => ({ ...s, [trimmed]: trimmed }))
+      setVehCatEditing((s) => ({ ...s, [trimmed]: false }))
+      setNewVehCategory('')
+    }
+  }
+
+  const renameCategory = async (type: 'package' | 'vehicle', from: string) => {
+    const inputs = type === 'package' ? pkgCatInputs : vehCatInputs
+    const to = (inputs[from] ?? from).trim()
+    if (!to) {
+      alert('El nombre no puede quedar vacío')
+      return
+    }
+    if (to === from) return
+
+    if (type === 'package') {
+      const prevCats = pkgCategories
+      const prevPackages = packages
+      const updatedCats = prevCats.map((c) => (c === from ? to : c))
+      const updatedPackages = prevPackages.map((p) => (p.category === from ? { ...p, category: to } : p))
+      setPkgCategories(updatedCats)
+      setPackages(updatedPackages)
+      setPkgCatInputs((s) => {
+        const next = { ...s }
+        delete next[from]
+        next[to] = to
+        return next
+      })
+      setPkgCatEditing((s) => {
+        const next = { ...s }
+        delete next[from]
+        next[to] = false
+        return next
+      })
+      try {
+        const affected = updatedPackages.filter((p) => p.category === to)
+        await Promise.all(affected.map((p) => updatePackage(p.id, { category: to } as any)))
+      } catch (e) {
+        alert(`No se pudo renombrar: ${e instanceof Error ? e.message : 'Error desconocido'}`)
+        setPkgCategories(prevCats)
+        setPackages(prevPackages)
+        setPkgCatInputs((s) => ({ ...s, [from]: from }))
+        setPkgCatEditing((s) => ({ ...s, [from]: false }))
+      }
+    } else {
+      const prevCats = vehCategories
+      const prevVehicles = vehicles
+      const updatedCats = prevCats.map((c) => (c === from ? to : c))
+      const updatedVehicles = prevVehicles.map((v) => (v.category === from ? { ...v, category: to } : v))
+      setVehCategories(updatedCats)
+      setVehicles(updatedVehicles)
+      setVehCatInputs((s) => {
+        const next = { ...s }
+        delete next[from]
+        next[to] = to
+        return next
+      })
+      setVehCatEditing((s) => {
+        const next = { ...s }
+        delete next[from]
+        next[to] = false
+        return next
+      })
+      try {
+        const affected = updatedVehicles.filter((v) => v.category === to)
+        await Promise.all(affected.map((v) => updateVehicle(v.id, { category: to } as any)))
+      } catch (e) {
+        alert(`No se pudo renombrar: ${e instanceof Error ? e.message : 'Error desconocido'}`)
+        setVehCategories(prevCats)
+        setVehicles(prevVehicles)
+        setVehCatInputs((s) => ({ ...s, [from]: from }))
+        setVehCatEditing((s) => ({ ...s, [from]: false }))
+      }
+    }
+  }
+
+  const deleteCategory = async (type: 'package' | 'vehicle', name: string) => {
+    if (!confirm(`¿Eliminar la categoría "${name}"? Los elementos asociados se moverán a "${fallbackCategory}".`)) return
+    if (type === 'package') {
+      const prevCats = pkgCategories
+      const prevPackages = packages
+      const updatedCats = prevCats.filter((c) => c !== name)
+      if (!updatedCats.includes(fallbackCategory)) updatedCats.push(fallbackCategory)
+      const updatedPackages = prevPackages.map((p) => (p.category === name ? { ...p, category: fallbackCategory } : p))
+      setPkgCategories(updatedCats)
+      setPackages(updatedPackages)
+      setPkgCatEditing((s) => {
+        const next = { ...s }
+        delete next[name]
+        next[fallbackCategory] = false
+        return next
+      })
+      try {
+        const affected = updatedPackages.filter((p) => p.category === fallbackCategory)
+        await Promise.all(affected.map((p) => updatePackage(p.id, { category: fallbackCategory } as any)))
+      } catch (e) {
+        alert(`No se pudo eliminar la categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`)
+        setPkgCategories(prevCats)
+        setPackages(prevPackages)
+      }
+    } else {
+      const prevCats = vehCategories
+      const prevVehicles = vehicles
+      const updatedCats = prevCats.filter((c) => c !== name)
+      if (!updatedCats.includes(fallbackCategory)) updatedCats.push(fallbackCategory)
+      const updatedVehicles = prevVehicles.map((v) => (v.category === name ? { ...v, category: fallbackCategory } : v))
+      setVehCategories(updatedCats)
+      setVehicles(updatedVehicles)
+      setVehCatEditing((s) => {
+        const next = { ...s }
+        delete next[name]
+        next[fallbackCategory] = false
+        return next
+      })
+      try {
+        const affected = updatedVehicles.filter((v) => v.category === fallbackCategory)
+        await Promise.all(affected.map((v) => updateVehicle(v.id, { category: fallbackCategory } as any)))
+      } catch (e) {
+        alert(`No se pudo eliminar la categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`)
+        setVehCategories(prevCats)
+        setVehicles(prevVehicles)
+      }
+    }
+  }
+
+  const pkgCategoryStats = pkgCategories.map((c) => ({ name: c, count: packages.filter((p) => p.category === c).length }))
+  const vehCategoryStats = vehCategories.map((c) => ({ name: c, count: vehicles.filter((v) => v.category === c).length }))
+
   const onCreatePackage = () => {
-    setEditingPackage({ id: '', category: '', name: '', description: '', price: 0, vehicle: '', maxPeople: 1, includes: [], imageUrl: '' })
+    setEditingPackage({ id: '', category: '', name: '', description: '', price: 0, vehicle: '', maxPeople: 1, includes: [], imageUrl: '', vehicleIds: [] })
     setShowPkgModal(true)
   }
 
-  const onEditPackage = (pkg: Package) => { setEditingPackage(pkg); setShowPkgModal(true) }
+  const onEditPackage = (pkg: Package) => {
+    setEditingPackage({ ...pkg })
+    setShowPkgModal(true)
+  }
 
   const onDeletePackage = async (id: string) => {
     if (!confirm('Eliminar paquete?')) return
@@ -158,7 +349,7 @@ const Admin = () => {
     setShowEventModal(true)
   }
 
-  const onEditEvent = (ev: CalendarSlot) => { setEditingEvent(ev); setShowEventModal(true) }
+  const onEditEvent = (ev: CalendarSlotView) => { setEditingEvent(ev); setShowEventModal(true) }
 
   const onDeleteEvent = async (id: string) => {
     if (!confirm('Eliminar evento?')) return
@@ -171,17 +362,13 @@ const Admin = () => {
     }
   }
 
-  const onSaveEvent = async (ev: CalendarSlot) => {
-    const eventData: CalendarSlot = { ...ev, status: 'evento' }
+  const onSaveEvent = async (ev: CalendarSlotView) => {
+    const eventData: CalendarSlotView = { ...ev, status: 'evento' }
     try {
       if (!ev.id) {
         // 1. Create event without image URL
         const evPayload = { ...eventData, imageUrl: '' }
-        console.log('[ADMIN] Creating event with payload:', evPayload)
         const created = await createCalendarEvent(evPayload)
-        console.log('[ADMIN] Event created from server:', created)
-        console.log('[ADMIN] Event status:', created.status)
-        console.log('[ADMIN] Calling addEvent with:', created)
         
         // 2. If image exists, persist it
         if (eventData.imageUrl) {
@@ -190,7 +377,6 @@ const Admin = () => {
           created.imageUrl = eventData.imageUrl
         }
         addEvent(created)
-        console.log('[ADMIN] addEvent called successfully')
       } else {
         // Update event
         const evPayload = { ...eventData, imageUrl: '' }
@@ -257,7 +443,7 @@ const Admin = () => {
       if (!slide.id) {
         // Crear slide
         const slidePayload = { ...slide }
-        const created = await createHeroSlide(slidePayload)
+        await createHeroSlide(slidePayload)
         updatedSlides = await fetchHeroSlides()
         setHeroSlides(updatedSlides)
       } else {
@@ -292,6 +478,7 @@ const Admin = () => {
             <div className="grid gap-2">
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-hero')?.scrollIntoView({ behavior: 'smooth' })}>Hero Carousel</button>
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-events')?.scrollIntoView({ behavior: 'smooth' })}>Eventos</button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-categories')?.scrollIntoView({ behavior: 'smooth' })}>Categorías</button>
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-packages')?.scrollIntoView({ behavior: 'smooth' })}>Paquetes</button>
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-vehicles')?.scrollIntoView({ behavior: 'smooth' })}>Vehículos</button>
               <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-images')?.scrollIntoView({ behavior: 'smooth' })}>Imágenes del Sistema</button>
@@ -330,7 +517,7 @@ const Admin = () => {
                   </div>
                   <div className="flex items-center justify-between md:block">
                     <span className="md:hidden text-xs text-gray-400">Estado</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${slide.isActive ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300'}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${slide.isActive ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
                       {slide.isActive ? 'Activo' : 'Inactivo'}
                     </span>
                   </div>
@@ -382,7 +569,7 @@ const Admin = () => {
                   </div>
                   <div className="flex items-center justify-between md:block">
                     <span className="md:hidden text-xs text-gray-400">Estado</span>
-                    <span className="inline-flex px-2 py-1 text-xs rounded-full bg-amber-500/15 text-amber-200">{e.status}</span>
+                    <span className="inline-flex px-2 py-1 text-xs rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-200">{e.status}</span>
                   </div>
                   <div className="flex gap-2.5 items-center justify-end md:justify-end">
                     <button className={iconButtonClasses} aria-label={`Editar ${e.title}`} onClick={() => onEditEvent(e)}>
@@ -397,45 +584,200 @@ const Admin = () => {
             </div>
           </section>
 
-          <section className="section" id="admin-packages">
+          <section className="section" id="admin-categories">
             <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
+                <p className="eyebrow">Organización</p>
+                <h2 className="section__title">Categorías</h2>
+                <p className="text-sm text-gray-400">Crea, edita o elimina categorías de paquetes y vehículos para mantener ordenado el catálogo.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card title="Paquetes" subtitle="Etiquetas para agrupar paquetes">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={newPkgCategory}
+                      onChange={(e) => setNewPkgCategory(e.target.value)}
+                      placeholder="Nueva categoría de paquete"
+                      className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
+                    />
+                    <Button variant="primary" onClick={() => addCategory('package', newPkgCategory)}>Crear</Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {pkgCategoryStats.length === 0 && <p className="text-sm text-gray-400">Aún no hay categorías. Crea la primera para organizar tus paquetes.</p>}
+                    {pkgCategoryStats.map((cat) => (
+                      <div
+                        key={cat.name}
+                        className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-3"
+                      >
+                        <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-2">
+                          <input
+                            type="text"
+                            value={pkgCatInputs[cat.name] ?? cat.name}
+                            onChange={(e) => setPkgCatInputs((prev) => ({ ...prev, [cat.name]: e.target.value }))}
+                            disabled={!pkgCatEditing[cat.name]}
+                            className={`flex-1 min-w-0 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none ${pkgCatEditing[cat.name] ? '' : 'opacity-70 cursor-not-allowed'}`}
+                          />
+                          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-gray-200 shrink-0">{cat.count} paquetes</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 sm:justify-between">
+                          <span className="text-xs text-gray-400">Usada en {cat.count} paquetes</span>
+                          <div className="flex gap-2 flex-wrap sm:justify-end shrink-0">
+                            {!pkgCatEditing[cat.name] && (
+                              <Button variant="ghost" onClick={() => setPkgCatEditing((s) => ({ ...s, [cat.name]: true }))}>Editar</Button>
+                            )}
+                            {pkgCatEditing[cat.name] && (
+                              <Button
+                                variant="primary"
+                                onClick={() => renameCategory('package', cat.name)}
+                                disabled={(pkgCatInputs[cat.name] ?? cat.name).trim() === cat.name}
+                              >
+                                Guardar
+                              </Button>
+                            )}
+                            {pkgCatEditing[cat.name] && (
+                              <Button
+                                variant="ghost"
+                                onClick={() => {
+                                  setPkgCatInputs((s) => ({ ...s, [cat.name]: cat.name }))
+                                  setPkgCatEditing((s) => ({ ...s, [cat.name]: false }))
+                                }}
+                              >
+                                Cancelar
+                              </Button>
+                            )}
+                            <Button variant="ghost" onClick={() => deleteCategory('package', cat.name)}>Eliminar</Button>
+                        </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+
+              <Card title="Vehículos" subtitle="Etiquetas para agrupar vehículos">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={newVehCategory}
+                      onChange={(e) => setNewVehCategory(e.target.value)}
+                      placeholder="Nueva categoría de vehículo"
+                      className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
+                    />
+                    <Button variant="primary" onClick={() => addCategory('vehicle', newVehCategory)}>Crear</Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {vehCategoryStats.length === 0 && <p className="text-sm text-gray-400">Aún no hay categorías. Crea la primera para organizar tus vehículos.</p>}
+                    {vehCategoryStats.map((cat) => (
+                      <div
+                        key={cat.name}
+                        className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-3"
+                      >
+                        <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-2">
+                          <input
+                            type="text"
+                            value={vehCatInputs[cat.name] ?? cat.name}
+                            onChange={(e) => setVehCatInputs((prev) => ({ ...prev, [cat.name]: e.target.value }))}
+                            disabled={!vehCatEditing[cat.name]}
+                            className={`flex-1 min-w-0 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none ${vehCatEditing[cat.name] ? '' : 'opacity-70 cursor-not-allowed'}`}
+                          />
+                          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-gray-200 shrink-0">{cat.count} vehículos</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 sm:justify-between">
+                          <span className="text-xs text-gray-400">Usada en {cat.count} vehículos</span>
+                          <div className="flex gap-2 flex-wrap sm:justify-end shrink-0">
+                            {!vehCatEditing[cat.name] && (
+                              <Button variant="ghost" onClick={() => setVehCatEditing((s) => ({ ...s, [cat.name]: true }))}>Editar</Button>
+                            )}
+                            {vehCatEditing[cat.name] && (
+                              <Button
+                                variant="primary"
+                                onClick={() => renameCategory('vehicle', cat.name)}
+                                disabled={(vehCatInputs[cat.name] ?? cat.name).trim() === cat.name}
+                              >
+                                Guardar
+                              </Button>
+                            )}
+                            {vehCatEditing[cat.name] && (
+                              <Button
+                                variant="ghost"
+                                onClick={() => {
+                                  setVehCatInputs((s) => ({ ...s, [cat.name]: cat.name }))
+                                  setVehCatEditing((s) => ({ ...s, [cat.name]: false }))
+                                }}
+                              >
+                                Cancelar
+                              </Button>
+                            )}
+                            <Button variant="ghost" onClick={() => deleteCategory('vehicle', cat.name)}>Eliminar</Button>
+                        </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </section>
+
+          <section className="section" id="admin-packages">
+            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
                 <p className="eyebrow">Contenido</p>
-                <h2 className="section__title">Paquetes</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="section__title mb-0">Paquetes</h2>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[11px] text-gray-200">{packages.length} activos</span>
+                </div>
               </div>
               <div>
                 <div className="flex gap-2 flex-wrap">
                   <Button variant="primary" onClick={onCreatePackage}>Nuevo paquete</Button>
-                  <Button variant="ghost" onClick={() => setShowPkgCatModal(true)}>Nueva categoría</Button>
                 </div>
               </div>
             </div>
 
             <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
-              <div className="hidden md:grid grid-cols-5 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
+              <div className="hidden md:grid grid-cols-6 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
                 <span>Nombre</span>
                 <span>Categoría</span>
                 <span>Precio</span>
-                <span>Vehículo</span>
+                <span>Vehículos</span>
+                <span>Incluye</span>
                 <span>Acciones</span>
               </div>
               {packages.map((p) => (
-                <div key={p.id} className="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                <div key={p.id} className="grid grid-cols-1 md:grid-cols-6 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
                   <div className="flex items-center justify-between md:block">
                     <span className="md:hidden text-xs text-gray-400">Nombre</span>
-                    <span>{p.name}</span>
+                    <span className="font-semibold text-white">{p.name}</span>
                   </div>
                   <div className="flex items-center justify-between md:block">
                     <span className="md:hidden text-xs text-gray-400">Categoría</span>
-                    <span>{p.category}</span>
+                    <span className="inline-flex px-2.5 py-1 text-[11px] rounded-full bg-white/10 text-gray-100">{p.category}</span>
                   </div>
                   <div className="flex items-center justify-between md:block">
                     <span className="md:hidden text-xs text-gray-400">Precio</span>
-                    <span className="font-semibold">${p.price.toLocaleString()}</span>
+                    <span className="font-semibold text-emerald-200">${p.price.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Vehículo</span>
-                    <span>{p.vehicle}</span>
+                    <span className="md:hidden text-xs text-gray-400">Vehículos</span>
+                    <div className="flex flex-wrap gap-1">
+                      {(p.vehicles || []).slice(0,3).map((v) => (
+                        <span key={v.id} className="inline-flex px-2 py-0.5 text-[11px] rounded-full bg-slate-900/60 border border-white/10 text-gray-200">{v.name}</span>
+                      ))}
+                      {(p.vehicleIds?.length || 0) > 3 && <span className="text-[11px] text-gray-400">+{(p.vehicleIds?.length || 0) - 3} más</span>}
+                      {(!p.vehicles || p.vehicles.length === 0) && <span className="text-[11px] text-gray-400">—</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between md:block">
+                    <span className="md:hidden text-xs text-gray-400">Incluye</span>
+                    <span className="text-[11px] text-gray-300 truncate">{p.includes?.[0] ?? '—'}</span>
                   </div>
                   <div className="flex gap-2.5 items-center justify-end md:justify-end">
                     <button className={iconButtonClasses} aria-label={`Editar ${p.name}`} onClick={() => onEditPackage(p)}>
@@ -452,14 +794,16 @@ const Admin = () => {
 
           <section className="section" id="admin-vehicles">
             <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
+              <div className="space-y-1">
                 <p className="eyebrow">Contenido</p>
-                <h2 className="section__title">Vehículos</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="section__title mb-0">Vehículos</h2>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[11px] text-gray-200">{vehicles.length} activos</span>
+                </div>
               </div>
               <div>
                 <div className="flex gap-2 flex-wrap">
                   <Button variant="primary" onClick={onCreateVehicle}>Nuevo vehículo</Button>
-                  <Button variant="ghost" onClick={() => setShowVehCatModal(true)}>Nueva categoría</Button>
                 </div>
               </div>
             </div>
@@ -533,7 +877,7 @@ const Admin = () => {
                   </div>
                   <div className="flex items-center justify-between md:block">
                     <span className="md:hidden text-xs text-gray-400">Estado</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${img.isActive ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300'}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${img.isActive ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
                       {img.isActive ? 'Activa' : 'Inactiva'}
                     </span>
                   </div>
@@ -579,13 +923,28 @@ const Admin = () => {
 
       <Modal open={showPkgModal} onClose={() => setShowPkgModal(false)} title={editingPackage ? 'Editar paquete' : 'Crear paquete'}>
         {editingPackage && (
-          <AdminPackageForm pkg={editingPackage} categories={pkgCategories} onCancel={() => { setShowPkgModal(false); setEditingPackage(null) }} onSave={onSavePackage} uploadImage={uploadImage} />
+          <AdminPackageForm
+            key={editingPackage.id || 'new'}
+            pkg={editingPackage}
+            categories={pkgCategories}
+            vehiclesList={vehicles}
+            onCancel={() => { setShowPkgModal(false); setEditingPackage(null) }}
+            onSave={onSavePackage}
+            uploadImage={uploadImage}
+          />
         )}
       </Modal>
 
       <Modal open={showVehModal} onClose={() => setShowVehModal(false)} title={editingVehicle ? 'Editar vehículo' : 'Crear vehículo'}>
         {editingVehicle && (
-          <AdminVehicleForm vehicle={editingVehicle} categories={vehCategories} onCancel={() => { setShowVehModal(false); setEditingVehicle(null) }} onSave={onSaveVehicle} uploadImage={uploadImage} />
+          <AdminVehicleForm
+            key={editingVehicle.id || 'new'}
+            vehicle={editingVehicle}
+            categories={vehCategories}
+            onCancel={() => { setShowVehModal(false); setEditingVehicle(null) }}
+            onSave={onSaveVehicle}
+            uploadImage={uploadImage}
+          />
         )}
       </Modal>
 
@@ -613,12 +972,19 @@ const Admin = () => {
   )
 }
 
-;
-
 function AdminEventForm(
-  { ev, onCancel, onSave, uploadImage }: { ev: CalendarSlot; onCancel: () => void; onSave: (e: CalendarSlot) => void; uploadImage: (file: File) => Promise<string> }
+  { ev, onCancel, onSave, uploadImage }: { ev: CalendarSlotView; onCancel: () => void; onSave: (e: CalendarSlotView) => void; uploadImage: (file: File) => Promise<string> }
 ) {
-  const [state, setState] = useState<CalendarSlot>(ev)
+  const [state, setState] = useState<CalendarSlotView>({
+    ...ev,
+    title: ev.title || '',
+    date: ev.date || '',
+    status: ev.status || 'evento',
+    detail: ev.detail || '',
+    tag: ev.tag || '',
+    imageUrl: ev.imageUrl || '',
+    id: ev.id || '',
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   // Sync form when switching between events
@@ -629,12 +995,12 @@ function AdminEventForm(
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setState((s) => ({ ...s, [name]: value } as CalendarSlot))
+    setState((s: CalendarSlotView) => ({ ...s, [name]: value } as CalendarSlotView))
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
   }
 
   const handleImageChange = (url: string) => {
-    setState((s) => ({ ...s, imageUrl: url }))
+    setState((s: CalendarSlotView) => ({ ...s, imageUrl: url }))
     if (errors.imageUrl) setErrors((prev) => ({ ...prev, imageUrl: '' }))
   }
 
@@ -708,27 +1074,45 @@ function AdminEventForm(
   )
 }
 
-function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage }: { pkg: Package; categories?: string[]; onCancel: () => void; onSave: (p: Package) => void; uploadImage: (file: File) => Promise<string> }) {
-  const [state, setState] = useState<Package>(pkg)
+function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCancel, onSave, uploadImage }: { pkg: Package; categories?: string[]; vehiclesList?: Vehicle[]; onCancel: () => void; onSave: (p: Package) => void; uploadImage: (file: File) => Promise<string> }) {
+  const [name, setName] = useState(pkg.name || '')
+  const [category, setCategory] = useState(pkg.category || '')
+  const [description, setDescription] = useState(pkg.description || '')
+  const [price, setPrice] = useState(pkg.price?.toString() || '')
+  const [maxPeople, setMaxPeople] = useState(pkg.maxPeople?.toString() || '')
+  const [imageUrl, setImageUrl] = useState(pkg.imageUrl || '')
+  const [includesText, setIncludesText] = useState(pkg.includes?.join(', ') || '')
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(pkg.vehicleIds || pkg.vehicles?.map((v) => v.id) || [])
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target
-    setState(s => ({ ...s, [name]: type === 'number' ? Number(value) : value } as any))
-    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
-  }
+  // Sync when pkg changes (for edit mode)
+  useEffect(() => {
+    setName(pkg.name || '')
+    setCategory(pkg.category || '')
+    setDescription(pkg.description || '')
+    setPrice(pkg.price?.toString() || '')
+    setMaxPeople(pkg.maxPeople?.toString() || '')
+    setImageUrl(pkg.imageUrl || '')
+    setIncludesText(pkg.includes?.join(', ') || '')
+    setSelectedVehicleIds(pkg.vehicleIds || pkg.vehicles?.map((v) => v.id) || [])
+    setErrors({})
+  }, [pkg.id])
 
-  const handleImageChange = (url: string) => {
-    setState(s => ({ ...s, imageUrl: url }))
-    if (errors.imageUrl) setErrors(e => ({ ...e, imageUrl: '' }))
+  const allCategories = Array.from(new Set([...categories, category].filter(Boolean)))
+
+  const toggleVehicle = (id: string) => {
+    setSelectedVehicleIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
   }
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
-    if (!state.name.trim()) newErrors.name = 'El nombre es requerido'
-    if (!state.category.trim()) newErrors.category = 'La categoría es requerida'
-    if (state.price <= 0) newErrors.price = 'El precio debe ser mayor a 0'
-    if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
+    if (!name.trim()) newErrors.name = 'El nombre es requerido'
+    if (!category.trim()) newErrors.category = 'La categoría es requerida'
+    const priceNum = Number(price)
+    if (!price || isNaN(priceNum) || priceNum <= 0) newErrors.price = 'El precio debe ser mayor a 0'
+    const maxPeopleNum = Number(maxPeople)
+    if (!maxPeople || isNaN(maxPeopleNum) || maxPeopleNum < 1) newErrors.maxPeople = 'Capacidad mínima 1'
+    if (!imageUrl) newErrors.imageUrl = 'La imagen es requerida'
     return newErrors
   }
 
@@ -739,7 +1123,22 @@ function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage 
       setErrors(newErrors)
       return
     }
-    onSave(state)
+
+    const includesArray = includesText.split(',').map((x) => x.trim()).filter(Boolean)
+
+    onSave({
+      id: pkg.id,
+      name: name.trim(),
+      category: category.trim(),
+      description: description.trim(),
+      price: Number(price),
+      maxPeople: Number(maxPeople),
+      imageUrl,
+      includes: includesArray,
+      vehicle: pkg.vehicle || '',
+      vehicleIds: selectedVehicleIds,
+      vehicles: pkg.vehicles || [],
+    })
   }
 
   return (
@@ -748,57 +1147,113 @@ function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage 
         label="Nombre"
         required
         name="name"
-        value={state.name}
-        onChange={handleChange}
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value)
+          if (errors.name) setErrors((prev) => ({ ...prev, name: '' }))
+        }}
         error={errors.name}
         placeholder="Ej: Tour privado de 8 horas"
       />
       <div className="grid gap-4 sm:grid-cols-2">
-        <InputField
-          label="Categoría"
-          required
-          name="category"
-          value={state.category}
-          onChange={handleChange}
-          error={errors.category}
-          placeholder="Nueva o existente"
-          list="pkg-cats"
-        />
+        <label className="flex flex-col gap-1.5 text-sm text-white">
+          <span>Categoría <span className="text-red-400">*</span></span>
+          <select
+            name="category"
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value)
+              if (errors.category) setErrors((prev) => ({ ...prev, category: '' }))
+            }}
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
+            required
+          >
+            <option value="">Selecciona una categoría</option>
+            {allCategories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          {errors.category && <span className="text-xs text-red-400">{errors.category}</span>}
+        </label>
         <InputField
           label="Precio"
           required
-          type="number"
+          type="text"
+          inputMode="decimal"
           name="price"
-          value={state.price}
-          onChange={handleChange}
+          value={price}
+          onChange={(e) => {
+            const val = e.target.value
+            if (/^\d*\.?\d{0,2}$/.test(val) || val === '') {
+              setPrice(val)
+              if (errors.price) setErrors((prev) => ({ ...prev, price: '' }))
+            }
+          }}
           error={errors.price}
           placeholder="0.00"
-          min="0"
-          step="0.01"
+        />
+        <InputField
+          label="Capacidad (personas)"
+          required
+          type="text"
+          inputMode="numeric"
+          name="maxPeople"
+          value={maxPeople}
+          onChange={(e) => {
+            const val = e.target.value
+            if (/^\d*$/.test(val)) {
+              setMaxPeople(val)
+              if (errors.maxPeople) setErrors((prev) => ({ ...prev, maxPeople: '' }))
+            }
+          }}
+          error={errors.maxPeople}
         />
       </div>
-      <datalist id="pkg-cats">
-        {categories.map((c) => <option key={c} value={c} />)}
-      </datalist>
-      <InputField
-        label="Vehículo"
-        name="vehicle"
-        value={state.vehicle}
-        onChange={handleChange}
-        placeholder="Ej: Camioneta"
+      <TextareaField
+        label="Incluye (separado por comas)"
+        name="includes"
+        value={includesText}
+        onChange={(e) => setIncludesText(e.target.value)}
+        placeholder="Chofer profesional, Botella de vino, Decoración"
       />
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-white">Vehículos asignados</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-56 overflow-y-auto pr-1">
+          {vehiclesList.map((v) => (
+            <label key={v.id} className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3 cursor-pointer hover:bg-white/10">
+              <input
+                type="checkbox"
+                checked={selectedVehicleIds.includes(v.id)}
+                onChange={() => toggleVehicle(v.id)}
+                className="mt-1 w-4 h-4 rounded border-white/20 bg-white/5 text-amber-300 focus:ring-amber-300/60"
+              />
+              <div className="space-y-1">
+                <p className="text-sm text-white font-semibold">{v.name}</p>
+                <p className="text-xs text-gray-300">{v.seats} asientos · {v.rate || 'Tarifa variable'}</p>
+                <p className="text-xs text-gray-400">{v.category}</p>
+              </div>
+            </label>
+          ))}
+          {vehiclesList.length === 0 && <p className="text-sm text-gray-400">No hay vehículos cargados.</p>}
+        </div>
+      </div>
       <TextareaField
         label="Descripción"
         name="description"
-        value={state.description}
-        onChange={handleChange}
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
         placeholder="Descripción detallada del paquete"
       />
       <ImageUpload
         label="Cargar imagen del paquete"
         required
-        value={state.imageUrl}
-        onChange={handleImageChange}
+        value={imageUrl}
+        onChange={(url) => {
+          setImageUrl(url)
+          if (errors.imageUrl) setErrors((prev) => ({ ...prev, imageUrl: '' }))
+        }}
         onUpload={uploadImage}
         error={errors.imageUrl}
       />
@@ -815,16 +1270,34 @@ function AdminPackageForm({ pkg, categories = [], onCancel, onSave, uploadImage 
 }
 
 function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadImage }: { vehicle: Vehicle; categories?: string[]; onCancel: () => void; onSave: (v: Vehicle) => void; uploadImage: (file: File) => Promise<string> }) {
-  const [state, setState] = useState<Vehicle>(vehicle)
+  const [state, setState] = useState<Vehicle>({
+    ...vehicle,
+    name: vehicle.name || '',
+    category: vehicle.category || '',
+    seats: vehicle.seats ?? 1,
+    rate: vehicle.rate || '',
+    features: vehicle.features || [],
+    imageUrl: vehicle.imageUrl || '',
+    id: vehicle.id || '',
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
-    setState(s => ({
-      ...s,
-      [name]: name === 'seats' && type === 'number' ? Number(value) : name === 'features' ? value.split(',').map(x => x.trim()) : value
-    } as any))
-    if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
+    if (name === 'features') {
+      setState((s) => ({ ...s, features: value.split(',').map((x) => x.trim()) }))
+      if (errors[name]) setErrors((e) => ({ ...e, [name]: '' }))
+      return
+    }
+
+    if (type === 'number' && name === 'seats') {
+      if (/^\d*$/.test(value)) {
+        setState((s) => ({ ...s, seats: value } as any))
+      }
+    } else {
+      setState((s) => ({ ...s, [name]: value } as any))
+    }
+    if (errors[name]) setErrors((e) => ({ ...e, [name]: '' }))
   }
 
   const handleImageChange = (url: string) => {
@@ -836,7 +1309,8 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
     const newErrors: Record<string, string> = {}
     if (!state.name.trim()) newErrors.name = 'El nombre es requerido'
     if (!state.category.trim()) newErrors.category = 'La categoría es requerida'
-    if (state.seats < 1) newErrors.seats = 'Mínimo 1 asiento'
+    const seatsValue = typeof state.seats === 'string' ? Number(state.seats) : state.seats
+    if (!Number.isFinite(seatsValue) || seatsValue < 1) newErrors.seats = 'Mínimo 1 asiento'
     const rateStr = typeof state.rate === 'string' ? state.rate : String(state.rate || '')
     if (!rateStr.trim()) newErrors.rate = 'La tarifa es requerida'
     if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
@@ -850,7 +1324,8 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
       setErrors(newErrors)
       return
     }
-    onSave(state)
+    const seatsValue = typeof state.seats === 'string' ? Number(state.seats) : state.seats
+    onSave({ ...state, seats: seatsValue })
   }
 
   return (
@@ -966,14 +1441,24 @@ function CreateCategoryForm({ onCreate, onCancel }: { onCreate: (name: string) =
 }
 
 function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemImage; onCancel: () => void; onSave: (img: SystemImage) => void; uploadImage: (file: File) => Promise<string> }) {
-  const [state, setState] = useState<SystemImage>(img)
+  const [state, setState] = useState<SystemImage>({
+    ...img,
+    name: img.name || '',
+    description: img.description || '',
+    url: img.url || '',
+    altText: img.altText || '',
+    order: img.order ?? 0,
+    isActive: img.isActive ?? true,
+    id: img.id || '',
+    category: img.category || 'GALERIA',
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     setState(s => ({
       ...s,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : name === 'order' ? Number(value) : value
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : name === 'order' ? value : value
     }))
     if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
   }
@@ -998,7 +1483,9 @@ function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemIma
       return
     }
     // Siempre guardar como imagen de galería
-    const imgToSave = { ...state, categoria: 'GALERIA' }
+    const orderValue = typeof state.order === 'string' ? Number(state.order) : state.order
+    const normalizedOrder = Number.isFinite(orderValue) ? Number(orderValue) : 0
+    const imgToSave = { ...state, order: normalizedOrder, categoria: 'GALERIA' }
     await createImageRecord({ categoria: 'GALERIA', url: imgToSave.url, altText: imgToSave.name })
     onSave(imgToSave)
   }
@@ -1063,14 +1550,27 @@ function AdminImageForm({ img, onCancel, onSave, uploadImage }: { img: SystemIma
 }
 
 function AdminHeroSlideForm({ slide, onCancel, onSave, uploadImage }: { slide: HeroSlide; onCancel: () => void; onSave: (slide: HeroSlide) => void; uploadImage: (file: File) => Promise<string> }) {
-  const [state, setState] = useState<HeroSlide>(slide)
+  const [state, setState] = useState<HeroSlide>({
+    ...slide,
+    title: slide.title || '',
+    subtitle: slide.subtitle || '',
+    description: slide.description || '',
+    imageUrl: slide.imageUrl || '',
+    order: Number(slide.order ?? 0),
+    isActive: slide.isActive ?? true,
+    id: slide.id || '',
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
     setState(s => ({
       ...s,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : name === 'order' ? Number(value) : value
+      [name]: type === 'checkbox'
+        ? (e.target as HTMLInputElement).checked
+        : name === 'order'
+          ? Number(value)
+          : value
     }))
     if (errors[name]) setErrors(e => ({ ...e, [name]: '' }))
   }
@@ -1096,7 +1596,9 @@ function AdminHeroSlideForm({ slide, onCancel, onSave, uploadImage }: { slide: H
       setErrors(newErrors)
       return
     }
-    onSave(state)
+    const orderValue = typeof state.order === 'string' ? Number(state.order) : state.order
+    const normalizedOrder = Number.isFinite(orderValue) ? Number(orderValue) : 0
+    onSave({ ...state, order: normalizedOrder })
   }
 
   return (

@@ -1,6 +1,6 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { CategoriaImagen, EstadoActivo } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { CategoriaImagen, EstadoActivo } from "@prisma/client";
+import { IsEnum, IsOptional, IsString } from "class-validator";
 
 export class UpdateImageDto {
   @ApiPropertyOptional({ enum: CategoriaImagen })
@@ -8,7 +8,7 @@ export class UpdateImageDto {
   @IsEnum(CategoriaImagen)
   categoria?: CategoriaImagen;
 
-  @ApiPropertyOptional({ example: 'Texto alternativo accesible' })
+  @ApiPropertyOptional({ example: "Texto alternativo accesible" })
   @IsOptional()
   @IsString()
   altText?: string;

@@ -1,8 +1,13 @@
-import type { Package, Vehicle, CalendarSlot, VehicleOccupancy, Experience, SystemImage, HeroSlide } from '../data/content'
+import type { PackageView, VehicleView, CalendarSlotView, ExperienceView, SystemImage, HeroSlide } from '../data/content'
+import type { ExtraOption } from '../contexts/ReservationContext'
 import { getToken as getAuthToken, saveToken, saveUser } from '../utils/auth'
 
 // Base URL for the backend API (Spanish routes)
-const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+const rawApiUrl = import.meta.env.VITE_API_URL
+if (!rawApiUrl) {
+  throw new Error('VITE_API_URL is required. Set it in your environment before building.')
+}
+const API_URL = rawApiUrl.replace(/\/$/, '')
 const FALLBACK_IMG = 'https://res.cloudinary.com/demo/image/upload/sample.jpg'
 
 const getToken = () => getAuthToken() || ''
@@ -53,20 +58,34 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
-const mapPackage = (p: any): Package => ({
-  id: p.id,
-  category: p.categoria || 'Paquete',
-  name: p.nombre,
-  description: p.descripcion,
-  price: Number(p.precioBase ?? p.price ?? 0),
-  vehicle: p.vehiculo || p.vehicle || 'Chofer asignado',
-  maxPeople: p.maxPersonas ?? p.maxPeople ?? 0,
-  includes: p.incluye ?? p.includes ?? ['Chofer profesional', 'Atención personalizada'],
-  imageUrl: p.imagenUrl || p.imageUrl || FALLBACK_IMG,
-  addons: p.addons,
-})
+const mapPackage = (p: any): PackageView => {
+  const vehicles = (p.vehicles ?? p.vehiculos)?.map((v: any) => ({
+    id: v.id ?? v.vehiculo?.id,
+    name: v.name ?? v.vehiculo?.nombre ?? v.nombre,
+    category: v.category ?? v.vehiculo?.categoria ?? v.categoria,
+    seats: v.seats ?? v.vehiculo?.asientos ?? v.asientos ?? 0,
+    rate: v.rate ?? v.vehiculo?.tarifaPorHora ?? v.tarifaPorHora ?? 'Consultar',
+    features: v.features ?? v.vehiculo?.features ?? [],
+    imageUrl: v.imageUrl ?? v.vehiculo?.imagenUrl ?? v.imagenUrl ?? FALLBACK_IMG,
+  })) ?? []
 
-const mapVehicle = (v: any): Vehicle => ({
+  return {
+    id: p.id,
+    category: p.categoria || 'Paquete',
+    name: p.nombre || p.name || '',
+    description: p.descripcion || p.description || '',
+    price: Number(p.precioBase ?? p.price ?? 0),
+    vehicle: p.vehiculo || p.vehicle || vehicles[0]?.name || 'Chofer asignado',
+    maxPeople: p.maxPersonas ?? p.maxPeople ?? 0,
+    includes: p.incluye ?? p.includes ?? ['Chofer profesional', 'Atención personalizada'],
+    imageUrl: p.imagenUrl || p.imageUrl || FALLBACK_IMG,
+    addons: p.addons,
+    vehicles,
+    vehicleIds: vehicles.map((v: any) => v.id).filter(Boolean),
+  }
+}
+
+const mapVehicle = (v: any): VehicleView => ({
   id: v.id,
   name: v.nombre || v.name,
   category: v.categoria || v.category,
@@ -76,10 +95,10 @@ const mapVehicle = (v: any): Vehicle => ({
   imageUrl: v.imagenUrl || v.imageUrl || FALLBACK_IMG,
 })
 
-const mapCalendar = (e: any): CalendarSlot => {
+const mapCalendar = (e: any): CalendarSlotView => {
   // Prefer already-mapped fields from backend, fall back to legacy ones
-  const status: CalendarSlot['status'] = e.status
-    ? (e.status as CalendarSlot['status'])
+  const status: CalendarSlotView['status'] = e.status
+    ? (e.status as CalendarSlotView['status'])
     : (() => {
         const estado = (e.estado || '').toUpperCase()
         return estado === 'RESERVADO' || estado === 'BOOKED' ? 'ocupado' : estado === 'BLOQUEADO' ? 'evento' : 'disponible'
@@ -104,42 +123,37 @@ const mapCalendar = (e: any): CalendarSlot => {
   }
 }
 
-const mapExperience = (x: any): Experience => ({
+const mapExperience = (x: any): ExperienceView => ({
   id: x.id,
   title: x.titulo || x.nombre,
   imageUrl: x.imagenUrl || x.url || FALLBACK_IMG,
 })
 
-export const fetchPackages = async (): Promise<Package[]> => {
+const mapExtra = (e: any): ExtraOption => ({
+  id: e.id,
+  name: e.name ?? e.nombre,
+  price: Number(e.price ?? e.precio ?? 0),
+  description: e.description ?? e.descripcion ?? '',
+})
+
+export const fetchPackages = async (): Promise<PackageView[]> => {
   const data = await http<any>('/paquetes')
   const list = Array.isArray(data) ? data : data?.data ?? []
   return list.map(mapPackage)
 }
 
-export const fetchVehicles = async (): Promise<Vehicle[]> => {
-  const data = await http<any[]>('/vehiculos')
-  return data.map(mapVehicle)
+export const fetchVehicles = async (): Promise<VehicleView[]> => {
+  const data = await http<any>('/vehiculos')
+  const list = Array.isArray(data) ? data : data?.data ?? []
+  return list.map(mapVehicle)
 }
 
-export const fetchCalendar = async (): Promise<CalendarSlot[]> => {
+export const fetchCalendar = async (): Promise<CalendarSlotView[]> => {
   const data = await http<any[]>('/eventos')
   return data.map(mapCalendar)
 }
 
-export const fetchVehicleOccupancy = async (): Promise<VehicleOccupancy[]> => {
-  const data = await http<any[]>('/vehiculos')
-  const ocupaciones: VehicleOccupancy[] = []
-  data.forEach((v) => {
-    (v.ocupacion || []).forEach((o: any) => {
-      const dateStr = (o.fecha || '').slice(0, 10)
-      if (dateStr)
-        ocupaciones.push({ vehicleId: v.id, date: dateStr, isOccupied: true })
-    })
-  })
-  return ocupaciones
-}
-
-export const fetchExperiences = async (): Promise<Experience[]> => {
+export const fetchExperiences = async (): Promise<ExperienceView[]> => {
   const data = await http<any[]>('/experiencias')
   return data.map(mapExperience)
 }
@@ -191,7 +205,28 @@ export const fetchHeroSlides = async (): Promise<HeroSlide[]> => {
   }
 }
 
-export const createCalendarEvent = async (data: Partial<CalendarSlot>) => {
+// Extras API
+export const fetchExtras = async (): Promise<ExtraOption[]> => {
+  try {
+    const data = await http<any>('/extras')
+    const list = Array.isArray(data) ? data : data?.data ?? []
+    return list.map(mapExtra)
+  } catch {
+    return []
+  }
+}
+
+export const fetchPackageExtras = async (paqueteId: string): Promise<ExtraOption[]> => {
+  try {
+    const data = await http<any>(`/extras/paquetes/${paqueteId}`)
+    const list = Array.isArray(data) ? data : data?.data ?? []
+    return list.map(mapExtra)
+  } catch {
+    return []
+  }
+}
+
+export const createCalendarEvent = async (data: Partial<CalendarSlotView>) => {
   const payload = {
     titulo: data.title || 'Evento',
     fecha: data.date,
@@ -200,15 +235,12 @@ export const createCalendarEvent = async (data: Partial<CalendarSlot>) => {
     etiqueta: data.tag,
     imagenUrl: data.imageUrl,
   }
-  console.log('[API] Creating event with payload:', payload)
   const created = await http<any>('/eventos', { method: 'POST', body: JSON.stringify(payload) })
-  console.log('[API] Raw response from server:', created)
   const mapped = mapCalendar(created)
-  console.log('[API] Mapped event:', mapped)
   return mapped
 }
 
-export const updateCalendarEvent = async (id: string, patch: Partial<CalendarSlot>) => {
+export const updateCalendarEvent = async (id: string, patch: Partial<CalendarSlotView>) => {
   const payload = {
     ...(patch.title && { titulo: patch.title }),
     ...(patch.date && { fecha: patch.date }),
@@ -226,28 +258,32 @@ export const deleteCalendarEvent = async (id: string) => {
   return true
 }
 
-export const createPackage = async (data: Partial<Package>) => {
+export const createPackage = async (data: Partial<PackageView>) => {
   const payload = {
     categoriaId: 1, // Asignar categoría por defecto
+    categoria: data.category,
     nombre: data.name,
     descripcion: data.description || '',
     precioBase: data.price ?? 0,
     maxPersonas: data.maxPeople ?? 0,
     imagenUrl: data.imageUrl || '',
+    vehicleIds: data.vehicleIds,
   }
   const created = await http<any>('/paquetes', { method: 'POST', body: JSON.stringify(payload) })
   return mapPackage(created)
 }
 
-export const updatePackage = async (id: string, patch: Partial<Package>) => {
+export const updatePackage = async (id: string, patch: Partial<PackageView>) => {
   const payload = {
     ...(patch.name && { nombre: patch.name }),
     ...(patch.description && { descripcion: patch.description }),
+    ...(patch.category && { categoria: patch.category }),
     ...(patch.price !== undefined && { precioBase: patch.price }),
     ...(patch.maxPeople !== undefined && { maxPersonas: patch.maxPeople }),
     ...(patch.imageUrl && { imagenUrl: patch.imageUrl }),
     ...(patch.vehicle && { vehiculo: patch.vehicle }),
     ...(patch.includes && { incluye: patch.includes }),
+    ...(patch.vehicleIds && { vehicleIds: patch.vehicleIds }),
   }
   await http(`/paquetes/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
   return true
@@ -258,7 +294,7 @@ export const deletePackage = async (id: string) => {
   return true
 }
 
-export const createVehicle = async (data: Partial<Vehicle>) => {
+export const createVehicle = async (data: Partial<VehicleView>) => {
   const payload = {
     nombre: data.name,
     categoria: data.category || 'General',
@@ -270,7 +306,7 @@ export const createVehicle = async (data: Partial<Vehicle>) => {
   return mapVehicle(created)
 }
 
-export const updateVehicle = async (id: string, patch: Partial<Vehicle>) => {
+export const updateVehicle = async (id: string, patch: Partial<VehicleView>) => {
   const payload = {
     ...(patch.name && { nombre: patch.name }),
     ...(patch.category && { categoria: patch.category }),
@@ -356,6 +392,17 @@ export const submitReservation = async (payload: any) => {
     paqueteId: payload.paqueteId,
     vehiculoId: payload.vehiculoId,
     tipoPago: payload.tipoPago || 'TARJETA',
+    precioBase: payload.precioBase ?? 0,
+    precioTotal: payload.precioTotal ?? 0,
+    anticipo: payload.anticipo ?? 0,
+    restante: payload.restante ?? 0,
+    extras: Array.isArray(payload.extras)
+      ? payload.extras.map((x: any) => ({
+          extraId: x.extraId || x.id,
+          cantidad: Number(x.cantidad ?? 1),
+          precioUnitario: Number(x.precioUnitario ?? x.price ?? 0),
+        }))
+      : undefined,
   }
 
   const res = await http<{ id: string }>('/reservas', { method: 'POST', body: JSON.stringify(body) })
@@ -503,7 +550,7 @@ export const changePassword = async (passwordAntigua: string, nuevaPassword: str
   return true
 }
 
-export const createExperience = async (data: Partial<Experience>) => {
+export const createExperience = async (data: Partial<ExperienceView>) => {
   const payload = {
     titulo: data.title,
     imagenUrl: data.imageUrl,
@@ -512,7 +559,7 @@ export const createExperience = async (data: Partial<Experience>) => {
   return mapExperience(created)
 }
 
-export const updateExperience = async (id: string, patch: Partial<Experience>) => {
+export const updateExperience = async (id: string, patch: Partial<ExperienceView>) => {
   const payload = {
     ...(patch.title && { titulo: patch.title }),
     ...(patch.imageUrl && { imagenUrl: patch.imageUrl }),
@@ -526,8 +573,36 @@ export const deleteExperience = async (id: string) => {
   return true
 }
 
-export const createSystemImage = async (data: Partial<SystemImage>) => ({ ...data, id: crypto.randomUUID() }) as SystemImage
-export const updateSystemImage = async (_id: string, _data: Partial<SystemImage>) => true
+export const createSystemImage = async (data: Partial<SystemImage>) => {
+  // Crear registro de imagen en la tabla Imagen
+  const payload = {
+    categoria: data.category || 'GALERIA',
+    url: data.url,
+    altText: data.name || data.altText,
+  }
+  const imgRes = await http<any>('/imagenes', { method: 'POST', body: JSON.stringify(payload) })
+  return {
+    id: imgRes.id,
+    category: imgRes.categoria,
+    name: imgRes.altText || '',
+    description: imgRes.description || '',
+    url: imgRes.url,
+    altText: imgRes.altText || '',
+    order: data.order || 0,
+    isActive: imgRes.estado === 'ACTIVO',
+  } as SystemImage
+}
+
+export const updateSystemImage = async (id: string, data: Partial<SystemImage>) => {
+  // Actualizar registro de imagen en la tabla Imagen
+  const payload: any = {}
+  if (data.url) payload.url = data.url
+  if (data.name || data.altText) payload.altText = data.name || data.altText
+  if (data.category) payload.categoria = data.category
+  await http(`/imagenes/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  return true
+}
+
 export const deleteSystemImage = async (id: string) => {
   await http(`/imagenes/${id}`, { method: 'DELETE' })
   return true
@@ -576,7 +651,6 @@ export default {
   fetchPackages,
   fetchVehicles,
   fetchCalendar,
-  fetchVehicleOccupancy,
   createCalendarEvent,
   updateCalendarEvent,
   deleteCalendarEvent,

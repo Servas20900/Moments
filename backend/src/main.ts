@@ -1,20 +1,49 @@
-import { NestFactory } from '@nestjs/core';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
-import { AppModule } from './app.module';
+import { NestFactory } from "@nestjs/core";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { ValidationPipe } from "@nestjs/common";
+import helmet from "helmet";
+import compression from "compression";
+import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
+import * as Sentry from "@sentry/node";
+import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
+import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
+import { AppModule } from "./app.module";
 
 async function bootstrap() {
+  if (process.env.SENTRY_DSN) {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV || "development",
+      tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0.1),
+    });
+  }
+
   const app = await NestFactory.create(AppModule);
+
+  // Configurar Winston como logger
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+
+  // Security headers con Helmet
+  app.use(
+    helmet({
+      contentSecurityPolicy: false, // Deshabilitado para Swagger
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
+  // Compresión de respuestas
+  app.use(compression());
 
   // Set global prefix
   // app.setGlobalPrefix('api');
 
-  // Enable CORS
+  // Enable CORS - Estricto en producción
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   });
 
   // Global validation pipe
@@ -29,40 +58,48 @@ async function bootstrap() {
     }),
   );
 
+  // Global exception filters - orden específico: más específico a más general
+  app.useGlobalFilters(
+    new HttpExceptionFilter(),      // Maneja HttpException
+    new PrismaExceptionFilter(),    // Maneja errores de Prisma/DB
+    new AllExceptionsFilter(),      // Catch-all + Sentry
+  );
+
   // Swagger API documentation
   const config = new DocumentBuilder()
-    .setTitle('Moments API')
-    .setDescription('API for Moments - Premium travel experiences platform')
-    .setVersion('1.0.0')
+    .setTitle("Moments API")
+    .setDescription("API for Moments - Premium travel experiences platform")
+    .setVersion("1.0.0")
     .addBearerAuth(
-      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      'access_token',
+      { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+      "access_token",
     )
-    .addTag('Auth', 'Authentication endpoints')
-    .addTag('Users', 'User management')
-    .addTag('Packages', 'Package management')
-    .addTag('Vehicles', 'Vehicle management')
-    .addTag('Reservations', 'Booking management')
-    .addTag('Calendar', 'Calendar and availability')
-    .addTag('Reviews', 'User reviews and ratings')
+    .addTag("Auth", "Authentication endpoints")
+    .addTag("Users", "User management")
+    .addTag("Packages", "Package management")
+    .addTag("Vehicles", "Vehicle management")
+    .addTag("Reservations", "Booking management")
+    .addTag("Calendar", "Calendar and availability")
+    .addTag("Reviews", "User reviews and ratings")
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup("api/docs", app, document);
 
   // Expose OpenAPI JSON for type generation
-  app.getHttpAdapter().get('/api/docs-json', (req, res) => {
+  app.getHttpAdapter().get("/api/docs-json", (req, res) => {
     res.json(document);
   });
 
   const port = process.env.PORT || 3000;
-  await app.listen(port, '0.0.0.0');
-  console.log(` Server running on http://localhost:${port}`);
-  console.log(` API Docs: http://localhost:${port}/api/docs`);
-  console.log(` API endpoints available at /api/*`);
+  await app.listen(port, "0.0.0.0");
+
+  const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
+  logger.log(` Application is running on: http://localhost:${port}`, 'Bootstrap');
+  logger.log(` API Documentation: http://localhost:${port}/api/docs`, 'Bootstrap');
 }
 
 bootstrap().catch((error) => {
-  console.error(' Bootstrap error:', error);
+  console.error(" Bootstrap error:", error);
   process.exit(1);
 });

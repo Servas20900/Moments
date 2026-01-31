@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { CreateVehicleDto } from './dtos/create-vehicle.dto';
-import { UpdateVehicleDto } from './dtos/update-vehicle.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { EstadoActivo } from "@prisma/client";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { CreateVehicleDto } from "./dtos/create-vehicle.dto";
+import { UpdateVehicleDto } from "./dtos/update-vehicle.dto";
 
 @Injectable()
 export class VehiclesService {
@@ -11,23 +12,40 @@ export class VehiclesService {
     return nombre
       ?.toLowerCase()
       .trim()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
   }
 
-  async findAll() {
-    const items = await this.prisma.vehiculo.findMany({
-      where: { estado: 'ACTIVO' },
-      include: {
-        imagenes: {
-          include: { imagen: true },
-          orderBy: { orden: 'asc' },
-          take: 1,
+  async findAll(params: { skip?: number; take?: number; categoria?: string; estado?: string }) {
+    const { skip = 0, take = 10, categoria, estado = "ACTIVO" } = params;
+
+    const normalizedEstado = Object.values(EstadoActivo).includes(estado as EstadoActivo)
+      ? (estado as EstadoActivo)
+      : EstadoActivo.ACTIVO;
+
+    const where = {
+      estado: normalizedEstado,
+      ...(categoria ? { categoria } : {}),
+    } as const;
+
+    const [items, total] = await Promise.all([
+      this.prisma.vehiculo.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          imagenes: {
+            include: { imagen: true },
+            orderBy: { orden: "asc" },
+            take: 1,
+          },
         },
-      },
-      orderBy: { creadoEn: 'desc' },
-    });
-    return items.map((v) => this.toResponse(v));
+        orderBy: { creadoEn: "desc" },
+      }),
+      this.prisma.vehiculo.count({ where }),
+    ]);
+
+    return { data: items.map((v) => this.toResponse(v)), total, skip, take };
   }
 
   async findById(id: string) {
@@ -36,11 +54,12 @@ export class VehiclesService {
       include: {
         imagenes: {
           include: { imagen: true },
-          orderBy: { orden: 'asc' },
+          orderBy: { orden: "asc" },
         },
       },
     });
-    if (!v || v.estado !== 'ACTIVO') throw new NotFoundException('Vehiculo no encontrado');
+    if (!v || v.estado !== "ACTIVO")
+      throw new NotFoundException("Vehiculo no encontrado");
     return this.toResponse(v);
   }
 
@@ -51,7 +70,7 @@ export class VehiclesService {
         categoria: dto.categoria,
         asientos: dto.asientos,
         tarifaPorHora: dto.tarifaPorHora,
-        estado: 'ACTIVO',
+        estado: "ACTIVO",
       },
     });
     return this.toResponse(created);
@@ -59,7 +78,7 @@ export class VehiclesService {
 
   async update(id: string, dto: UpdateVehicleDto) {
     const existing = await this.prisma.vehiculo.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Vehiculo no encontrado');
+    if (!existing) throw new NotFoundException("Vehiculo no encontrado");
 
     const updated = await this.prisma.vehiculo.update({
       where: { id },
@@ -75,9 +94,12 @@ export class VehiclesService {
 
   async delete(id: string) {
     const existing = await this.prisma.vehiculo.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Vehiculo no encontrado');
-    await this.prisma.vehiculo.update({ where: { id }, data: { estado: 'INACTIVO' } });
-    return { message: 'Vehiculo desactivado' };
+    if (!existing) throw new NotFoundException("Vehiculo no encontrado");
+    await this.prisma.vehiculo.update({
+      where: { id },
+      data: { estado: "INACTIVO" },
+    });
+    return { message: "Vehiculo desactivado" };
   }
 
   private toResponse(v: any) {

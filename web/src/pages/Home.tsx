@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import PackageCard from '../components/PackageCard'
-import SafeImage from '../components/SafeImage'
 import VehicleCard from '../components/VehicleCard'
 import { fetchPackages, fetchVehicles, fetchCalendar, fetchHeroSlides } from '../api/api'
 import type { HeroSlide } from '../data/content'
@@ -217,7 +216,7 @@ const Home = () => {
               className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-md"
             >
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-200">
-                <span className="rounded-full bg-amber-400/15 px-3 py-1 text-amber-300">{ev.status}</span>
+                <span className="rounded-full bg-amber-400/15 px-3 py-1 text-amber-700 dark:text-amber-300">{ev.status}</span>
                 <span className="rounded-full border border-white/10 px-3 py-1 text-gray-300">{ev.date}</span>
               </div>
               <div className="text-lg font-semibold text-white">{ev.title}</div>
@@ -269,11 +268,11 @@ const Home = () => {
       <section className="grid gap-8 rounded-2xl border border-white/10 bg-gradient-to-br from-amber-400/15 via-white/5 to-amber-300/10 p-6 shadow-xl backdrop-blur md:grid-cols-[1.1fr_0.9fr] md:items-center">
         <div className="space-y-4">
           <span className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-400">Detalle a detalle</span>
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Antes, durante y después</h2>
-          <p className="text-sm text-gray-200 sm:text-base">
+          <h2 className="text-2xl font-semibold text-[var(--color-text)] sm:text-3xl">Antes, durante y después</h2>
+          <p className="text-sm text-[var(--color-muted)] sm:text-base">
             Coordinamos con wedding planners, production managers o directamente contigo. Enviamos status silenciosos y mantenemos la línea de tiempo bajo control.
           </p>
-          <ul className="space-y-2 text-sm text-gray-100">
+          <ul className="space-y-2 text-sm text-[var(--color-muted)]">
             <li className="flex items-start gap-2">
               <span className="mt-1 inline-block h-2 w-2 rounded-full bg-amber-400"></span>
               Brief de seguridad y rutas alternativas listas.

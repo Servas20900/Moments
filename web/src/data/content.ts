@@ -21,9 +21,10 @@ export type UpdateImageDto = components['schemas']['UpdateImageDto']
 export type CreateReservationDto = components['schemas']['CreateReservationDto']
 
 // Tipos de entidades completas (respuestas de la API)
-// TODO: El backend debería exponer estos DTOs en Swagger usando @ApiBody() en los controladores
-// Por ahora mantenemos definiciones locales para la UI
-export type Package = {
+// Nota: Estos tipos locales complementan los generados desde OpenAPI; la documentación completa en Swagger se seguirá
+// en el backend con @ApiBody() donde aplique.
+// Modelos de vista (UI) derivados del backend
+export type PackageView = {
   id: string
   category: string
   name: string
@@ -34,9 +35,11 @@ export type Package = {
   includes: string[]
   imageUrl: string
   addons?: string
+  vehicles?: VehicleView[]
+  vehicleIds?: string[]
 }
 
-export type Vehicle = {
+export type VehicleView = {
   id: string
   name: string
   category: string
@@ -46,7 +49,7 @@ export type Vehicle = {
   imageUrl: string
 }
 
-export type CalendarSlot = {
+export type CalendarSlotView = {
   id: string
   date: string
   status: 'ocupado' | 'disponible' | 'evento'
@@ -56,7 +59,7 @@ export type CalendarSlot = {
   imageUrl?: string
 }
 
-export type Experience = {
+export type ExperienceView = {
   id: string
   title: string
   imageUrl: string
@@ -88,3 +91,7 @@ export type VehicleOccupancy = {
   date: string
   isOccupied: boolean
 }
+
+// Alias legacy names usados en Admin
+export type Package = PackageView
+export type Vehicle = VehicleView

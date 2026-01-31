@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Layout, PageHeader, Section } from '../components/Layout'
 import { getCurrentUser, updateUser, changePassword } from '../api/api'
+import ThemeToggle from '../components/ThemeToggle'
+import { useTheme } from '../hooks/useTheme.tsx'
 
 interface User {
   id: string
@@ -48,6 +50,7 @@ const Profile = () => {
     tipo: 'TARJETA',
     referencia: '',
   })
+  const { theme } = useTheme()
 
   useEffect(() => {
     let mounted = true
@@ -64,7 +67,6 @@ const Profile = () => {
           })
         }
       } catch (error) {
-        console.error('Error loading user:', error)
         if (mounted) setMessage({ type: 'error', text: 'Error cargando perfil' })
       } finally {
         if (mounted) setLoading(false)
@@ -147,7 +149,6 @@ const Profile = () => {
         setTimeout(() => setMessage(null), 3000)
       }
     } catch (error) {
-      console.error('Error updating profile:', error)
       setMessage({ type: 'error', text: 'Error al actualizar perfil' })
     } finally {
       setSaving(false)
@@ -203,24 +204,28 @@ const Profile = () => {
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Funcionalidad deshabilitada: modelo MetodoPago eliminado del backend
+    setMessage({ type: 'error', text: 'Funcionalidad no disponible actualmente' })
+    /*
     if (!paymentForm.referencia.trim()) {
       setMessage({ type: 'error', text: 'Ingresa una referencia válida' })
       return
     }
     try {
       setSaving(true)
-      // TODO: Implementar endpoint en backend para agregar método de pago
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await addPaymentMethod({ tipo: paymentForm.tipo as any, referencia: paymentForm.referencia.trim() })
       setPaymentForm({ tipo: 'TARJETA', referencia: '' })
       setShowPaymentModal(false)
       setMessage({ type: 'success', text: 'Método de pago agregado correctamente' })
       setTimeout(() => setMessage(null), 3000)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al agregar método de pago'
-      setMessage({ type: 'error', text: errorMessage })
+      const fallback = 'Endpoint de métodos de pago no disponible. Contacta al administrador.'
+      const errorMessage = error instanceof Error ? error.message : fallback
+      setMessage({ type: 'error', text: errorMessage || fallback })
     } finally {
       setSaving(false)
     }
+    */
   }
 
   const handleLogout = () => {
@@ -241,18 +246,19 @@ const Profile = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ACTIVO':
-        return 'bg-green-500/20 text-green-300 border-green-500/30'
+        return 'bg-green-500/20 dark:bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30'
       case 'INACTIVO':
-        return 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+        return 'bg-gray-400/15 dark:bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30'
       case 'SUSPENDIDO':
-        return 'bg-red-500/20 text-red-300 border-red-500/30'
+        return 'bg-red-500/20 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30'
       default:
-        return 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+        return 'bg-gray-400/15 dark:bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30'
     }
   }
 
   return (
     <Layout>
+
       <PageHeader
         eyebrow="Cuenta"
         title="Mi Perfil"
@@ -263,8 +269,8 @@ const Profile = () => {
       {message && (
         <div className={`mb-6 rounded-lg border px-4 py-3 text-sm font-medium ${
           message.type === 'success'
-            ? 'border-green-500/30 bg-green-500/10 text-green-300'
-            : 'border-red-500/30 bg-red-500/10 text-red-300'
+            ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300'
+            : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300'
         }`}>
           {message.text}
         </div>
@@ -274,7 +280,7 @@ const Profile = () => {
       <Section spacing="lg">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {/* Avatar y Estado */}
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6 sm:col-span-2 lg:col-span-1">
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-lg sm:col-span-2 lg:col-span-1">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-300/20">
               <span className="text-2xl font-bold text-amber-300">{user.nombre.charAt(0).toUpperCase()}</span>
             </div>
@@ -286,20 +292,20 @@ const Profile = () => {
           </div>
 
           {/* Estadísticas Rápidas */}
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6">
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-md">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-300/80">Miembro desde</p>
             <p className="text-sm text-white">{formatDate(user.creadoEn).split(',')[0]}</p>
             <p className="mt-4 text-xs text-gray-400">{new Date(user.creadoEn).toLocaleDateString('es-CR', { year: 'numeric', month: 'long' })}</p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6">
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-md">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-300/80">Último acceso</p>
             <p className="text-sm text-white">
               {user.ultimoAcceso ? formatDate(user.ultimoAcceso).split(',')[0] : 'Esta es tu primera sesión'}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6">
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-md">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-300/80">Actualizado</p>
             <p className="text-sm text-white">{formatDate(user.actualizadoEn).split(',')[0]}</p>
           </div>
@@ -308,7 +314,7 @@ const Profile = () => {
 
       {/* Sección de Información Personal */}
       <Section spacing="lg" className="mt-8">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8">
+        <div className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-md sm:p-8">
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-semibold text-white">Información Personal</h2>
@@ -409,6 +415,21 @@ const Profile = () => {
             </form>
           )}
         </div>
+        
+      </Section>
+
+      {/* Tema de la Aplicación */}
+      <Section spacing="lg" className="mt-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 rounded-2xl border border-white/15 bg-white/10 p-5 shadow-md sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-300/80">Apariencia</p>
+            <h3 className="text-lg font-semibold text-[var(--color-text)]">Tema {theme === 'light' ? 'claro' : 'oscuro'}</h3>
+            <p className="text-sm text-[var(--color-muted)]">Cambia el modo para mantener una lectura cómoda.</p>
+          </div>
+          <div className="self-start sm:self-center">
+            <ThemeToggle />
+          </div>
+        </div>
       </Section>
 
       {/* Acciones de Seguridad */}
@@ -445,7 +466,7 @@ const Profile = () => {
           <p className="mb-4 text-sm text-gray-400">Cierra tu sesión en este dispositivo</p>
           <button
             onClick={handleLogout}
-            className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/20"
+            className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-sm font-semibold text-red-700 dark:text-red-300 transition hover:bg-red-500/20"
           >
             Cerrar sesión
           </button>
@@ -458,12 +479,12 @@ const Profile = () => {
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1016] p-6 sm:p-8">
             <h2 className="mb-6 text-2xl font-semibold text-white">Cambiar contraseña</h2>
             {message && message.type === 'error' && (
-              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-700 dark:text-red-300">
                 {message.text}
               </div>
             )}
             {message && message.type === 'success' && (
-              <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">
+              <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-300">
                 {message.text}
               </div>
             )}

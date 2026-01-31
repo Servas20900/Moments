@@ -36,21 +36,6 @@ enum TipoPago {
   TRANSFERENCIA
 }
 
-enum CanalNotificacion {
-  EMAIL
-  WHATSAPP
-}
-
-enum EstadoNotificacion {
-  ENVIADA
-  FALLIDA
-  PENDIENTE
-}
-
-enum TipoItemCarrito {
-  PAQUETE
-}
-
 enum CategoriaImagen {
   LANDING_PAGE
   EXPERIENCIA
@@ -64,12 +49,6 @@ enum EstadoActivo {
   ACTIVO
   INACTIVO
   SUSPENDIDO
-}
-
-enum EstadoCarrito {
-  ACTIVO
-  CONVERTIDO
-  ABANDONADO
 }
 
 model Usuario {
@@ -90,12 +69,9 @@ model Usuario {
   actualizadoEn DateTime  @updatedAt
 
   // Relaciones
-  distrito       Distrito?      @relation(fields: [distritoId], references: [id])
-  roles          UsuarioRol[]
-  reservas       Reserva[]
-  metodosPago    MetodoPago[]
-  notificaciones Notificacion[]
-  carritos       Carrito[]
+  distrito Distrito? @relation(fields: [distritoId], references: [id])
+  roles    UsuarioRol[]
+  reservas Reserva[]
 
   @@map("usuarios")
 }
@@ -151,8 +127,9 @@ model Paquete {
 
   categoria    CategoriaPaquete @relation(fields: [categoriaId], references: [id])
   reservas     Reserva[]
-  itemsCarrito ItemCarrito[]
   imagenes     ImagenPaquete[]
+  extras       PaqueteExtra[]
+  vehiculos    PaqueteVehiculo[]
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
@@ -168,14 +145,27 @@ model Vehiculo {
   tarifaPorHora Decimal      @db.Decimal(10, 2)
   estado        EstadoActivo @default(ACTIVO)
 
-  reservas  Reserva[]
-  ocupacion OcupacionVehiculo[]
-  imagenes  ImagenVehiculo[]
+  reservas Reserva[]
+  imagenes ImagenVehiculo[]
+  paquetes PaqueteVehiculo[]
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
 
   @@map("vehiculos")
+}
+
+// Relación Paquetes - Vehículos (muchos a muchos)
+model PaqueteVehiculo {
+  paqueteId  String
+  vehiculoId String
+  asignadoEn DateTime @default(now())
+
+  paquete  Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  vehiculo Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+
+  @@id([paqueteId, vehiculoId])
+  @@map("paquetes_vehiculos")
 }
 
 model Conductor {
@@ -287,11 +277,10 @@ model Reserva {
   vehiculo  Vehiculo   @relation(fields: [vehiculoId], references: [id])
   conductor Conductor? @relation(fields: [conductorId], references: [id])
 
-  pagos             PagoReserva[]
-  notificaciones    Notificacion[]
-  ocupacionVehiculo OcupacionVehiculo[]
-  eventoCalendario  EventoCalendario?
-  historialEstados  HistorialEstadoReserva[]
+  pagos            PagoReserva[]
+  eventoCalendario EventoCalendario?
+  historialEstados HistorialEstadoReserva[]
+  extras           ReservaExtra[]
 
   creadoEn      DateTime @default(now())
   actualizadoEn DateTime @updatedAt
@@ -336,35 +325,50 @@ model EventoCalendario {
   @@map("eventos_calendario")
 }
 
-model OcupacionVehiculo {
-  id         String   @id @default(cuid())
-  vehiculoId String
-  fecha      DateTime
-  reservaId  String?
+// =========================
+// EXTRAS (AD-ONS)
+// =========================
 
-  vehiculo Vehiculo @relation(fields: [vehiculoId], references: [id], onDelete: Restrict)
-  reserva  Reserva? @relation(fields: [reservaId], references: [id])
+model Extra {
+  id          String       @id @default(cuid())
+  nombre      String
+  descripcion String?
+  precio      Decimal      @db.Decimal(10, 2)
+  estado      EstadoActivo @default(ACTIVO)
 
-  @@unique([vehiculoId, fecha])
-  @@index([vehiculoId, fecha])
-  @@map("ocupacion_vehiculos")
+  paquetes PaqueteExtra[]
+  reservas ReservaExtra[]
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@map("extras")
 }
 
-// =========================
-// SOPORTE
-// =========================
-model MetodoPago {
-  id               String       @id @default(cuid())
-  usuarioId        String
-  tipo             TipoPago
-  esPredeterminado Boolean      @default(false)
-  estado           EstadoActivo @default(ACTIVO)
+model PaqueteExtra {
+  paqueteId String
+  extraId   String
 
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Restrict)
+  extra   Extra   @relation(fields: [extraId], references: [id], onDelete: Restrict)
+
+  @@id([paqueteId, extraId])
+  @@map("paquetes_extras")
+}
+
+model ReservaExtra {
+  id             String  @id @default(cuid())
+  reservaId      String
+  extraId        String
+  cantidad       Int     @default(1)
+  precioUnitario Decimal @db.Decimal(10, 2)
+
+  reserva Reserva @relation(fields: [reservaId], references: [id], onDelete: Restrict)
+  extra   Extra   @relation(fields: [extraId], references: [id], onDelete: Restrict)
 
   creadoEn DateTime @default(now())
 
-  @@map("metodos_pago")
+  @@map("reservas_extras")
 }
 
 // =========================
@@ -411,65 +415,6 @@ model Distrito {
   creadoEn DateTime @default(now())
 
   @@map("distritos")
-}
-
-// =========================
-// NOTIFICACIONES
-// =========================
-model Notificacion {
-  id        String  @id @default(cuid())
-  usuarioId String?
-  reservaId String?
-
-  canal   CanalNotificacion
-  para    String
-  asunto  String
-  mensaje String
-  estado  EstadoNotificacion
-
-  enviadaEn DateTime?
-  leidaEn   DateTime?
-
-  usuario Usuario? @relation(fields: [usuarioId], references: [id])
-  reserva Reserva? @relation(fields: [reservaId], references: [id])
-
-  creadoEn DateTime @default(now())
-
-  @@map("notificaciones")
-}
-
-// =========================
-// CARRITO
-// =========================
-model Carrito {
-  id        String        @id @default(cuid())
-  usuarioId String?
-  sesionId  String?
-  estado    EstadoCarrito @default(ACTIVO)
-
-  usuario Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
-  items   ItemCarrito[]
-
-  creadoEn      DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  @@map("carritos")
-}
-
-model ItemCarrito {
-  id             String          @id @default(cuid())
-  carritoId      String
-  tipoItem       TipoItemCarrito
-  paqueteId      String?
-  cantidad       Int             @default(1)
-  precioUnitario Decimal         @db.Decimal(10, 2)
-
-  carrito Carrito  @relation(fields: [carritoId], references: [id], onDelete: Restrict)
-  paquete Paquete? @relation(fields: [paqueteId], references: [id])
-
-  creadoEn DateTime @default(now())
-
-  @@map("items_carrito")
 }
 
 // =========================

@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../common/prisma/prisma.service';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../../common/prisma/prisma.service";
 
 export interface CalendarInput {
   fecha: string;
@@ -14,21 +14,25 @@ export interface CalendarInput {
 export class CalendarService {
   constructor(private prisma: PrismaService) {}
 
-  private toStatus(raw?: string): 'DISPONIBLE' | 'RESERVADO' | 'BLOQUEADO' {
-    const val = (raw ?? '').toUpperCase();
-    if (val === 'RESERVADO' || val === 'BOOKED') return 'RESERVADO';
-    if (val === 'BLOQUEADO' || val === 'BLOCKED') return 'BLOQUEADO';
-    return 'DISPONIBLE';
+  private toStatus(raw?: string): "DISPONIBLE" | "RESERVADO" | "BLOQUEADO" {
+    const val = (raw ?? "").toUpperCase();
+    if (val === "RESERVADO" || val === "BOOKED") return "RESERVADO";
+    if (val === "BLOQUEADO" || val === "BLOCKED") return "BLOQUEADO";
+    return "DISPONIBLE";
   }
 
   private toResponse(slot: any) {
     const imgUrl = slot.imagenes?.[0]?.imagen?.url || slot.imagenUrl || null;
-    const dateStr = slot.fecha ? slot.fecha.toISOString().slice(0, 10) : '';
-    console.log('[Calendar] toResponse - slot.fecha:', slot.fecha, '=> dateStr:', dateStr);
+    const dateStr = slot.fecha ? slot.fecha.toISOString().slice(0, 10) : "";
     return {
       id: slot.id,
       date: dateStr,
-      status: slot.estado?.toLowerCase() === 'reservado' ? 'ocupado' : slot.estado?.toLowerCase() === 'bloqueado' ? 'evento' : 'disponible',
+      status:
+        slot.estado?.toLowerCase() === "reservado"
+          ? "ocupado"
+          : slot.estado?.toLowerCase() === "bloqueado"
+            ? "evento"
+            : "disponible",
       title: slot.titulo,
       detail: slot.detalle,
       tag: slot.etiqueta,
@@ -41,21 +45,20 @@ export class CalendarService {
       include: {
         imagenes: {
           include: { imagen: true },
-          orderBy: { orden: 'asc' },
+          orderBy: { orden: "asc" },
           take: 1,
         },
       },
-      orderBy: { fecha: 'asc' },
+      orderBy: { fecha: "asc" },
     });
     return items.map((i) => this.toResponse(i));
   }
 
   async create(body: CalendarInput) {
-    console.log('[Calendar] create() called with body:', body);
     const created = await this.prisma.eventoCalendario.create({
       data: {
         fecha: new Date(body.fecha),
-        titulo: body.titulo ?? 'Evento',
+        titulo: body.titulo ?? "Evento",
         estado: this.toStatus(body.estado),
         etiqueta: body.etiqueta,
         detalle: body.detalle,
@@ -63,12 +66,11 @@ export class CalendarService {
       include: {
         imagenes: {
           include: { imagen: true },
-          orderBy: { orden: 'asc' },
+          orderBy: { orden: "asc" },
           take: 1,
         },
       },
     });
-    console.log('[Calendar] created event:', created);
     return this.toResponse(created);
   }
 
@@ -78,11 +80,11 @@ export class CalendarService {
       include: {
         imagenes: {
           include: { imagen: true },
-          orderBy: { orden: 'asc' },
+          orderBy: { orden: "asc" },
         },
       },
     });
-    if (!existing) throw new NotFoundException('Evento no encontrado');
+    if (!existing) throw new NotFoundException("Evento no encontrado");
     const updated = await this.prisma.eventoCalendario.update({
       where: { id },
       data: {
@@ -95,7 +97,7 @@ export class CalendarService {
       include: {
         imagenes: {
           include: { imagen: true },
-          orderBy: { orden: 'asc' },
+          orderBy: { orden: "asc" },
         },
       },
     });
@@ -103,9 +105,11 @@ export class CalendarService {
   }
 
   async delete(id: string) {
-    const existing = await this.prisma.eventoCalendario.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Evento no encontrado');
+    const existing = await this.prisma.eventoCalendario.findUnique({
+      where: { id },
+    });
+    if (!existing) throw new NotFoundException("Evento no encontrado");
     await this.prisma.eventoCalendario.delete({ where: { id } });
-    return { message: 'Evento eliminado' };
+    return { message: "Evento eliminado" };
   }
 }

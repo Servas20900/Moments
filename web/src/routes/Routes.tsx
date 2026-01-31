@@ -1,18 +1,23 @@
-import Home from '../pages/Home'
-import Packages from '../pages/Packages'
-import Vehicles from '../pages/Vehicles'
-import VehicleDetail from '../pages/VehicleDetail'
-import PackageDetail from '../pages/PackageDetail'
-import CalendarPage from '../pages/CalendarPage'
-import About from '../pages/About'
-import Gallery from '../pages/Gallery'
-import Admin from '../pages/Admin'
-import Login from '../pages/Login'
-import Register from '../pages/Register'
-import Profile from '../pages/Profile'
-import Cart from '../pages/Cart'
-import NotFound from '../pages/NotFound'
-import Error from '../pages/Error'
+import { lazy } from 'react'
+
+const Home = lazy(() => import('../pages/Home'))
+const Packages = lazy(() => import('../pages/Packages'))
+const Vehicles = lazy(() => import('../pages/Vehicles'))
+const VehicleDetail = lazy(() => import('../pages/VehicleDetail'))
+const PackageDetail = lazy(() => import('../pages/PackageDetail'))
+const CalendarPage = lazy(() => import('../pages/CalendarPage'))
+const About = lazy(() => import('../pages/About'))
+const Gallery = lazy(() => import('../pages/Gallery'))
+const Admin = lazy(() => import('../pages/Admin'))
+const Login = lazy(() => import('../pages/Login'))
+const Register = lazy(() => import('../pages/Register'))
+const Profile = lazy(() => import('../pages/Profile'))
+const Cart = lazy(() => import('../pages/Cart'))
+const Reserve = lazy(() => import('../pages/Reserve'))
+const Payment = lazy(() => import('../pages/Payment'))
+const Terms = lazy(() => import('../pages/Terms'))
+const NotFound = lazy(() => import('../pages/NotFound'))
+const Error = lazy(() => import('../pages/Error'))
 import ProtectedRoute from '../components/ProtectedRoute'
 
 export class AppRoutes {
@@ -29,6 +34,7 @@ export class AppRoutes {
     { path: '/', element: <Home /> },
     { path: '/paquetes', element: <Packages /> },
     { path: '/paquetes/:id', element: <PackageDetail /> },
+    { path: '/reservar', element: <Reserve /> },
     { path: '/vehiculos', element: <Vehicles /> },
     { path: '/vehiculos/:id', element: <VehicleDetail /> },
     { path: '/calendario', element: <CalendarPage /> },
@@ -39,6 +45,8 @@ export class AppRoutes {
     { path: '/register', element: <Register /> },
     { path: '/profile', element: <Profile /> },
     { path: '/carrito', element: <Cart /> },
+    { path: '/pago', element: <Payment /> },
+    { path: '/terminos', element: <Terms /> },
     { path: '/error', element: <Error /> },
     { path: '*', element: <NotFound /> }, // Catch-all para 404
   ]

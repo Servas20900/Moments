@@ -1,204 +1,163 @@
-import { useState, type FormEvent } from 'react'
 import Button from '../components/Button'
-import Card from '../components/Card'
 import SafeImage from '../components/SafeImage'
-import { FaTrash, FaShoppingCart } from 'react-icons/fa'
+import { Layout, PageHeader, Section } from '../components/Layout'
+import { useReservation } from '../contexts/ReservationContext'
+import { useNavigate } from 'react-router-dom'
 
-type CartItem = {
-  id: string
-  name: string
-  price: number
-  quantity: number
-  imageUrl: string
-}
+const formatMoney = (value: number) => `$${value.toFixed(2)}`
 
 const Cart = () => {
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [showCheckout, setShowCheckout] = useState(false)
-  const [checkoutForm, setCheckoutForm] = useState({ name: '', email: '', phone: '' })
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState<string | null>(null)
+  const { cart, clearReservation } = useReservation()
+  const navigate = useNavigate()
 
-  const removeFromCart = (id: string) => {
-    setCart((prev) => prev.filter((x) => x.id !== id))
+  if (!cart) {
+    return (
+      <Layout>
+        <PageHeader
+          eyebrow="Carrito"
+          title="Aún no tienes una reserva"
+          description="Selecciona un paquete y configura tu reserva para continuar al pago."
+        />
+        <Section spacing="md">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center space-y-4">
+            <p className="text-lg text-gray-200">Tu carrito está vacío.</p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="ghost" onClick={() => navigate('/paquetes')}>Ver paquetes</Button>
+            </div>
+          </div>
+        </Section>
+      </Layout>
+    )
   }
 
-  const updateQuantity = (id: string, qty: number) => {
-    if (qty <= 0) {
-      removeFromCart(id)
-      return
-    }
-    setCart((prev) => prev.map((x) => (x.id === id ? { ...x, quantity: qty } : x)))
-  }
-
-  const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0)
-  const tax = subtotal * 0.13
-  const total = subtotal + tax
-
-  const handleCheckout = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!checkoutForm.name.trim() || !checkoutForm.email.trim()) {
-      alert('Por favor completa nombre y email')
-      return
-    }
-
-    setLoading(true)
-    try {
-      // Mock checkout - in real app would call API
-      await new Promise((r) => setTimeout(r, 600))
-      setSuccess(`¡Compra completada! Confirmación enviada a ${checkoutForm.email}`)
-      setCart([])
-      setCheckoutForm({ name: '', email: '', phone: '' })
-      setShowCheckout(false)
-      setTimeout(() => setSuccess(null), 4000)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const extrasTotal = cart.extras.reduce((acc, extra) => acc + extra.price, 0)
+  const vehicleLabel = cart.vehicle ? `${cart.vehicle.name} · ${cart.vehicle.seats} asientos` : 'Asignaremos el mejor disponible'
 
   return (
-    <div className="px-4 py-12 sm:px-6 lg:px-8">
-      <header className="mx-auto max-w-6xl mb-12">
-        <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#c9a24d' }}>Mi carrito</p>
-        <h1 className="text-4xl sm:text-5xl font-bold mb-3" style={{ color: '#f4f6fb' }}>Carrito de compras</h1>
-        <p className="text-lg" style={{ color: '#b3b7c2' }}>Agrega accesorios para personalizar tu experiencia Moments.</p>
-      </header>
+    <Layout>
+      <PageHeader
+        eyebrow="Carrito"
+        title="Confirma tu reserva"
+        description="Revisa los detalles antes de confirmar y proceder al pago."
+      />
 
-      <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <section className="lg:col-span-2">
-          {cart.length === 0 ? (
-            <Card>
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FaShoppingCart size={48} className="mb-6" style={{ opacity: 0.3 }} />
-                <p className="text-lg" style={{ color: '#f4f6fb' }}>Tu carrito está vacío</p>
-                <p className="text-sm mt-2" style={{ color: '#b3b7c2' }}>Explora la tienda para agregar accesorios</p>
-              </div>
-            </Card>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {cart.map((item) => (
-                <div key={item.id} className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center rounded-xl border p-4" style={{ borderColor: 'rgba(201, 162, 77, 0.12)', background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02))' }}>
-                  <div className="sm:col-span-2 aspect-video rounded-lg overflow-hidden border" style={{ borderColor: 'rgba(201, 162, 77, 0.12)' }}>
-                    <SafeImage src={item.imageUrl} alt={item.name} />
-                  </div>
-                  <div className="sm:col-span-3">
-                    <h3 className="font-semibold text-lg" style={{ color: '#f4f6fb' }}>{item.name}</h3>
-                    <p className="text-lg font-bold mt-1" style={{ color: '#c9a24d' }}>${item.price}</p>
-                  </div>
-                  <div className="sm:col-span-2 flex flex-col gap-1">
-                    <label className="text-xs font-medium" style={{ color: '#b3b7c2' }}>Cantidad</label>
-                    <div className="flex items-center gap-1 rounded-lg w-fit" style={{ background: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(201, 162, 77, 0.12)' }}>
-                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="px-2 py-1 transition" style={{ color: 'rgba(244, 246, 251, 0.7)' }}>−</button>
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
-                        min="1"
-                        className="w-10 bg-transparent text-center text-sm border-0 focus:ring-0"
-                        style={{ color: '#f4f6fb' }}
-                      />
-                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="px-2 py-1 transition" style={{ color: 'rgba(244, 246, 251, 0.7)' }}>+</button>
-                    </div>
-                  </div>
-                  <div className="sm:col-span-2 flex flex-col gap-1">
-                    <label className="text-xs font-medium" style={{ color: '#b3b7c2' }}>Subtotal</label>
-                    <p className="font-bold" style={{ color: '#f4f6fb' }}>${(item.price * item.quantity).toFixed(2)}</p>
-                  </div>
-                  <div className="sm:col-span-2 flex justify-end">
-                    <button
-                      className="inline-flex items-center justify-center w-10 h-10 rounded-lg transition border"
-                      onClick={() => removeFromCart(item.id)}
-                      aria-label="Eliminar del carrito"
-                      style={{ color: 'rgba(244, 246, 251, 0.7)', borderColor: 'rgba(255, 255, 255, 0.1)' }}
-                    >
-                      <FaTrash size={16} />
-                    </button>
-                  </div>
+      <Section spacing="lg">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-32 h-20 rounded-lg overflow-hidden border border-white/10">
+                  <SafeImage src={cart.package.imageUrl} alt={cart.package.name} className="w-full h-full object-cover" />
                 </div>
-              ))}
+                <div className="flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-amber-300 mb-1">{cart.package.category}</p>
+                  <h2 className="text-xl font-bold text-white mb-1">{cart.package.name}</h2>
+                  <p className="text-sm text-gray-300">Hasta {cart.package.maxPeople} personas</p>
+                </div>
+                <Button variant="ghost" onClick={() => navigate('/reservar', { state: { packageId: cart.package.id } })}>Editar</Button>
+              </div>
             </div>
-          )}
-        </section>
 
-        <aside className="flex flex-col gap-6">
-          <Card title="Resumen de compra">
-            <div className="flex flex-col gap-3 mb-6">
-              <div className="flex justify-between" style={{ color: '#b3b7c2' }}>
-                <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-400">Fecha</p>
+                  <p className="text-white font-semibold">{cart.date}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Horario</p>
+                  <p className="text-white font-semibold">{cart.time}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Origen</p>
+                  <p className="text-white font-semibold">{cart.origin}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Destino</p>
+                  <p className="text-white font-semibold">{cart.destination}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Personas</p>
+                  <p className="text-white font-semibold">{cart.people}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Vehículo</p>
+                  <p className="text-white font-semibold">{vehicleLabel}</p>
+                </div>
               </div>
-              <div className="flex justify-between" style={{ color: '#b3b7c2' }}>
-                <span>Impuesto (13%)</span>
-                <span>${tax.toFixed(2)}</span>
+
+              <div className="border-t border-white/10 pt-4 space-y-2">
+                <p className="text-sm text-gray-200">Extras</p>
+                {cart.extras.length === 0 && <p className="text-sm text-gray-400">Sin extras</p>}
+                {cart.extras.map((extra) => (
+                  <div key={extra.id} className="flex items-center justify-between text-sm text-gray-200">
+                    <span>{extra.name}</span>
+                    <span>{formatMoney(extra.price)}</span>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between font-bold text-lg border-t pt-3" style={{ color: '#f4f6fb', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+
+              {cart.notes && (
+                <div className="border-t border-white/10 pt-4">
+                  <p className="text-sm text-gray-200 mb-1">Notas</p>
+                  <p className="text-sm text-gray-400 whitespace-pre-line">{cart.notes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <aside className="space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+              <div className="flex items-center justify-between text-sm text-gray-300">
+                <span>Paquete</span>
+                <span>{formatMoney(cart.package.price)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm text-gray-300">
+                <span>Extras</span>
+                <span>{formatMoney(extrasTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm text-gray-300">
+                <span>Vehículo</span>
+                <span>{cart.vehicle ? cart.vehicle.rate : 'Incluido'}</span>
+              </div>
+              <div className="border-t border-white/10 pt-3 flex items-center justify-between text-lg font-bold text-white">
                 <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span>{formatMoney(cart.total)}</span>
               </div>
-            </div>
-            <Button
-              variant="primary"
-              onClick={() => setShowCheckout(!showCheckout)}
-              disabled={cart.length === 0}
-              className="w-full"
-            >
-              {showCheckout ? 'Cancelar' : 'Proceder al pago'}
-            </Button>
-          </Card>
-
-          {showCheckout && (
-            <Card title="Datos de envío">
-              <form className="flex flex-col gap-4" onSubmit={handleCheckout} noValidate>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium" style={{ color: '#f4f6fb' }}>Nombre completo</span>
-                  <input
-                    type="text"
-                    value={checkoutForm.name}
-                    onChange={(e) => setCheckoutForm((s) => ({ ...s, name: e.target.value }))}
-                    required
-                    className="rounded-xl border px-4 py-2 focus:ring-2 transition"
-                    style={{ borderColor: 'rgba(201, 162, 77, 0.2)', background: 'rgba(255, 255, 255, 0.06)', color: '#f4f6fb' }}
-                    placeholder="Tu nombre"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium" style={{ color: '#f4f6fb' }}>Email</span>
-                  <input
-                    type="email"
-                    value={checkoutForm.email}
-                    onChange={(e) => setCheckoutForm((s) => ({ ...s, email: e.target.value }))}
-                    required
-                    className="rounded-xl border px-4 py-2 focus:ring-2 transition"
-                    style={{ borderColor: 'rgba(201, 162, 77, 0.2)', background: 'rgba(255, 255, 255, 0.06)', color: '#f4f6fb' }}
-                    placeholder="tu@email.com"
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium" style={{ color: '#f4f6fb' }}>Teléfono (opcional)</span>
-                  <input
-                    type="tel"
-                    value={checkoutForm.phone}
-                    onChange={(e) => setCheckoutForm((s) => ({ ...s, phone: e.target.value }))}
-                    className="rounded-xl border px-4 py-2 focus:ring-2 transition"
-                    style={{ borderColor: 'rgba(201, 162, 77, 0.2)', background: 'rgba(255, 255, 255, 0.06)', color: '#f4f6fb' }}
-                    placeholder="Tu teléfono"
-                  />
-                </label>
+              <div className="flex items-center justify-between text-sm text-amber-200">
+                <span>Anticipo (50%)</span>
+                <span>{formatMoney(cart.deposit)}</span>
+              </div>
+              <div className="rounded-xl border border-amber-300/40 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+                No se ha realizado ningún cobro. Confirmarás en el siguiente paso.
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate('/reservar', { state: { packageId: cart.package.id } })}
+                >
+                  Volver a editar
+                </Button>
                 <Button
                   variant="primary"
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-2"
+                  onClick={() => navigate('/pago')}
+                  className="w-full"
                 >
-                  {loading ? 'Procesando...' : 'Completar compra'}
+                  Confirmar y continuar al pago
                 </Button>
-                {success && <div className="rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'rgba(76, 175, 80, 0.3)', background: 'rgba(76, 175, 80, 0.1)', color: '#81c784' }}>{success}</div>}
-              </form>
-            </Card>
-          )}
-        </aside>
-      </div>
-    </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => clearReservation()}
+                  className="w-full text-red-300 border-red-300/30 hover:bg-red-300/10"
+                >
+                  Vaciar carrito
+                </Button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </Section>
+    </Layout>
   )
 }
 

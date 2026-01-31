@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Vehicle } from '../data/content'
-import { fetchVehicleOccupancy } from '../api/api'
+// import { fetchVehicleOccupancy } from '../api/api' // Funcionalidad deshabilitada
 import SafeImage from './SafeImage'
 import Button from './Button'
 
@@ -45,12 +45,14 @@ const VehicleModal = ({ vehicle, isOpen, onClose }: VehicleModalProps) => {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [occupancy, setOccupancy] = useState<{ vehicleId: string; date: string; isOccupied: boolean }[]>([])
 
   useEffect(() => {
-    let mounted = true
-    fetchVehicleOccupancy().then((o) => mounted && setOccupancy(o))
-    return () => { mounted = false }
+    // Funcionalidad deshabilitada: OcupacionVehiculo eliminado del backend
+    // let mounted = true
+    // fetchVehicleOccupancy().then((o) => mounted && setOccupancy(o))
+    // return () => { mounted = false }
   }, [])
 
   const getOccupancyForDate = (day: number) => {

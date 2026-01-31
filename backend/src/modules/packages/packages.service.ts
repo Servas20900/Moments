@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { CreatePackageDto } from './dtos/create-package.dto';
-import { UpdatePackageDto } from './dtos/update-package.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { EstadoActivo } from "@prisma/client";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { CreatePackageDto } from "./dtos/create-package.dto";
+import { UpdatePackageDto } from "./dtos/update-package.dto";
 
 @Injectable()
 export class PackagesService {
@@ -14,7 +15,7 @@ export class PackagesService {
     });
 
     if (!categoria) {
-      throw new NotFoundException('Category not found');
+      throw new NotFoundException("Category not found");
     }
 
     const created = await this.prisma.paquete.create({
@@ -24,32 +25,59 @@ export class PackagesService {
         descripcion: dto.descripcion,
         precioBase: dto.precioBase,
         maxPersonas: dto.maxPersonas,
-        estado: 'ACTIVO',
+        estado: "ACTIVO",
       },
       include: {
         categoria: true,
+        vehiculos: { include: { vehiculo: true } },
       },
     });
-    return this.toResponse(created);
+
+    if (dto.vehicleIds?.length) {
+      await this.prisma.paqueteVehiculo.createMany({
+        data: dto.vehicleIds.map((vehiculoId) => ({ paqueteId: created.id, vehiculoId })),
+        skipDuplicates: true,
+      });
+    }
+
+    // reload with vehicles after linking
+    const reloaded = await this.prisma.paquete.findUnique({
+      where: { id: created.id },
+      include: { categoria: true, vehiculos: { include: { vehiculo: true } } },
+    });
+
+    return this.toResponse(reloaded);
   }
 
-  async findAll(skip = 0, take = 10) {
+  async findAll(params: { skip?: number; take?: number; categoriaId?: number; estado?: string }) {
+    const { skip = 0, take = 10, categoriaId, estado = "ACTIVO" } = params;
+
+    const normalizedEstado = Object.values(EstadoActivo).includes(estado as EstadoActivo)
+      ? (estado as EstadoActivo)
+      : EstadoActivo.ACTIVO;
+
+    const where = {
+      estado: normalizedEstado,
+      ...(categoriaId ? { categoriaId } : {}),
+    } as const;
+
     const [packages, total] = await Promise.all([
       this.prisma.paquete.findMany({
-        where: { estado: 'ACTIVO' },
+        where,
         skip,
         take,
         include: {
           categoria: true,
+          vehiculos: { include: { vehiculo: true } },
           imagenes: {
             include: { imagen: true },
-            orderBy: { orden: 'asc' },
+            orderBy: { orden: "asc" },
             take: 1,
           },
         },
-        orderBy: { creadoEn: 'desc' },
+        orderBy: { creadoEn: "desc" },
       }),
-      this.prisma.paquete.count({ where: { estado: 'ACTIVO' } }),
+      this.prisma.paquete.count({ where }),
     ]);
 
     return { data: packages.map((p) => this.toResponse(p)), total, skip, take };
@@ -60,16 +88,17 @@ export class PackagesService {
       where: { id },
       include: {
         categoria: true,
+        vehiculos: { include: { vehiculo: true } },
         reservas: { take: 5 },
         imagenes: {
           include: { imagen: true },
-          orderBy: { orden: 'asc' },
+          orderBy: { orden: "asc" },
         },
       },
     });
 
     if (!pkg) {
-      throw new NotFoundException('Package not found');
+      throw new NotFoundException("Package not found");
     }
 
     return this.toResponse(pkg);
@@ -81,7 +110,17 @@ export class PackagesService {
     });
 
     if (!pkg) {
-      throw new NotFoundException('Package not found');
+      throw new NotFoundException("Package not found");
+    }
+
+    if (dto.vehicleIds) {
+      await this.prisma.paqueteVehiculo.deleteMany({ where: { paqueteId: id } });
+      if (dto.vehicleIds.length) {
+        await this.prisma.paqueteVehiculo.createMany({
+          data: dto.vehicleIds.map((vehiculoId) => ({ paqueteId: id, vehiculoId })),
+          skipDuplicates: true,
+        });
+      }
     }
 
     const updated = await this.prisma.paquete.update({
@@ -95,6 +134,7 @@ export class PackagesService {
       },
       include: {
         categoria: true,
+        vehiculos: { include: { vehiculo: true } },
       },
     });
     return this.toResponse(updated);
@@ -106,27 +146,35 @@ export class PackagesService {
     });
 
     if (!pkg) {
-      throw new NotFoundException('Package not found');
+      throw new NotFoundException("Package not found");
     }
 
     await this.prisma.paquete.update({
       where: { id },
-      data: { estado: 'INACTIVO' },
+      data: { estado: "INACTIVO" },
     });
 
-    return { message: 'Package deactivated successfully' };
+    return { message: "Package deactivated successfully" };
   }
 
   private toResponse(pkg: any) {
     const imgUrl = pkg.imagenes?.[0]?.imagen?.url || pkg.imagenUrl || null;
+    const vehicles = pkg.vehiculos?.map((v: any) => ({
+      id: v.vehiculo?.id,
+      name: v.vehiculo?.nombre,
+      seats: v.vehiculo?.asientos,
+      category: v.vehiculo?.categoria,
+      rate: v.vehiculo ? Number(v.vehiculo.tarifaPorHora) : undefined,
+    })) || [];
     return {
       id: pkg.id,
       name: pkg.nombre,
-      category: pkg.categoria?.nombre || '',
+      category: pkg.categoria?.nombre || "",
       description: pkg.descripcion,
       price: Number(pkg.precioBase),
       maxPeople: pkg.maxPersonas,
-      vehicle: 'N/A',
+      vehicle: vehicles[0]?.name ?? "N/A",
+      vehicles,
       imageUrl: imgUrl,
       estado: pkg.estado,
       creadoEn: pkg.creadoEn,

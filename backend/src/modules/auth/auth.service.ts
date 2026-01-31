@@ -1,9 +1,13 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../../common/prisma/prisma.service';
-import { LoginDto } from './dtos/login.dto';
-import { RegisterDto } from './dtos/register.dto';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import * as bcrypt from "bcrypt";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { LoginDto } from "./dtos/login.dto";
+import { RegisterDto } from "./dtos/register.dto";
 
 @Injectable()
 export class AuthService {
@@ -20,17 +24,19 @@ export class AuthService {
       });
 
       if (existingUser) {
-        throw new BadRequestException('El email ya está registrado');
+        throw new BadRequestException("El email ya está registrado");
       }
 
       // Validar que el email esté en formato correcto
-      if (!dto.email || !dto.email.includes('@')) {
-        throw new BadRequestException('Email inválido');
+      if (!dto.email || !dto.email.includes("@")) {
+        throw new BadRequestException("Email inválido");
       }
 
       // Validar nombre
       if (!dto.nombre || dto.nombre.trim().length < 2) {
-        throw new BadRequestException('El nombre debe tener al menos 2 caracteres');
+        throw new BadRequestException(
+          "El nombre debe tener al menos 2 caracteres",
+        );
       }
 
       const hashedPassword = await bcrypt.hash(dto.contrasena, 10);
@@ -40,46 +46,43 @@ export class AuthService {
           email: dto.email.toLowerCase().trim(),
           contrasena: hashedPassword,
           nombre: dto.nombre.trim(),
-          telefono: dto.telefono?.trim() || '',
+          telefono: dto.telefono?.trim() || "",
           identificacion: dto.identificacion?.trim(),
           distritoId: dto.distritoId,
-          estado: 'ACTIVO',
+          estado: "ACTIVO",
         },
       });
 
-    // Asignar rol de usuario por defecto
-    const rolUsuario = await this.prisma.rol.findFirst({
-      where: { codigo: 'USER' },
-    });
-
-    if (rolUsuario) {
-      await this.prisma.usuarioRol.create({
-        data: {
-          usuarioId: user.id,
-          rolId: rolUsuario.id,
-        },
+      // Asignar rol de usuario por defecto
+      const rolUsuario = await this.prisma.rol.findFirst({
+        where: { codigo: "USER" },
       });
-    }
 
-    const access_token = this.jwtService.sign({
-      sub: user.id,
-      email: user.email,
-    });
+      if (rolUsuario) {
+        await this.prisma.usuarioRol.create({
+          data: {
+            usuarioId: user.id,
+            rolId: rolUsuario.id,
+          },
+        });
+      }
 
-    return this.toResponse(access_token, user);
+      const access_token = this.jwtService.sign({
+        sub: user.id,
+        email: user.email,
+      });
+
+      return this.toResponse(access_token, user);
     } catch (error) {
-      console.error('[AUTH] Register error:', error);
       throw error;
     }
   }
 
   async login(dto: LoginDto) {
     try {
-      console.log(`[AUTH] Login attempt for: ${dto.email}`);
-      
       // Normalizar email
       const email = dto.email.toLowerCase().trim();
-      
+
       const user = await this.prisma.usuario.findUnique({
         where: { email },
         include: {
@@ -92,33 +95,33 @@ export class AuthService {
       });
 
       if (!user) {
-        console.log(`[AUTH] User not found: ${email}`);
-        throw new UnauthorizedException('Credenciales inválidas');
+        throw new UnauthorizedException("Credenciales inválidas");
       }
-
-      console.log(`[AUTH] User found: ${user.email}`);
 
       // Validar estado del usuario
-      if (user.estado === 'INACTIVO') {
-        throw new UnauthorizedException('Usuario inactivo. Contacta al administrador');
+      if (user.estado === "INACTIVO") {
+        throw new UnauthorizedException(
+          "Usuario inactivo. Contacta al administrador",
+        );
       }
 
-      if (user.estado === 'SUSPENDIDO') {
-        throw new UnauthorizedException('Usuario suspendido. Contacta al administrador');
+      if (user.estado === "SUSPENDIDO") {
+        throw new UnauthorizedException(
+          "Usuario suspendido. Contacta al administrador",
+        );
       }
 
       if (!dto.contrasena) {
-        console.log('[AUTH] No password provided');
-        throw new BadRequestException('La contraseña es requerida');
+        throw new BadRequestException("La contraseña es requerida");
       }
 
-      console.log(`[AUTH] Comparing password for user: ${user.email}`);
-      const passwordMatches = await bcrypt.compare(dto.contrasena, user.contrasena);
-      console.log(`[AUTH] Password matches: ${passwordMatches}`);
+      const passwordMatches = await bcrypt.compare(
+        dto.contrasena,
+        user.contrasena,
+      );
 
       if (!passwordMatches) {
-        console.log(`[AUTH] Password mismatch for: ${email}`);
-        throw new UnauthorizedException('Credenciales inválidas');
+        throw new UnauthorizedException("Credenciales inválidas");
       }
 
       // Actualizar último acceso
@@ -127,16 +130,13 @@ export class AuthService {
         data: { ultimoAcceso: new Date() },
       });
 
-      console.log(`[AUTH] Signing JWT token for: ${user.email}`);
       const access_token = this.jwtService.sign({
         sub: user.id,
         email: user.email,
       });
 
-      console.log(`[AUTH] Login successful for: ${user.email}`);
       return this.toResponse(access_token, user);
     } catch (error) {
-      console.error('[AUTH] Login error:', error);
       throw error;
     }
   }
@@ -144,7 +144,7 @@ export class AuthService {
   async validateUser(payload: any) {
     try {
       if (!payload || !payload.sub) {
-        throw new UnauthorizedException('Token payload inválido');
+        throw new UnauthorizedException("Token payload inválido");
       }
 
       const user = await this.prisma.usuario.findUnique({
@@ -159,16 +159,15 @@ export class AuthService {
       });
 
       if (!user) {
-        throw new UnauthorizedException('Usuario no encontrado');
+        throw new UnauthorizedException("Usuario no encontrado");
       }
 
-      if (user.estado !== 'ACTIVO') {
+      if (user.estado !== "ACTIVO") {
         throw new UnauthorizedException(`Usuario ${user.estado.toLowerCase()}`);
       }
 
       return user;
     } catch (error) {
-      console.error('[AUTH] validateUser error:', error);
       throw error;
     }
   }

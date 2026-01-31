@@ -9,75 +9,67 @@ import {
   Query,
   Request,
   UseGuards,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UpdateUserDto } from './dtos/update-user.dto';
-import { ChangePasswordDto } from './dtos/change-password.dto';
+} from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { UsersService } from "./users.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { UpdateUserDto } from "./dtos/update-user.dto";
+import { ChangePasswordDto } from "./dtos/change-password.dto";
 
-@ApiTags('Usuarios')
-@Controller('usuarios')
+@ApiTags("Usuarios")
+@Controller("usuarios")
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({ summary: 'Listar usuarios (admin)' })
-  async findAll(
-    @Query('skip') skip?: string,
-    @Query('take') take?: string,
-  ) {
+  @ApiBearerAuth("access_token")
+  @ApiOperation({ summary: "Listar usuarios (admin)" })
+  async findAll(@Query("skip") skip?: string, @Query("take") take?: string) {
     const s = Number(skip ?? 0);
     const t = Number(take ?? 10);
-    return this.usersService.findAll(Number.isFinite(s) ? s : 0, Number.isFinite(t) ? t : 10);
+    return this.usersService.findAll(
+      Number.isFinite(s) ? s : 0,
+      Number.isFinite(t) ? t : 10,
+    );
   }
 
-  @Get('notificaciones')
+  @Get(":id")
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({ summary: 'Listar notificaciones (placeholder)' })
-  async notifications() {
-    return [];
-  }
-
-  @Get(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({ summary: 'Obtener usuario por ID' })
-  async findById(@Param('id') id: string) {
+  @ApiBearerAuth("access_token")
+  @ApiOperation({ summary: "Obtener usuario por ID" })
+  async findById(@Param("id") id: string) {
     return this.usersService.findById(id);
   }
 
-  @Put('perfil')
+  @Put("perfil")
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({ summary: 'Actualizar perfil del usuario autenticado' })
+  @ApiBearerAuth("access_token")
+  @ApiOperation({ summary: "Actualizar perfil del usuario autenticado" })
   async updateProfile(@Request() req: any, @Body() dto: UpdateUserDto) {
     return this.usersService.update(req.user.id, dto);
   }
 
-  @Put(':id')
+  @Put(":id")
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({ summary: 'Actualizar usuario por ID' })
-  async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+  @ApiBearerAuth("access_token")
+  @ApiOperation({ summary: "Actualizar usuario por ID" })
+  async update(@Param("id") id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({ summary: 'Eliminar usuario' })
-  async delete(@Param('id') id: string) {
+  @ApiBearerAuth("access_token")
+  @ApiOperation({ summary: "Eliminar usuario" })
+  async delete(@Param("id") id: string) {
     return this.usersService.delete(id);
   }
 
-  @Post('cambiar-contrasena')
+  @Post("cambiar-contrasena")
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access_token')
-  @ApiOperation({ summary: 'Cambiar contraseña del usuario autenticado' })
+  @ApiBearerAuth("access_token")
+  @ApiOperation({ summary: "Cambiar contraseña del usuario autenticado" })
   async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
     return this.usersService.changePassword(req.user.id, dto);
   }

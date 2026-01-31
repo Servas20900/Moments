@@ -1,6 +1,6 @@
-import { IsString, IsNumber, IsInt, IsOptional, Min } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { IsString, IsNumber, IsInt, IsOptional, Min, IsArray } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 
 export class CreatePackageDto {
   @ApiProperty({ example: 1 })
@@ -8,15 +8,15 @@ export class CreatePackageDto {
   @IsInt()
   categoriaId: number;
 
-  @ApiProperty({ example: 'Paquete Romántico' })
+  @ApiProperty({ example: "Paquete Romántico" })
   @IsString()
   nombre: string;
 
-  @ApiProperty({ example: 'Descripción del paquete' })
+  @ApiProperty({ example: "Descripción del paquete" })
   @IsString()
   descripcion: string;
 
-  @ApiProperty({ example: 150.00, type: Number })
+  @ApiProperty({ example: 150.0, type: Number })
   @Type(() => Number)
   @IsNumber()
   @Min(0)
@@ -28,8 +28,18 @@ export class CreatePackageDto {
   @Min(1)
   maxPersonas: number;
 
-  @ApiProperty({ example: 'https://res.cloudinary.com/...', required: false })
+  @ApiProperty({ example: "https://res.cloudinary.com/...", required: false })
   @IsOptional()
   @IsString()
   imagenUrl?: string;
+
+  @ApiProperty({
+    required: false,
+    type: [String],
+    description: "IDs de vehículos asociados al paquete",
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  vehicleIds?: string[];
 }

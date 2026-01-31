@@ -1,8 +1,8 @@
-import type { Package } from '../data/content'
+import type { PackageView } from '../data/content'
 import SafeImage from './SafeImage'
 
 interface PackageCardProps {
-  item: Package
+  item: PackageView
   onClick: () => void
 }
 

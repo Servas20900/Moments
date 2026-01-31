@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: moments_user
       POSTGRES_PASSWORD: moments_secure_password_2024
-      POSTGRES_DB: moments_db
+      POSTGRES_DB: moments_user
     ports:
       - '5432:5432'
     volumes:
@@ -26,4 +26,3 @@ volumes:
 networks:
   moments_network:
     driver: bridge
-

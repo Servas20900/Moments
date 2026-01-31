@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import SafeImage from '../components/SafeImage'
-import { Layout, PageHeader, Section } from '../components/Layout'
+import { Layout, Section } from '../components/Layout'
 import { fetchExperiences } from '../api/api'
-import type { Experience } from '../data/content'
+import type { ExperienceView } from '../data/content'
 
 const About = () => {
-  const navigate = useNavigate()
-  const [experiences, setExperiences] = useState<Experience[]>([])
+  const [experiences, setExperiences] = useState<ExperienceView[]>([])
 
   const philosophy = [
     {

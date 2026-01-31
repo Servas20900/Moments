@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SafeImage from '../components/SafeImage'
 import Card from '../components/Card'
@@ -18,11 +18,7 @@ const CalendarPage = () => {
   // Use Calendar Context instead of local state
   const { events: calendar } = useCalendarContext()
 
-  // Debug: log when events change
-  useEffect(() => {
-    console.log('[CalendarPage] Events updated:', calendar.length, 'events')
-    console.log('[CalendarPage] Calendar events:', calendar)
-  }, [calendar])
+
 
   const firstDay = new Date(currentYear, currentMonth, 1)
   const lastDay = new Date(currentYear, currentMonth + 1, 0)
@@ -184,11 +180,11 @@ const CalendarPage = () => {
               <table className="w-full border-collapse text-sm" aria-label="Eventos del mes">
                 <thead>
                   <tr>
-                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold">Título</th>
-                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold">Imagen</th>
-                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold">Detalle</th>
-                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold">Fecha</th>
-                    <th className="sticky top-0 bg-opacity-90 bg-[rgba(15,16,22,0.9)] backdrop-blur-md border-b border-white/10 px-3 py-2.5" aria-label="Acciones"></th>
+                    <th className="sticky top-0 bg-[var(--card-bg,rgba(15,16,22,0.9))] bg-opacity-90 backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold text-[var(--color-text)]">Título</th>
+                    <th className="sticky top-0 bg-[var(--card-bg,rgba(15,16,22,0.9))] bg-opacity-90 backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold text-[var(--color-text)]">Imagen</th>
+                    <th className="sticky top-0 bg-[var(--card-bg,rgba(15,16,22,0.9))] bg-opacity-90 backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold text-[var(--color-text)]">Detalle</th>
+                    <th className="sticky top-0 bg-[var(--card-bg,rgba(15,16,22,0.9))] bg-opacity-90 backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-left font-semibold text-[var(--color-text)]">Fecha</th>
+                    <th className="sticky top-0 bg-[var(--card-bg,rgba(15,16,22,0.9))] bg-opacity-90 backdrop-blur-md border-b border-white/10 px-3 py-2.5 text-[var(--color-text)]" aria-label="Acciones"></th>
                   </tr>
                 </thead>
                 <tbody>
