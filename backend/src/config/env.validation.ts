@@ -57,8 +57,8 @@ export class EnvironmentVariables {
 
   // Frontend
   @IsUrl({ require_tld: false })
-  @IsNotEmpty()
-  FRONTEND_URL: string;
+  @IsOptional()
+  FRONTEND_URL?: string;
 
   // Cloudinary - Requerido para producción
   @IsString()
