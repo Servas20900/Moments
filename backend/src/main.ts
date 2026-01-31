@@ -6,6 +6,7 @@ import compression from "compression";
 import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
 import * as Sentry from "@sentry/node";
 import { join } from "path";
+import type { Request, Response, NextFunction } from "express";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
@@ -37,7 +38,7 @@ async function bootstrap() {
   app.use(compression());
 
   // SPA fallback middleware - sirve index.html para rutas que no existen y no son APIs
-  app.use((req, res, next) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     // Si ya fue manejado por un controller (tiene status != undefined), seguir
     if (res.statusCode !== 404) {
       return next();
