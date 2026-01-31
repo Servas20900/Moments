@@ -17,6 +17,7 @@ import { CalendarModule } from "./modules/calendar/calendar.module";
 import { ImagesModule } from "./modules/images/images.module";
 import { ExtrasModule } from "./modules/extras/extras.module";
 import { HealthController } from "./common/health/health.controller";
+import { StaticController } from "./common/static/static.controller";
 import { validate } from "./config/env.validation";
 
 @Module({
@@ -65,6 +66,6 @@ import { validate } from "./config/env.validation";
     ImagesModule,
     ExtrasModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, StaticController],
 })
 export class AppModule {}
