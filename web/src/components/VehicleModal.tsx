@@ -45,8 +45,7 @@ const VehicleModal = ({ vehicle, isOpen, onClose }: VehicleModalProps) => {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [occupancy, setOccupancy] = useState<{ vehicleId: string; date: string; isOccupied: boolean }[]>([])
+  const [occupancy] = useState<{ vehicleId: string; date: string; isOccupied: boolean }[]>([])
 
   useEffect(() => {
     // Funcionalidad deshabilitada: OcupacionVehiculo eliminado del backend
