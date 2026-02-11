@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { FaEdit, FaTrash } from 'react-icons/fa'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
@@ -12,6 +13,7 @@ import { fetchVehicles, createVehicle, updateVehicle, deleteVehicle, uploadImage
 import type { Vehicle } from '../../data/content'
 
 const AdminVehiculos = () => {
+  const navigate = useNavigate()
   const { theme } = useTheme()
   const themeClasses = getThemeClasses(theme)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])

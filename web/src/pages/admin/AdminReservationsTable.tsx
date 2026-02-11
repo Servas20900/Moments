@@ -4,11 +4,9 @@ import {
   updateContactoCliente, 
   updateAdelantoRecibido, 
   updatePagoCompleto, 
-  updateChoferAsignado, 
   updateEventoRealizado 
 } from '../../api/api'
 import type { AdminReservationRow, ReservationsTableFilters } from '../../api/api'
-import Button from '../../components/Button'
 import { 
   HiUser, 
   HiCalendar, 
@@ -113,18 +111,6 @@ function AdminReservationsTable() {
     }
   }
 
-  const handleUpdateChofer = async (reservaId: string, asignado: boolean) => {
-    try {
-      setUpdatingId(reservaId)
-      await updateChoferAsignado(reservaId, asignado)
-      await loadReservations()
-    } catch (error) {
-      console.error('Error actualizando chofer:', error)
-      alert('Error al actualizar')
-    } finally {
-      setUpdatingId(null)
-    }
-  }
 
   const handleUpdateEvento = async (reservaId: string, realizado: boolean) => {
     try {
@@ -139,20 +125,6 @@ function AdminReservationsTable() {
     }
   }
 
-  const getEstadoEventoBadge = (fecha: string) => {
-    const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
-    const fechaEvento = new Date(fecha)
-    fechaEvento.setHours(0, 0, 0, 0)
-
-    if (fechaEvento.getTime() === hoy.getTime()) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">HOY</span>
-    } else if (fechaEvento > hoy) {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">PRÓXIMO</span>
-    } else {
-      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-gray-500/10 text-gray-400 border border-gray-500/20">PASADO</span>
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f0e13] to-[#1a1625] p-4 lg:p-6">

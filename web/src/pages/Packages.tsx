@@ -72,7 +72,7 @@ const Packages = () => {
         title="Diseñados para distintos eventos y celebraciones"
       />
 
-      <Section spacing="2xl">
+      <Section spacing="lg">
         <div className="mx-auto max-w-6xl px-4 mb-16">
           <Card title="Nuestros paquetes" subtitle="Diseñados para distintos eventos">
             <p className="text-gray-300">

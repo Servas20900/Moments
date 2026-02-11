@@ -18,28 +18,34 @@ if [ ! -f .env.production ]; then
     exit 1
 fi
 
-# Cargar variables de entorno
-export $(cat .env.production | grep -v '^#' | xargs)
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+else
+    COMPOSE="docker-compose"
+fi
 
 echo -e "${YELLOW}Limpiando contenedores antiguos...${NC}"
-docker-compose -f docker-compose.prod.yml down
+$COMPOSE -f docker-compose.prod.yml --env-file .env.production down
 
 echo -e "${YELLOW}Construyendo imágenes Docker...${NC}"
-docker-compose -f docker-compose.prod.yml build --no-cache
+$COMPOSE -f docker-compose.prod.yml --env-file .env.production build --no-cache
 
 echo -e "${YELLOW}Ejecutando migraciones de base de datos...${NC}"
-docker-compose -f docker-compose.prod.yml run --rm backend npx prisma migrate deploy
+$COMPOSE -f docker-compose.prod.yml --env-file .env.production run --rm backend npx prisma migrate deploy
 
-echo -e "${YELLOW}Ejecutando seed de base de datos...${NC}"
-docker-compose -f docker-compose.prod.yml run --rm backend npx prisma db seed
+echo -e "${YELLOW}Ejecutando seed de base de datos (opcional)...${NC}"
+read -r -p "¿Deseas ejecutar el seed? (s/n): " SEED
+if [ "$SEED" = "s" ]; then
+    $COMPOSE -f docker-compose.prod.yml --env-file .env.production run --rm backend npx prisma db seed
+fi
 
 echo -e "${YELLOW}Iniciando servicios...${NC}"
-docker-compose -f docker-compose.prod.yml up -d
+$COMPOSE -f docker-compose.prod.yml --env-file .env.production up -d
 
 echo -e "${GREEN}Despliegue completado exitosamente!${NC}"
 echo ""
 echo "Estado de los contenedores:"
-docker-compose -f docker-compose.prod.yml ps
+$COMPOSE -f docker-compose.prod.yml --env-file .env.production ps
 echo ""
 echo "Servicios disponibles:"
 echo "  - Backend: http://localhost:3000"
@@ -47,4 +53,4 @@ echo "  - Frontend: http://localhost"
 echo "  - API Docs: http://localhost:3000/api/docs"
 echo ""
 echo "Para ver los logs:"
-echo "  docker-compose -f docker-compose.prod.yml logs -f"
+echo "  $COMPOSE -f docker-compose.prod.yml --env-file .env.production logs -f"

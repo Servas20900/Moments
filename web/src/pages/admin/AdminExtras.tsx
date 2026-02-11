@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { FaEdit, FaTrash, FaCheckCircle, FaTimesCircle, FaPlus, FaBox } from 'react-icons/fa'
-import Button from '../components/Button'
-import Modal from '../components/Modal'
-import Card from '../components/Card'
-import { InputField, TextareaField } from '../components/FormField'
-import { fetchAllExtrasAdmin, createExtra, updateExtra, deactivateExtra, activateExtra } from '../api/api'
-import type { ExtraOption } from '../contexts/ReservationContext'
+import Button from '../../components/Button'
+import Modal from '../../components/Modal'
+import Card from '../../components/Card'
+import { InputField, TextareaField } from '../../components/FormField'
+import { fetchAllExtrasAdmin, createExtra, updateExtra, deactivateExtra, activateExtra } from '../../api/api'
+import type { ExtraOption } from '../../contexts/ReservationContext'
 
 const AdminExtras = () => {
   const [extras, setExtras] = useState<ExtraOption[]>([])

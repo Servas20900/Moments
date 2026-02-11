@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FaPhone, FaEnvelope } from 'react-icons/fa'
 import SafeImage from '../components/SafeImage'
-import { Layout, Section } from '../components/Layout'
+import { Layout } from '../components/Layout'
 import { fetchExperiences } from '../api/api'
 import type { ExperienceView } from '../data/content'
 

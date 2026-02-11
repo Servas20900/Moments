@@ -8,8 +8,6 @@ import type { PackageView } from '../data/content';
 import { fetchPackages } from '../api/api';
 import { useReservation } from '../contexts/ReservationContext';
 
-const legalNotice = 'Requiere adelanto del 50% no reembolsable';
-
 const PackageDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();

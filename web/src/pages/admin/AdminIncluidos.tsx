@@ -12,7 +12,6 @@ import { getThemeClasses } from '../../utils/themeClasses'
 import {
   fetchAllCategoriasIncluidosAdmin,
   fetchAllIncluidosAdmin,
-  fetchAllCategoriasIncluidos,
   fetchPackages,
   createCategoriaIncluido,
   updateCategoriaIncluido,
@@ -24,8 +23,9 @@ import {
   detachIncluidoFromPackage,
   type CategoriaIncluido,
   type Incluido,
-  type Package,
-} from '../../api/api'
+} 
+from '../../api/api'
+import type { Package } from '../../data/content'
 
 const AdminIncluidos = () => {
   const { theme } = useTheme()

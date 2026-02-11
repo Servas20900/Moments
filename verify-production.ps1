@@ -63,9 +63,14 @@ Write-Host "Verificando Docker..." -ForegroundColor Yellow
 try {
     $dockerVersion = docker --version
     Write-Host "  Docker instalado: $dockerVersion" -ForegroundColor Green
-    
-    $composeVersion = docker-compose --version
-    Write-Host "  Docker Compose instalado: $composeVersion" -ForegroundColor Green
+
+    try {
+        $composeVersion = docker compose version
+        Write-Host "  Docker Compose v2 instalado: $composeVersion" -ForegroundColor Green
+    } catch {
+        $composeVersion = docker-compose --version
+        Write-Host "  Docker Compose v1 instalado: $composeVersion" -ForegroundColor Green
+    }
 } catch {
     Write-Host "  Docker no está instalado o no está en PATH" -ForegroundColor Red
     $allGood = $false
