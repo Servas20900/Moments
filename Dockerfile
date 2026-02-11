@@ -31,4 +31,4 @@ COPY --from=builder /app/backend/prisma ./backend/prisma
 COPY --from=builder /app/web/dist /app/public
 WORKDIR /app/backend
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
