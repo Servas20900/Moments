@@ -55,17 +55,28 @@ const Admin = () => {
 
   useEffect(() => {
     let mounted = true
-    Promise.all([fetchPackages(), fetchVehicles(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides()]).then(([p, v, n, _exp, img, h]) => {
-      if (!mounted) return
-      setPackages(p)
-      setVehicles(v)
-      setSystemImages(img)
-      setHeroSlides(h)
-      setNotifications(n)
-      setPkgCategories(Array.from(new Set(p.map(x => x.category))).filter(Boolean))
-      setVehCategories(Array.from(new Set(v.map(x => x.category))).filter(Boolean))
-      setLoading(false)
-    })
+    setLoading(true)
+    Promise.allSettled([fetchPackages(), fetchVehicles(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides()])
+      .then((results) => {
+        if (!mounted) return
+        const [pRes, vRes, nRes, _expRes, imgRes, hRes] = results
+        const p = pRes.status === 'fulfilled' ? pRes.value : []
+        const v = vRes.status === 'fulfilled' ? vRes.value : []
+        const n = nRes.status === 'fulfilled' ? nRes.value : []
+        const img = imgRes.status === 'fulfilled' ? imgRes.value : []
+        const h = hRes.status === 'fulfilled' ? hRes.value : []
+        setPackages(p)
+        setVehicles(v)
+        setSystemImages(img)
+        setHeroSlides(h)
+        setNotifications(n)
+        setPkgCategories(Array.from(new Set(p.map(x => x.category))).filter(Boolean))
+        setVehCategories(Array.from(new Set(v.map(x => x.category))).filter(Boolean))
+        setLoading(false)
+      })
+      .catch(() => {
+        if (mounted) setLoading(false)
+      })
     return () => { mounted = false }
   }, [])
 

@@ -145,12 +145,19 @@ export class ImagesService {
   async update(id: string, dto: UpdateImageDto) {
     await this.ensureImageExists(id);
 
+    const estado = dto.estado ?? (dto.isActive === undefined
+      ? undefined
+      : dto.isActive
+        ? EstadoActivo.ACTIVO
+        : EstadoActivo.INACTIVO);
+
     const updated = await this.prisma.imagen.update({
       where: { id },
       data: {
         altText: dto.altText ?? undefined,
-        estado: dto.estado ?? undefined,
+        estado,
         categoria: dto.categoria ?? undefined,
+        url: dto.url ?? undefined,
       },
     });
 
