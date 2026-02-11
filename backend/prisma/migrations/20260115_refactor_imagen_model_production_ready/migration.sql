@@ -113,9 +113,9 @@ DROP INDEX IF EXISTS "imagenes_eventos_eventoId_idx";
 -- ============================================================================
 -- RESULTADO FINAL
 -- ============================================================================
--- ✅ Un único modelo Imagen con categorización clara
--- ✅ Tablas puente con orden contextualizado (cada relación maneja su propio orden)
--- ✅ Indices optimizados para queries de imágenes ordenadas por contexto
--- ✅ Eliminación de ImagenSistema (sin duplicación)
--- ✅ Sin pérdida de datos: todas las imágenes existentes migran a Imagen con categoria = 'GALERIA' por defecto
--- ✅ Compatible con Cloudinary: url almacenada directamente, sin duplicación
+-- Un único modelo Imagen con categorización clara
+-- Tablas puente con orden contextualizado (cada relación maneja su propio orden)
+-- Indices optimizados para queries de imágenes ordenadas por contexto
+-- Eliminación de ImagenSistema (sin duplicación)
+-- Sin pérdida de datos: todas las imágenes existentes migran a Imagen con categoria = 'GALERIA' por defecto
+-- Compatible con Cloudinary: url almacenada directamente, sin duplicación

@@ -1,4 +1,4 @@
-import type { PackageView, VehicleView, CalendarSlotView, ExperienceView, SystemImage, HeroSlide } from '../data/content'
+import type { PackageView, VehicleView, CalendarSlotView, ExperienceView, SystemImage, HeroSlide, VehicleAvailability, VehicleBlock, MonthlyAvailability } from '../data/content'
 import type { ExtraOption } from '../contexts/ReservationContext'
 import { getToken as getAuthToken, saveToken, saveUser } from '../utils/auth'
 
@@ -8,7 +8,7 @@ if (!rawApiUrl) {
   throw new Error('VITE_API_URL is required. Set it in your environment before building.')
 }
 const API_URL = rawApiUrl.replace(/\/$/, '')
-const FALLBACK_IMG = 'https://res.cloudinary.com/demo/image/upload/sample.jpg'
+
 
 const getToken = () => getAuthToken() || ''
 const authHeaders = () => {
@@ -66,7 +66,7 @@ const mapPackage = (p: any): PackageView => {
     seats: v.seats ?? v.vehiculo?.asientos ?? v.asientos ?? 0,
     rate: v.rate ?? v.vehiculo?.tarifaPorHora ?? v.tarifaPorHora ?? 'Consultar',
     features: v.features ?? v.vehiculo?.features ?? [],
-    imageUrl: v.imageUrl ?? v.vehiculo?.imagenUrl ?? v.imagenUrl ?? FALLBACK_IMG,
+    imageUrl: v.imageUrl ?? v.vehiculo?.imagenUrl ?? v.imagenUrl ?? null,
   })) ?? []
 
   return {
@@ -78,7 +78,7 @@ const mapPackage = (p: any): PackageView => {
     vehicle: p.vehiculo || p.vehicle || vehicles[0]?.name || 'Chofer asignado',
     maxPeople: p.maxPersonas ?? p.maxPeople ?? 0,
     includes: p.incluye ?? p.includes ?? ['Chofer profesional', 'Atención personalizada'],
-    imageUrl: p.imagenUrl || p.imageUrl || FALLBACK_IMG,
+    imageUrl: p.imagenUrl || p.imageUrl || null,
     addons: p.addons,
     vehicles,
     vehicleIds: vehicles.map((v: any) => v.id).filter(Boolean),
@@ -92,7 +92,7 @@ const mapVehicle = (v: any): VehicleView => ({
   seats: v.asientos ?? v.seats ?? 0,
   rate: v.tarifaPorHora ?? v.rate ?? 'Consultar',
   features: v.features || ['Chofer certificado', 'Seguro completo'],
-  imageUrl: v.imagenUrl || v.imageUrl || FALLBACK_IMG,
+  imageUrl: v.imagenUrl || v.imageUrl || null,
 })
 
 const mapCalendar = (e: any): CalendarSlotView => {
@@ -126,7 +126,7 @@ const mapCalendar = (e: any): CalendarSlotView => {
 const mapExperience = (x: any): ExperienceView => ({
   id: x.id,
   title: x.titulo || x.nombre,
-  imageUrl: x.imagenUrl || x.url || FALLBACK_IMG,
+  imageUrl: x.imagenUrl || x.url || null,
 })
 
 const mapExtra = (e: any): ExtraOption => ({
@@ -134,6 +134,10 @@ const mapExtra = (e: any): ExtraOption => ({
   name: e.name ?? e.nombre,
   price: Number(e.price ?? e.precio ?? 0),
   description: e.description ?? e.descripcion ?? '',
+  categoria: e.categoria,
+  estado: e.estado,
+  creadoEn: e.creadoEn,
+  actualizadoEn: e.actualizadoEn,
 })
 
 export const fetchPackages = async (): Promise<PackageView[]> => {
@@ -156,6 +160,68 @@ export const fetchVehicleAvailability = async (params: { date: string; start: st
   }).toString()
   const data = await http<{ occupiedIds?: string[] }>(`/vehiculos/disponibilidad?${query}`)
   return data?.occupiedIds ?? []
+}
+
+// ==================== VEHICLE AVAILABILITY ====================
+
+export const checkVehicleAvailability = async (vehiculoId: string, fecha: string): Promise<VehicleAvailability> => {
+  const query = new URLSearchParams({ vehiculoId, fecha }).toString()
+  const data = await http<VehicleAvailability>(`/vehicle-availability/check?${query}`)
+  return data
+}
+
+export const fetchVehicleBlocks = async (vehiculoId: string): Promise<VehicleBlock[]> => {
+  const data = await http<VehicleBlock[]>(`/vehicle-availability/${vehiculoId}/blocks`)
+  return data
+}
+
+/** @deprecated Use fetchUnifiedCalendar instead */
+export const fetchMonthlyAvailability = async (
+  vehiculoId: string,
+  year: number,
+  month: number,
+): Promise<MonthlyAvailability> => {
+  const query = new URLSearchParams({ year: String(year), month: String(month) }).toString()
+  const data = await http<MonthlyAvailability>(`/vehicle-availability/${vehiculoId}/calendar?${query}`)
+  return data
+}
+
+/** NEW: Calendario unificado con soporte para todos los vehículos o uno específico */
+export const fetchUnifiedCalendar = async (
+  year: number,
+  month: number,
+  vehiculoId?: string,
+): Promise<any> => {
+  const params = new URLSearchParams({ 
+    year: String(year), 
+    month: String(month) 
+  })
+  if (vehiculoId) {
+    params.append('vehiculoId', vehiculoId)
+  }
+  const data = await http<any>(`/vehicle-availability/calendar?${params.toString()}`)
+  return data
+}
+
+export const createVehicleBlock = async (data: {
+  vehiculoId: string
+  fecha: string
+  motivo: 'RESERVADO' | 'MANTENIMIENTO' | 'BLOQUEADO_ADMIN' | 'OTRO'
+  detalles?: string
+  creadoPor?: string
+}): Promise<VehicleBlock> => {
+  const created = await http<VehicleBlock>('/vehicle-availability/block', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+  return created
+}
+
+export const deleteVehicleBlock = async (blockId: string): Promise<{ message: string }> => {
+  const result = await http<{ message: string }>(`/vehicle-availability/block/${blockId}`, {
+    method: 'DELETE',
+  })
+  return result
 }
 
 export const fetchCalendar = async (): Promise<CalendarSlotView[]> => {
@@ -194,7 +260,7 @@ export const fetchHeroSlides = async (): Promise<HeroSlide[]> => {
       title: img.altText || 'Momentos Especiales',
       subtitle: img.subtitle || 'Transporte de Lujo',
       description: img.description || 'Vive la experiencia de ser trasladado en el máximo confort',
-      imageUrl: img.url || FALLBACK_IMG,
+      imageUrl: img.url || '',
       order: img.order ?? idx,
       isActive: img.estado === 'ACTIVO',
     }))
@@ -207,7 +273,7 @@ export const fetchHeroSlides = async (): Promise<HeroSlide[]> => {
         title: 'Momentos Especiales',
         subtitle: 'Transporte de Lujo',
         description: 'Vive la experiencia de ser trasladado en el máximo confort',
-        imageUrl: FALLBACK_IMG,
+        imageUrl: '',
         order: 0,
         isActive: true,
       },
@@ -226,6 +292,16 @@ export const fetchExtras = async (): Promise<ExtraOption[]> => {
   }
 }
 
+export const fetchAllExtrasAdmin = async (): Promise<ExtraOption[]> => {
+  try {
+    const data = await http<any>('/extras/admin/all')
+    const list = Array.isArray(data) ? data : data?.data ?? []
+    return list.map(mapExtra)
+  } catch {
+    return []
+  }
+}
+
 export const fetchPackageExtras = async (paqueteId: string): Promise<ExtraOption[]> => {
   try {
     const data = await http<any>(`/extras/paquetes/${paqueteId}`)
@@ -234,6 +310,238 @@ export const fetchPackageExtras = async (paqueteId: string): Promise<ExtraOption
   } catch {
     return []
   }
+}
+
+export const createExtra = async (extra: { nombre: string; descripcion?: string; precio: number; categoria?: string }): Promise<ExtraOption> => {
+  const payload = {
+    nombre: extra.nombre,
+    descripcion: extra.descripcion,
+    precio: extra.precio,
+    categoria: extra.categoria || 'SIN_ALCOHOL',
+  }
+  const created = await http<any>('/extras', { method: 'POST', body: JSON.stringify(payload) })
+  return mapExtra(created)
+}
+
+export const updateExtra = async (id: string, extra: Partial<{ nombre: string; descripcion?: string; precio: number; categoria?: string }>): Promise<ExtraOption> => {
+  const payload = {
+    nombre: extra.nombre,
+    descripcion: extra.descripcion,
+    precio: extra.precio,
+    categoria: extra.categoria,
+  }
+  const updated = await http<any>(`/extras/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  return mapExtra(updated)
+}
+
+export const deleteExtra = async (id: string): Promise<void> => {
+  // Soft delete usando deactivate
+  const payload = {}
+  await http<void>(`/extras/${id}/deactivate`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+
+export const activateExtra = async (id: string): Promise<ExtraOption> => {
+  const payload = {}
+  const updated = await http<any>(`/extras/${id}/activate`, { method: 'PATCH', body: JSON.stringify(payload) })
+  return mapExtra(updated)
+}
+
+export const deactivateExtra = async (id: string): Promise<ExtraOption> => {
+  const payload = {}
+  const updated = await http<any>(`/extras/${id}/deactivate`, { method: 'PATCH', body: JSON.stringify(payload) })
+  return mapExtra(updated)
+}
+
+export const getExtrasForPackageAssociation = async (paqueteId: string): Promise<{ associated: ExtraOption[]; available: ExtraOption[] }> => {
+  const data = await http<any>(`/extras/admin/packages/${paqueteId}/association`)
+  return {
+    associated: Array.isArray(data?.associated) ? data.associated.map(mapExtra) : [],
+    available: Array.isArray(data?.available) ? data.available.map(mapExtra) : [],
+  }
+}
+
+export const attachExtraToPackage = async (extraId: string, paqueteId: string): Promise<void> => {
+  const payload = { extraId, paqueteId }
+  await http<void>('/extras/attach', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export const detachExtraFromPackage = async (extraId: string, paqueteId: string): Promise<void> => {
+  await http<void>(`/extras/${extraId}/packages/${paqueteId}`, { method: 'DELETE' })
+}
+
+// ===========================================
+// CATEGORÍAS DE INCLUIDOS
+// ===========================================
+
+export interface CategoriaIncluido {
+  id: number
+  nombre: string
+  estado: 'ACTIVO' | 'INACTIVO'
+  creadoEn: Date
+}
+
+const mapCategoriaIncluido = (raw: any): CategoriaIncluido => ({
+  id: raw.id,
+  nombre: raw.nombre,
+  estado: raw.estado,
+  creadoEn: new Date(raw.creadoEn),
+})
+
+export const fetchAllCategoriasIncluidos = async (): Promise<CategoriaIncluido[]> => {
+  try {
+    const data = await http<any>('/categorias-incluidos')
+    const list = Array.isArray(data) ? data : data?.data ?? []
+    return list.map(mapCategoriaIncluido)
+  } catch {
+    return []
+  }
+}
+
+export const fetchAllCategoriasIncluidosAdmin = async (): Promise<CategoriaIncluido[]> => {
+  try {
+    const data = await http<any>('/categorias-incluidos/admin')
+    const list = Array.isArray(data) ? data : data?.data ?? []
+    return list.map(mapCategoriaIncluido)
+  } catch {
+    return []
+  }
+}
+
+export const createCategoriaIncluido = async (categoria: { nombre: string }): Promise<CategoriaIncluido> => {
+  const payload = { nombre: categoria.nombre }
+  const created = await http<any>('/categorias-incluidos', { method: 'POST', body: JSON.stringify(payload) })
+  return mapCategoriaIncluido(created)
+}
+
+export const updateCategoriaIncluido = async (id: number, categoria: Partial<{ nombre: string; estado: string }>): Promise<CategoriaIncluido> => {
+  const payload: any = {}
+  if (categoria.nombre !== undefined) payload.nombre = categoria.nombre
+  if (categoria.estado !== undefined) payload.estado = categoria.estado
+  const updated = await http<any>(`/categorias-incluidos/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  return mapCategoriaIncluido(updated)
+}
+
+export const activateCategoriaIncluido = async (id: number): Promise<CategoriaIncluido> => {
+  const updated = await http<any>(`/categorias-incluidos/${id}/activate`, { method: 'PUT', body: JSON.stringify({}) })
+  return mapCategoriaIncluido(updated)
+}
+
+export const deactivateCategoriaIncluido = async (id: number): Promise<CategoriaIncluido> => {
+  const updated = await http<any>(`/categorias-incluidos/${id}/deactivate`, { method: 'PUT', body: JSON.stringify({}) })
+  return mapCategoriaIncluido(updated)
+}
+
+// ===========================================
+// INCLUIDOS (BEBIDAS)
+// ===========================================
+
+export interface Incluido {
+  id: string
+  nombre: string
+  descripcion: string | null
+  categoriaId: number
+  categoriaNombre: string
+  estado: 'ACTIVO' | 'INACTIVO'
+  creadoEn: Date
+  actualizadoEn: Date
+  packageIds?: string[]
+}
+
+const mapIncluido = (raw: any): Incluido => ({
+  id: raw.id,
+  nombre: raw.nombre,
+  descripcion: raw.descripcion,
+  categoriaId: raw.categoriaId,
+  categoriaNombre: raw.categoriaNombre,
+  estado: raw.estado,
+  creadoEn: new Date(raw.creadoEn),
+  actualizadoEn: new Date(raw.actualizadoEn),
+  packageIds: raw.packageIds,
+})
+
+export const fetchAllIncluidos = async (): Promise<Incluido[]> => {
+  try {
+    const data = await http<any>('/incluidos')
+    const list = Array.isArray(data) ? data : data?.data ?? []
+    return list.map(mapIncluido)
+  } catch {
+    return []
+  }
+}
+
+export const fetchAllIncluidosAdmin = async (): Promise<Incluido[]> => {
+  try {
+    const data = await http<any>('/incluidos/admin')
+    const list = Array.isArray(data) ? data : data?.data ?? []
+    return list.map(mapIncluido)
+  } catch {
+    return []
+  }
+}
+
+export const fetchPackageIncluidos = async (paqueteId: string): Promise<Incluido[]> => {
+  try {
+    const data = await http<any>(`/incluidos/package/${paqueteId}`)
+    const list = Array.isArray(data) ? data : data?.data ?? []
+    return list.map(mapIncluido)
+  } catch {
+    return []
+  }
+}
+
+export const fetchPackageIncluidosGrouped = async (paqueteId: string): Promise<Record<number, { categoria: { id: number; nombre: string }; incluidos: Incluido[] }>> => {
+  try {
+    const data = await http<any>(`/incluidos/package/${paqueteId}/grouped`)
+    return data || {}
+  } catch {
+    return {}
+  }
+}
+
+export const createIncluido = async (incluido: { nombre: string; descripcion?: string; categoriaId: number }): Promise<Incluido> => {
+  const payload = {
+    nombre: incluido.nombre,
+    descripcion: incluido.descripcion,
+    categoriaId: incluido.categoriaId,
+  }
+  const created = await http<any>('/incluidos', { method: 'POST', body: JSON.stringify(payload) })
+  return mapIncluido(created)
+}
+
+export const updateIncluido = async (id: string, incluido: Partial<{ nombre: string; descripcion?: string; categoriaId: number }>): Promise<Incluido> => {
+  const payload: any = {}
+  if (incluido.nombre !== undefined) payload.nombre = incluido.nombre
+  if (incluido.descripcion !== undefined) payload.descripcion = incluido.descripcion
+  if (incluido.categoriaId !== undefined) payload.categoriaId = incluido.categoriaId
+  const updated = await http<any>(`/incluidos/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  return mapIncluido(updated)
+}
+
+export const activateIncluido = async (id: string): Promise<Incluido> => {
+  const updated = await http<any>(`/incluidos/${id}/activate`, { method: 'PUT', body: JSON.stringify({}) })
+  return mapIncluido(updated)
+}
+
+export const deactivateIncluido = async (id: string): Promise<Incluido> => {
+  const updated = await http<any>(`/incluidos/${id}/deactivate`, { method: 'PUT', body: JSON.stringify({}) })
+  return mapIncluido(updated)
+}
+
+export const attachIncluidoToPackage = async (incluidoId: string, paqueteId: string): Promise<void> => {
+  const payload = { incluidoId, paqueteId }
+  await http<void>('/incluidos/attach', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export const detachIncluidoFromPackage = async (incluidoId: string, paqueteId: string): Promise<void> => {
+  await http<void>(`/incluidos/${incluidoId}/packages/${paqueteId}`, { method: 'DELETE' })
+}
+
+export const deleteCategoriaIncluido = async (id: number): Promise<void> => {
+  await http<void>(`/categorias-incluidos/${id}`, { method: 'DELETE' })
+}
+
+export const deleteIncluido = async (id: string): Promise<void> => {
+  await http<void>(`/incluidos/${id}`, { method: 'DELETE' })
 }
 
 export const createCalendarEvent = async (data: Partial<CalendarSlotView>) => {
@@ -365,10 +673,10 @@ export const uploadImage = async (file: File | string): Promise<string> => {
       throw new Error(`Upload failed: ${text || res.statusText}`)
     }
     const data = await res.json() as { url: string }
-    return data.url || FALLBACK_IMG
+    return data.url || ''
   } catch (err) {
     console.error('Error uploading via backend:', err)
-    return FALLBACK_IMG
+    return ''
   }
 }
 
@@ -395,32 +703,39 @@ export const attachImageToEvent = async (imagenId: string, eventoId: string, ord
 
 export const submitReservation = async (payload: any) => {
   const fecha = new Date()
-  const fechaStr = payload.date || fecha.toISOString().slice(0, 10)
+  const fechaStr = payload.fechaEvento || payload.date || fecha.toISOString().slice(0, 10)
 
   const body = {
-    nombre: payload.name || payload.nombre || 'Invitado',
+    nombre: payload.nombre || payload.name || 'Invitado',
     email: payload.email,
-    telefono: payload.phone || payload.telefono || '00000000',
-    identificacion: payload.identificacion,
-    tipoEvento: payload.event || payload.tipoEvento || 'Evento',
-    fechaEvento: fechaStr,
+    telefono: payload.telefono || payload.phone || '00000000',
+    tipoIdentificacion: payload.tipoIdentificacion || payload.identificationType,
+    numeroIdentificacion: payload.numeroIdentificacion || payload.identificacion,
+    tipoEvento: payload.tipoEvento || payload.event || 'Evento',
+    fechaEvento: payload.fechaEvento || fechaStr,
     horaInicio: payload.horaInicio || `${fechaStr}T18:00:00`,
     horaFin: payload.horaFin || `${fechaStr}T20:00:00`,
-    origen: payload.origen || 'Pendiente',
-    destino: payload.destino || 'Pendiente',
+    origen: payload.origen || payload.origin || 'Pendiente',
+    destino: payload.destino || payload.destination || 'Pendiente',
     numeroPersonas: Number(payload.numeroPersonas) || 2,
     paqueteId: payload.paqueteId,
-    vehiculoId: payload.vehiculoId,
+    vehiculoId: payload.vehiculoId ?? null,
     tipoPago: payload.tipoPago || 'TARJETA',
     precioBase: payload.precioBase ?? 0,
     precioTotal: payload.precioTotal ?? 0,
     anticipo: payload.anticipo ?? 0,
     restante: payload.restante ?? 0,
+    notasInternas: payload.notasInternas || payload.notes,
     extras: Array.isArray(payload.extras)
       ? payload.extras.map((x: any) => ({
           extraId: x.extraId || x.id,
           cantidad: Number(x.cantidad ?? 1),
           precioUnitario: Number(x.precioUnitario ?? x.price ?? 0),
+        }))
+      : undefined,
+    incluidos: Array.isArray(payload.incluidos)
+      ? payload.incluidos.map((x: any) => ({
+          incluidoId: x.incluidoId || x.id,
         }))
       : undefined,
   }
@@ -662,14 +977,289 @@ export const deleteHeroSlide = async (id: string) => {
   return true
 }
 
+// ==================== RESERVATIONS ADMIN ====================
+
+export interface ReservationView {
+  id: string
+  nombre: string
+  email: string
+  telefono: string
+  estado: 'PAGO_PENDIENTE' | 'PAGO_PARCIAL' | 'CONFIRMADA' | 'CANCELADA' | 'COMPLETADA'
+  fechaEvento: string
+  horaInicio: string
+  horaFin: string
+  numeroPersonas: number
+  precioBase: number
+  precioTotal: number
+  anticipo: number
+  restante: number
+  paqueteId: string
+  vehiculoId: string
+  tipoPago: string
+  origenReserva?: 'WEB' | 'ADMIN' | 'WHATSAPP' | 'INSTAGRAM' | 'CORREO' | 'MANUAL' | 'CORPORATIVO'
+  notasInternas?: string
+  hasConflict?: boolean
+  vehiculoNombre?: string
+  paqueteNombre?: string
+}
+
+export const fetchReservations = async (filters?: {
+  vehiculoId?: string
+  estado?: string
+  desde?: string
+  hasta?: string
+}): Promise<ReservationView[]> => {
+  const params = new URLSearchParams()
+  if (filters?.vehiculoId) params.append('vehiculoId', filters.vehiculoId)
+  if (filters?.estado) params.append('estado', filters.estado)
+  if (filters?.desde) params.append('desde', filters.desde)
+  if (filters?.hasta) params.append('hasta', filters.hasta)
+  
+  const query = params.toString()
+  const data = await http<any[]>(`/reservas${query ? `?${query}` : ''}`)
+  return data
+}
+
+export const confirmAdelanto = async (reservaId: string): Promise<ReservationView> => {
+  const data = await http<ReservationView>(`/reservas/${reservaId}/pago/adelanto`, { method: 'PATCH' })
+  return data
+}
+
+export const confirmPagoCompleto = async (reservaId: string): Promise<ReservationView> => {
+  const data = await http<ReservationView>(`/reservas/${reservaId}/pago/completo`, { method: 'PATCH' })
+  return data
+}
+
+// ==================== ADMIN RESERVATIONS ====================
+
+export interface CreateManualReservationData {
+  nombre: string
+  email: string
+  telefono: string
+  identificacion?: string
+  notasInternas?: string
+  paqueteId: string
+  vehiculoId: string
+  conductorId?: string
+  tipoEvento: string
+  fechaEvento: string
+  horaInicio: string
+  horaFin: string
+  origen: string
+  destino: string
+  numeroPersonas: number
+  tipoPago: 'TARJETA' | 'SINPE' | 'TRANSFERENCIA'
+  origenReserva: 'WEB' | 'ADMIN' | 'WHATSAPP' | 'INSTAGRAM' | 'CORREO' | 'MANUAL' | 'CORPORATIVO'
+  anticipo?: number
+  estadoInicial: 'PAGO_PENDIENTE' | 'PAGO_PARCIAL' | 'CONFIRMADA'
+  extras?: Array<{
+    extraId: string
+    cantidad: number
+  }>
+  comentario?: string
+}
+
+export const createManualReservation = async (data: CreateManualReservationData): Promise<ReservationView> => {
+  const result = await http<ReservationView>('/reservas/admin/manual', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+  return result
+}
+
+export interface MarkPaymentCompleteData {
+  tipoPago: 'SINPE' | 'TRANSFERENCIA' | 'TARJETA' | 'EFECTIVO'
+  referenciaExterna?: string
+  comentario?: string
+}
+
+export const markPaymentCompleteManual = async (
+  reservaId: string,
+  data: MarkPaymentCompleteData,
+): Promise<ReservationView> => {
+  const result = await http<ReservationView>(`/reservas/${reservaId}/admin/pago-completo-manual`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+  return result
+}
+
+export interface UpdateReservationData {
+  conductor?: string
+  horaInicio?: string
+  horaFin?: string
+  vehiculoId?: string
+  estado?: 'CANCELADA' | 'COMPLETADA'
+  observaciones?: string
+}
+
+export const updateReservation = async (
+  reservaId: string,
+  data: UpdateReservationData,
+): Promise<ReservationView> => {
+  const result = await http<ReservationView>(`/reservas/${reservaId}/admin`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+  return result
+}
+
+// ==================== TABLA ADMINISTRATIVA DE RESERVAS ====================
+
+export interface AdminReservationRow extends ReservationView {
+  // Campos operativos adicionales
+  contactoCliente: 'PENDIENTE' | 'CONTACTADO' | 'CONFIRMADO'
+  adelantoRecibido: boolean
+  pagoCompleto: boolean
+  choferAsignado: boolean
+  eventoRealizado: boolean
+  tipoEvento: string
+  origen: string
+  destino: string
+  identificacion?: string
+  // Datos relacionados
+  paquete?: {
+    id: string
+    nombre: string
+    precioBase: number
+  }
+  vehiculo?: {
+    id: string
+    nombre: string
+    categoria: string
+  }
+  conductor?: {
+    id: string
+    nombre: string
+    telefono: string
+  }
+  // Extras
+  extras?: Array<{
+    id: string
+    nombre: string
+    cantidad: number
+    precioUnitario: number
+  }>
+  // Indicadores calculados
+  esProximo?: boolean
+  esPasado?: boolean
+  tieneConflicto?: boolean
+}
+
+export interface ReservationsTableFilters {
+  vehiculoId?: string
+  estadoPago?: 'pendiente' | 'parcial' | 'completo'
+  tipoEvento?: 'futuro' | 'hoy' | 'pasado'
+  origenReserva?: string
+  contactoCliente?: 'PENDIENTE' | 'CONTACTADO' | 'CONFIRMADO'
+  conConflictos?: boolean
+  fechaDesde?: string
+  fechaHasta?: string
+  busqueda?: string
+  sortBy?: 'fechaEvento' | 'actualizadoEn' | 'conflictos'
+  sortOrder?: 'asc' | 'desc'
+  page?: number
+  limit?: number
+}
+
+export interface ReservationsTableResponse {
+  data: AdminReservationRow[]
+  meta: {
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+  }
+}
+
+export const fetchAdminReservationsTable = async (
+  filters?: ReservationsTableFilters
+): Promise<ReservationsTableResponse> => {
+  const params = new URLSearchParams()
+  
+  if (filters?.vehiculoId) params.append('vehiculoId', filters.vehiculoId)
+  if (filters?.estadoPago) params.append('estadoPago', filters.estadoPago)
+  if (filters?.tipoEvento) params.append('tipoEvento', filters.tipoEvento)
+  if (filters?.origenReserva) params.append('origenReserva', filters.origenReserva)
+  if (filters?.contactoCliente) params.append('contactoCliente', filters.contactoCliente)
+  if (filters?.conConflictos !== undefined) params.append('conConflictos', String(filters.conConflictos))
+  if (filters?.fechaDesde) params.append('fechaDesde', filters.fechaDesde)
+  if (filters?.fechaHasta) params.append('fechaHasta', filters.fechaHasta)
+  if (filters?.busqueda) params.append('busqueda', filters.busqueda)
+  if (filters?.sortBy) params.append('sortBy', filters.sortBy)
+  if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder)
+  if (filters?.page) params.append('page', String(filters.page))
+  if (filters?.limit) params.append('limit', String(filters.limit))
+  
+  const query = params.toString()
+  const data = await http<ReservationsTableResponse>(`/reservas/admin/table${query ? `?${query}` : ''}`)
+  return data
+}
+
+export const updateContactoCliente = async (
+  reservaId: string,
+  contactoCliente: 'PENDIENTE' | 'CONTACTADO' | 'CONFIRMADO'
+): Promise<AdminReservationRow> => {
+  const result = await http<AdminReservationRow>(`/reservas/${reservaId}/admin/contacto-cliente`, {
+    method: 'PATCH',
+    body: JSON.stringify({ contactoCliente }),
+  })
+  return result
+}
+
+export const updateAdelantoRecibido = async (
+  reservaId: string,
+  adelantoRecibido: boolean
+): Promise<AdminReservationRow> => {
+  const result = await http<AdminReservationRow>(`/reservas/${reservaId}/admin/adelanto-recibido`, {
+    method: 'PATCH',
+    body: JSON.stringify({ adelantoRecibido }),
+  })
+  return result
+}
+
+export const updatePagoCompleto = async (
+  reservaId: string,
+  pagoCompleto: boolean
+): Promise<AdminReservationRow> => {
+  const result = await http<AdminReservationRow>(`/reservas/${reservaId}/admin/pago-completo`, {
+    method: 'PATCH',
+    body: JSON.stringify({ pagoCompleto }),
+  })
+  return result
+}
+
+export const updateChoferAsignado = async (
+  reservaId: string,
+  choferAsignado: boolean
+): Promise<AdminReservationRow> => {
+  const result = await http<AdminReservationRow>(`/reservas/${reservaId}/admin/chofer-asignado`, {
+    method: 'PATCH',
+    body: JSON.stringify({ choferAsignado }),
+  })
+  return result
+}
+
+export const updateEventoRealizado = async (
+  reservaId: string,
+  eventoRealizado: boolean
+): Promise<AdminReservationRow> => {
+  const result = await http<AdminReservationRow>(`/reservas/${reservaId}/admin/evento-realizado`, {
+    method: 'PATCH',
+    body: JSON.stringify({ eventoRealizado }),
+  })
+  return result
+}
+
+
 export default {
   fetchPackages,
   fetchVehicles,
-  fetchCalendar,
-  createCalendarEvent,
-  updateCalendarEvent,
-  deleteCalendarEvent,
-  submitReservation,
+  fetchVehicleAvailability,
+  checkVehicleAvailability,
+  fetchVehicleBlocks,
+  fetchMonthlyAvailability,
+  fetchUnifiedCalendar,
   sendConfirmationEmail,
   sendAdminNotification,
   sendWhatsAppNotification,
@@ -697,4 +1287,17 @@ export default {
   loginUser,
   getCurrentUser,
   updateUser,
+  fetchReservations,
+  confirmAdelanto,
+  confirmPagoCompleto,
+  createManualReservation,
+  markPaymentCompleteManual,
+  updateReservation,
+  // Tabla administrativa
+  fetchAdminReservationsTable,
+  updateContactoCliente,
+  updateAdelantoRecibido,
+  updatePagoCompleto,
+  updateChoferAsignado,
+  updateEventoRealizado,
 }

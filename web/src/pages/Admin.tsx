@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react'
-import { FaEdit, FaTrash } from 'react-icons/fa'
+import { useNavigate } from 'react-router-dom'
+import { FaEdit, FaTrash, FaCheckCircle, FaMoneyBillWave } from 'react-icons/fa'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import Modal from '../components/Modal'
 import { InputField, TextareaField, CheckboxField } from '../components/FormField'
 import ImageUpload from '../components/ImageUpload'
-import { fetchPackages, fetchVehicles, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, fetchSystemImages, createSystemImage, updateSystemImage, deleteSystemImage, fetchHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide, createImageRecord, attachImageToPackage, attachImageToVehicle, attachImageToEvent } from '../api/api'
+import { fetchPackages, fetchVehicles, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, fetchSystemImages, createSystemImage, updateSystemImage, deleteSystemImage, fetchHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide, createImageRecord, attachImageToPackage, attachImageToVehicle, attachImageToEvent, fetchReservations, confirmAdelanto, confirmPagoCompleto, createManualReservation, markPaymentCompleteManual, type ReservationView, type CreateManualReservationData } from '../api/api'
 import { useCalendarContext } from '../contexts/CalendarContext'
+import { useAlert } from '../contexts/AlertContext'
 import type { Package, Vehicle, CalendarSlotView, SystemImage, HeroSlide } from '../data/content'
 
 const Admin = () => {
+  const navigate = useNavigate()
+  const { showAlert, showConfirm } = useAlert()
   const [packages, setPackages] = useState<Package[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [systemImages, setSystemImages] = useState<SystemImage[]>([])
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([])
+  const [reservations, setReservations] = useState<ReservationView[]>([])
   const [pkgCategories, setPkgCategories] = useState<string[]>([])
   const [vehCategories, setVehCategories] = useState<string[]>([])
   const [pkgCatInputs, setPkgCatInputs] = useState<Record<string, string>>({})
@@ -33,6 +38,9 @@ const Admin = () => {
   const [showEventModal, setShowEventModal] = useState(false)
   const [showImgModal, setShowImgModal] = useState(false)
   const [showHeroModal, setShowHeroModal] = useState(false)
+  const [showManualReservationModal, setShowManualReservationModal] = useState(false)
+  const [showMarkPaymentModal, setShowMarkPaymentModal] = useState(false)
+  const [selectedReservationForPayment, setSelectedReservationForPayment] = useState<string | null>(null)
 
   const [editingPackage, setEditingPackage] = useState<Package | null>(null)
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
@@ -46,13 +54,14 @@ const Admin = () => {
 
   useEffect(() => {
     let mounted = true
-    Promise.all([fetchPackages(), fetchVehicles(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides()]).then(([p, v, n, _exp, img, h]) => {
+    Promise.all([fetchPackages(), fetchVehicles(), fetchNotifications(), fetchExperiences(), fetchSystemImages(), fetchHeroSlides(), fetchReservations()]).then(([p, v, n, _exp, img, h, r]) => {
       if (!mounted) return
       setPackages(p)
       setVehicles(v)
       setSystemImages(img)
       setHeroSlides(h)
       setNotifications(n)
+      setReservations(r)
       setPkgCategories(Array.from(new Set(p.map(x => x.category))).filter(Boolean))
       setVehCategories(Array.from(new Set(v.map(x => x.category))).filter(Boolean))
       setLoading(false)
@@ -96,12 +105,12 @@ const Admin = () => {
   const addCategory = (type: 'package' | 'vehicle', name: string) => {
     const trimmed = name.trim()
     if (!trimmed) {
-      alert('Ingresa un nombre de categoría')
+      showAlert('Categoría vacía', 'Ingresa un nombre de categoría', 'warning')
       return
     }
     if (type === 'package') {
       if (pkgCategories.includes(trimmed)) {
-        alert('Ya existe esa categoría de paquete')
+        showAlert('Categoría existente', 'Ya existe esa categoría de paquete', 'warning')
         return
       }
       setPkgCategories((s) => [...s, trimmed])
@@ -110,7 +119,7 @@ const Admin = () => {
       setNewPkgCategory('')
     } else {
       if (vehCategories.includes(trimmed)) {
-        alert('Ya existe esa categoría de vehículo')
+        showAlert('Categoría existente', 'Ya existe esa categoría de vehículo', 'warning')
         return
       }
       setVehCategories((s) => [...s, trimmed])
@@ -124,7 +133,7 @@ const Admin = () => {
     const inputs = type === 'package' ? pkgCatInputs : vehCatInputs
     const to = (inputs[from] ?? from).trim()
     if (!to) {
-      alert('El nombre no puede quedar vacío')
+      showAlert('Nombre vacío', 'El nombre no puede quedar vacío', 'warning')
       return
     }
     if (to === from) return
@@ -152,7 +161,7 @@ const Admin = () => {
         const affected = updatedPackages.filter((p) => p.category === to)
         await Promise.all(affected.map((p) => updatePackage(p.id, { category: to } as any)))
       } catch (e) {
-        alert(`No se pudo renombrar: ${e instanceof Error ? e.message : 'Error desconocido'}`)
+        showAlert('Error', `No se pudo renombrar: ${e instanceof Error ? e.message : 'Error desconocido'}`, 'error')
         setPkgCategories(prevCats)
         setPackages(prevPackages)
         setPkgCatInputs((s) => ({ ...s, [from]: from }))
@@ -181,7 +190,7 @@ const Admin = () => {
         const affected = updatedVehicles.filter((v) => v.category === to)
         await Promise.all(affected.map((v) => updateVehicle(v.id, { category: to } as any)))
       } catch (e) {
-        alert(`No se pudo renombrar: ${e instanceof Error ? e.message : 'Error desconocido'}`)
+        showAlert('Error', `No se pudo renombrar: ${e instanceof Error ? e.message : 'Error desconocido'}`, 'error')
         setVehCategories(prevCats)
         setVehicles(prevVehicles)
         setVehCatInputs((s) => ({ ...s, [from]: from }))
@@ -191,7 +200,8 @@ const Admin = () => {
   }
 
   const deleteCategory = async (type: 'package' | 'vehicle', name: string) => {
-    if (!confirm(`¿Eliminar la categoría "${name}"? Los elementos asociados se moverán a "${fallbackCategory}".`)) return
+    const confirmed = await showConfirm(`¿Eliminar la categoría "${name}"?`, `Los elementos asociados se moverán a "${fallbackCategory}".`, true)
+    if (!confirmed) return
     if (type === 'package') {
       const prevCats = pkgCategories
       const prevPackages = packages
@@ -210,7 +220,7 @@ const Admin = () => {
         const affected = updatedPackages.filter((p) => p.category === fallbackCategory)
         await Promise.all(affected.map((p) => updatePackage(p.id, { category: fallbackCategory } as any)))
       } catch (e) {
-        alert(`No se pudo eliminar la categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`)
+        showAlert('Error', `No se pudo eliminar la categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`, 'error')
         setPkgCategories(prevCats)
         setPackages(prevPackages)
       }
@@ -232,7 +242,7 @@ const Admin = () => {
         const affected = updatedVehicles.filter((v) => v.category === fallbackCategory)
         await Promise.all(affected.map((v) => updateVehicle(v.id, { category: fallbackCategory } as any)))
       } catch (e) {
-        alert(`No se pudo eliminar la categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`)
+        showAlert('Error', `No se pudo eliminar la categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`, 'error')
         setVehCategories(prevCats)
         setVehicles(prevVehicles)
       }
@@ -253,7 +263,8 @@ const Admin = () => {
   }
 
   const onDeletePackage = async (id: string) => {
-    if (!confirm('Eliminar paquete?')) return
+    const confirmed = await showConfirm('Eliminar paquete', '¿Estás seguro de que deseas eliminar este paquete?', true)
+    if (!confirmed) return
     await deletePackage(id)
     setPackages((s) => s.filter((x) => x.id !== id))
   }
@@ -474,423 +485,205 @@ const Admin = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-6 lg:gap-8 items-start">
           <aside className="bg-[var(--card-bg,#11131a)] border border-white/10 rounded-2xl p-4 flex flex-col gap-2.5 shadow-[0_12px_30px_rgba(0,0,0,0.3)] self-start max-w-xs">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-gray-400">Secciones</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-gray-400">Navegación</p>
             <div className="grid gap-2">
-              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-hero')?.scrollIntoView({ behavior: 'smooth' })}>Hero Carousel</button>
-              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-events')?.scrollIntoView({ behavior: 'smooth' })}>Eventos</button>
-              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-categories')?.scrollIntoView({ behavior: 'smooth' })}>Categorías</button>
-              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-packages')?.scrollIntoView({ behavior: 'smooth' })}>Paquetes</button>
-              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-vehicles')?.scrollIntoView({ behavior: 'smooth' })}>Vehículos</button>
-              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-images')?.scrollIntoView({ behavior: 'smooth' })}>Imágenes del Sistema</button>
-              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => document.getElementById('admin-notifications')?.scrollIntoView({ behavior: 'smooth' })}>Notificaciones</button>
+              <button className="text-left bg-amber-300/10 border border-amber-300/30 text-amber-300 px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-amber-300/50 hover:bg-amber-300/20 text-sm font-semibold">
+                Panel Principal
+              </button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => navigate('/admin/sistema')}>
+                Configuración del Sistema
+              </button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => navigate('/admin/eventos')}>
+                Eventos
+              </button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => navigate('/admin/paquetes')}>
+                Paquetes
+              </button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => navigate('/admin/vehiculos')}>
+                Vehículos
+              </button>
+              <button className="text-left bg-white/5 border border-white/10 text-white px-3 py-2 rounded-xl cursor-pointer transition-colors hover:border-white/20 hover:bg-white/10 text-sm" onClick={() => navigate('/admin/extras')}>
+                Extras
+              </button>
             </div>
           </aside>
 
           <div className="min-w-0">
-          <section className="section" id="admin-hero">
+          <section className="section" id="admin-reservations">
             <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="eyebrow">Landing</p>
-                <h2 className="section__title">Hero Carousel</h2>
+                <p className="eyebrow">Operaciones</p>
+                <h2 className="section__title">Reservas</h2>
               </div>
-              <div>
-                <Button variant="primary" onClick={onCreateHero}>Nuevo slide</Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => setShowManualReservationModal(true)}>+ Crear Reserva Manual</Button>
+                <Button variant="primary" onClick={async () => setReservations(await fetchReservations())}>Refrescar</Button>
               </div>
             </div>
 
             <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
-              <div className="hidden md:grid grid-cols-4 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
-                <span>Título</span>
-                <span>Orden</span>
-                <span>Estado</span>
-                <span>Acciones</span>
-              </div>
-              {heroSlides.map((slide) => (
-                <div key={slide.id} className="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Título</span>
-                    <span>{slide.title}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Orden</span>
-                    <span>{slide.order}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Estado</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${slide.isActive ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
-                      {slide.isActive ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </div>
-                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
-                    <button className={iconButtonClasses} aria-label={`Editar ${slide.title}`} onClick={() => onEditHero(slide)}>
-                      <FaEdit size={16} />
-                    </button>
-                    <button className={iconButtonClasses} aria-label={`Eliminar ${slide.title}`} onClick={() => onDeleteHero(slide.id)}>
-                      <FaTrash size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)]">
+                    <tr className="text-left uppercase tracking-wide text-gray-200">
+                      <th className="p-3">Cliente</th>
+                      <th className="p-3">Fecha</th>
+                      <th className="p-3">Horario</th>
+                      <th className="p-3">Origen</th>
+                      <th className="p-3">Total</th>
+                      <th className="p-3">Adelanto</th>
+                      <th className="p-3">Restante</th>
+                      <th className="p-3">Estado</th>
+                      <th className="p-3">Conflicto</th>
+                      <th className="p-3">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reservations.length === 0 && (
+                      <tr>
+                        <td colSpan={10} className="p-4 text-center text-gray-400">No hay reservas aún</td>
+                      </tr>
+                    )}
+                    {reservations.map((reserva) => {
+                      const getEstadoBadge = (estado: string) => {
+                        const badges = {
+                          'PAGO_PENDIENTE': 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-300',
+                          'PAGO_PARCIAL': 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
+                          'CONFIRMADA': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+                          'CANCELADA': 'bg-red-500/15 text-red-700 dark:text-red-300',
+                          'COMPLETADA': 'bg-purple-500/15 text-purple-700 dark:text-purple-300'
+                        }
+                        return badges[estado as keyof typeof badges] || badges['PAGO_PENDIENTE']
+                      }
 
-          <section className="section" id="admin-events">
-            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="eyebrow">Calendario</p>
-                <h2 className="section__title">Eventos</h2>
-              </div>
-              <div>
-                <Button variant="primary" onClick={onCreateEvent}>Nuevo evento</Button>
-              </div>
-            </div>
+                      const getEstadoTexto = (estado: string) => {
+                        const textos = {
+                          'PAGO_PENDIENTE': 'Pago Pendiente',
+                          'PAGO_PARCIAL': 'Pago Parcial',
+                          'CONFIRMADA': 'Confirmada',
+                          'CANCELADA': 'Cancelada',
+                          'COMPLETADA': 'Completada'
+                        }
+                        return textos[estado as keyof typeof textos] || estado
+                      }
 
-            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
-              <div className="hidden md:grid grid-cols-5 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
-                <span>Fecha</span>
-                <span>Título</span>
-                <span>Tag</span>
-                <span>Estado</span>
-                <span>Acciones</span>
-              </div>
-              {events.map((e) => (
-                <div key={e.id} className="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Fecha</span>
-                    <span>{e.date}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Título</span>
-                    <span>{e.title}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Tag</span>
-                    <span className="inline-flex px-2 py-1 text-xs rounded-full bg-white/10 text-white">{e.tag || '—'}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Estado</span>
-                    <span className="inline-flex px-2 py-1 text-xs rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-200">{e.status}</span>
-                  </div>
-                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
-                    <button className={iconButtonClasses} aria-label={`Editar ${e.title}`} onClick={() => onEditEvent(e)}>
-                      <FaEdit size={16} />
-                    </button>
-                    <button className={iconButtonClasses} aria-label={`Eliminar ${e.title}`} onClick={() => onDeleteEvent(e.id)}>
-                      <FaTrash size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                      const handleConfirmarAdelanto = async (id: string) => {
+                        if (!confirm('¿Confirmar que se recibió el adelanto?')) return
+                        try {
+                          const updated = await confirmAdelanto(id)
+                          setReservations(prev => prev.map(r => r.id === id ? updated : r))
+                          alert('Adelanto confirmado exitosamente')
+                        } catch (error) {
+                          alert(`Error: ${error instanceof Error ? error.message : 'No se pudo confirmar'}`)
+                        }
+                      }
 
-          <section className="section" id="admin-categories">
-            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="eyebrow">Organización</p>
-                <h2 className="section__title">Categorías</h2>
-                <p className="text-sm text-gray-400">Crea, edita o elimina categorías de paquetes y vehículos para mantener ordenado el catálogo.</p>
-              </div>
-            </div>
+                      const handleConfirmarPagoCompleto = async (id: string) => {
+                        if (!confirm('¿Confirmar que se recibió el pago completo?')) return
+                        try {
+                          const updated = await confirmPagoCompleto(id)
+                          setReservations(prev => prev.map(r => r.id === id ? updated : r))
+                          alert('Pago completo confirmado exitosamente')
+                        } catch (error) {
+                          alert(`Error: ${error instanceof Error ? error.message : 'No se pudo confirmar'}`)
+                        }
+                      }
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card title="Paquetes" subtitle="Etiquetas para agrupar paquetes">
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={newPkgCategory}
-                      onChange={(e) => setNewPkgCategory(e.target.value)}
-                      placeholder="Nueva categoría de paquete"
-                      className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
-                    />
-                    <Button variant="primary" onClick={() => addCategory('package', newPkgCategory)}>Crear</Button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {pkgCategoryStats.length === 0 && <p className="text-sm text-gray-400">Aún no hay categorías. Crea la primera para organizar tus paquetes.</p>}
-                    {pkgCategoryStats.map((cat) => (
-                      <div
-                        key={cat.name}
-                        className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-3"
-                      >
-                        <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-2">
-                          <input
-                            type="text"
-                            value={pkgCatInputs[cat.name] ?? cat.name}
-                            onChange={(e) => setPkgCatInputs((prev) => ({ ...prev, [cat.name]: e.target.value }))}
-                            disabled={!pkgCatEditing[cat.name]}
-                            className={`flex-1 min-w-0 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none ${pkgCatEditing[cat.name] ? '' : 'opacity-70 cursor-not-allowed'}`}
-                          />
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-gray-200 shrink-0">{cat.count} paquetes</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:justify-between">
-                          <span className="text-xs text-gray-400">Usada en {cat.count} paquetes</span>
-                          <div className="flex gap-2 flex-wrap sm:justify-end shrink-0">
-                            {!pkgCatEditing[cat.name] && (
-                              <Button variant="ghost" onClick={() => setPkgCatEditing((s) => ({ ...s, [cat.name]: true }))}>Editar</Button>
+                      return (
+                        <tr key={reserva.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="p-3">
+                            <div className="flex flex-col">
+                              <span className="font-medium">{reserva.nombre}</span>
+                              <span className="text-xs text-gray-400">{reserva.email}</span>
+                              <span className="text-xs text-gray-400">{reserva.telefono}</span>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            {new Date(reserva.fechaEvento).toLocaleDateString('es-CR')}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex flex-col text-xs">
+                              <span>{new Date(reserva.horaInicio).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-gray-400">a</span>
+                              <span>{new Date(reserva.horaFin).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${
+                              reserva.origenReserva === 'ADMIN' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
+                              reserva.origenReserva === 'CORPORATIVO' ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300' :
+                              'bg-gray-500/15 text-gray-700 dark:text-gray-300'
+                            }`}>
+                              {reserva.origenReserva === 'ADMIN' ? '📝 Manual' :
+                               reserva.origenReserva === 'CORPORATIVO' ? '🏢 Corporativo' :
+                               '🌐 Web'}
+                            </span>
+                          </td>
+                          <td className="p-3 font-semibold">${reserva.precioTotal.toFixed(2)}</td>
+                          <td className="p-3">${reserva.anticipo.toFixed(2)}</td>
+                          <td className="p-3">${reserva.restante.toFixed(2)}</td>
+                          <td className="p-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${getEstadoBadge(reserva.estado)}`}>
+                              {getEstadoTexto(reserva.estado)}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {reserva.hasConflict ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-red-500/15 text-red-700 dark:text-red-300" title="Este vehículo tiene otra reserva en el mismo horario">
+                                ⚠️ Conflicto
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                                ✓ Sin conflicto
+                              </span>
                             )}
-                            {pkgCatEditing[cat.name] && (
-                              <Button
-                                variant="primary"
-                                onClick={() => renameCategory('package', cat.name)}
-                                disabled={(pkgCatInputs[cat.name] ?? cat.name).trim() === cat.name}
-                              >
-                                Guardar
-                              </Button>
-                            )}
-                            {pkgCatEditing[cat.name] && (
-                              <Button
-                                variant="ghost"
-                                onClick={() => {
-                                  setPkgCatInputs((s) => ({ ...s, [cat.name]: cat.name }))
-                                  setPkgCatEditing((s) => ({ ...s, [cat.name]: false }))
-                                }}
-                              >
-                                Cancelar
-                              </Button>
-                            )}
-                            <Button variant="ghost" onClick={() => deleteCategory('package', cat.name)}>Eliminar</Button>
-                        </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-
-              <Card title="Vehículos" subtitle="Etiquetas para agrupar vehículos">
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={newVehCategory}
-                      onChange={(e) => setNewVehCategory(e.target.value)}
-                      placeholder="Nueva categoría de vehículo"
-                      className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
-                    />
-                    <Button variant="primary" onClick={() => addCategory('vehicle', newVehCategory)}>Crear</Button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {vehCategoryStats.length === 0 && <p className="text-sm text-gray-400">Aún no hay categorías. Crea la primera para organizar tus vehículos.</p>}
-                    {vehCategoryStats.map((cat) => (
-                      <div
-                        key={cat.name}
-                        className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-3"
-                      >
-                        <div className="min-w-0 flex flex-col sm:flex-row sm:items-center gap-2">
-                          <input
-                            type="text"
-                            value={vehCatInputs[cat.name] ?? cat.name}
-                            onChange={(e) => setVehCatInputs((prev) => ({ ...prev, [cat.name]: e.target.value }))}
-                            disabled={!vehCatEditing[cat.name]}
-                            className={`flex-1 min-w-0 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none ${vehCatEditing[cat.name] ? '' : 'opacity-70 cursor-not-allowed'}`}
-                          />
-                          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-gray-200 shrink-0">{cat.count} vehículos</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 sm:justify-between">
-                          <span className="text-xs text-gray-400">Usada en {cat.count} vehículos</span>
-                          <div className="flex gap-2 flex-wrap sm:justify-end shrink-0">
-                            {!vehCatEditing[cat.name] && (
-                              <Button variant="ghost" onClick={() => setVehCatEditing((s) => ({ ...s, [cat.name]: true }))}>Editar</Button>
-                            )}
-                            {vehCatEditing[cat.name] && (
-                              <Button
-                                variant="primary"
-                                onClick={() => renameCategory('vehicle', cat.name)}
-                                disabled={(vehCatInputs[cat.name] ?? cat.name).trim() === cat.name}
-                              >
-                                Guardar
-                              </Button>
-                            )}
-                            {vehCatEditing[cat.name] && (
-                              <Button
-                                variant="ghost"
-                                onClick={() => {
-                                  setVehCatInputs((s) => ({ ...s, [cat.name]: cat.name }))
-                                  setVehCatEditing((s) => ({ ...s, [cat.name]: false }))
-                                }}
-                              >
-                                Cancelar
-                              </Button>
-                            )}
-                            <Button variant="ghost" onClick={() => deleteCategory('vehicle', cat.name)}>Eliminar</Button>
-                        </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </section>
-
-          <section className="section" id="admin-packages">
-            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <p className="eyebrow">Contenido</p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="section__title mb-0">Paquetes</h2>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[11px] text-gray-200">{packages.length} activos</span>
-                </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2 flex-wrap">
+                              {reserva.estado === 'PAGO_PENDIENTE' && (
+                                <button
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                                  onClick={() => handleConfirmarAdelanto(reserva.id)}
+                                  title="Confirmar adelanto recibido"
+                                >
+                                  <FaCheckCircle size={12} />
+                                  Adelanto
+                                </button>
+                              )}
+                              {reserva.estado === 'PAGO_PARCIAL' && (
+                                <button
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
+                                  onClick={() => handleConfirmarPagoCompleto(reserva.id)}
+                                  title="Confirmar pago completo"
+                                >
+                                  <FaMoneyBillWave size={12} />
+                                  Completo
+                                </button>
+                              )}
+                              {(reserva.estado !== 'CONFIRMADA' && reserva.estado !== 'COMPLETADA' && reserva.estado !== 'CANCELADA') && (
+                                <button
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition"
+                                  onClick={() => {
+                                    setSelectedReservationForPayment(reserva.id)
+                                    setShowMarkPaymentModal(true)
+                                  }}
+                                  title="Marcar pago completado manualmente (efectivo, SINPE, transferencia)"
+                                >
+                                  <FaMoneyBillWave size={12} />
+                                  Pago Manual
+                                </button>
+                              )}
+                              {(reserva.estado === 'CONFIRMADA' || reserva.estado === 'COMPLETADA') && (
+                                <span className="text-xs text-gray-400 italic">Sin acciones</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <div>
-                <div className="flex gap-2 flex-wrap">
-                  <Button variant="primary" onClick={onCreatePackage}>Nuevo paquete</Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
-              <div className="hidden md:grid grid-cols-6 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
-                <span>Nombre</span>
-                <span>Categoría</span>
-                <span>Precio</span>
-                <span>Vehículos</span>
-                <span>Incluye</span>
-                <span>Acciones</span>
-              </div>
-              {packages.map((p) => (
-                <div key={p.id} className="grid grid-cols-1 md:grid-cols-6 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Nombre</span>
-                    <span className="font-semibold text-white">{p.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Categoría</span>
-                    <span className="inline-flex px-2.5 py-1 text-[11px] rounded-full bg-white/10 text-gray-100">{p.category}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Precio</span>
-                    <span className="font-semibold text-emerald-200">${p.price.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Vehículos</span>
-                    <div className="flex flex-wrap gap-1">
-                      {(p.vehicles || []).slice(0,3).map((v) => (
-                        <span key={v.id} className="inline-flex px-2 py-0.5 text-[11px] rounded-full bg-slate-900/60 border border-white/10 text-gray-200">{v.name}</span>
-                      ))}
-                      {(p.vehicleIds?.length || 0) > 3 && <span className="text-[11px] text-gray-400">+{(p.vehicleIds?.length || 0) - 3} más</span>}
-                      {(!p.vehicles || p.vehicles.length === 0) && <span className="text-[11px] text-gray-400">—</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Incluye</span>
-                    <span className="text-[11px] text-gray-300 truncate">{p.includes?.[0] ?? '—'}</span>
-                  </div>
-                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
-                    <button className={iconButtonClasses} aria-label={`Editar ${p.name}`} onClick={() => onEditPackage(p)}>
-                      <FaEdit size={16} />
-                    </button>
-                    <button className={iconButtonClasses} aria-label={`Eliminar ${p.name}`} onClick={() => onDeletePackage(p.id)}>
-                      <FaTrash size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="section" id="admin-vehicles">
-            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <p className="eyebrow">Contenido</p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="section__title mb-0">Vehículos</h2>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[11px] text-gray-200">{vehicles.length} activos</span>
-                </div>
-              </div>
-              <div>
-                <div className="flex gap-2 flex-wrap">
-                  <Button variant="primary" onClick={onCreateVehicle}>Nuevo vehículo</Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
-              <div className="hidden md:grid grid-cols-5 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
-                <span>Nombre</span>
-                <span>Categoría</span>
-                <span>Tarifa</span>
-                <span>Asientos</span>
-                <span>Acciones</span>
-              </div>
-              {vehicles.map((v) => (
-                <div key={v.id} className="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Nombre</span>
-                    <span>{v.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Categoría</span>
-                    <span>{v.category}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Tarifa</span>
-                    <span>{v.rate}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Asientos</span>
-                    <span>{v.seats}</span>
-                  </div>
-                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
-                    <button className={iconButtonClasses} aria-label={`Editar ${v.name}`} onClick={() => onEditVehicle(v)}>
-                      <FaEdit size={16} />
-                    </button>
-                    <button className={iconButtonClasses} aria-label={`Eliminar ${v.name}`} onClick={() => onDeleteVehicle(v.id)}>
-                      <FaTrash size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="section" id="admin-images">
-            <div className="section__header flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="eyebrow">Contenido</p>
-                <h2 className="section__title">Galería y Experiencias</h2>
-              </div>
-              <div>
-                <Button variant="primary" onClick={onCreateImage}>Nueva imagen</Button>
-              </div>
-            </div>
-
-            <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
-              <div className="hidden md:grid grid-cols-4 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
-                <span>Nombre</span>
-                <span>Orden</span>
-                <span>Estado</span>
-                <span>Acciones</span>
-              </div>
-              {systemImages.map((img) => (
-                <div key={img.id} className="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Nombre</span>
-                    <span>{img.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Orden</span>
-                    <span>{img.order}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Estado</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${img.isActive ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
-                      {img.isActive ? 'Activa' : 'Inactiva'}
-                    </span>
-                  </div>
-                  <div className="flex gap-2.5 items-center justify-end md:justify-end">
-                    <button className={iconButtonClasses} aria-label={`Editar ${img.name}`} onClick={() => onEditImage(img)}>
-                      <FaEdit size={16} />
-                    </button>
-                    <button className={iconButtonClasses} aria-label={`Eliminar ${img.name}`} onClick={() => onDeleteImage(img.id)}>
-                      <FaTrash size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
             </div>
           </section>
 
@@ -966,6 +759,45 @@ const Admin = () => {
         {editingHero && (
           <AdminHeroSlideForm slide={editingHero} onCancel={() => { setShowHeroModal(false); setEditingHero(null) }} onSave={onSaveHero} uploadImage={uploadImage} />
         )}
+      </Modal>
+
+      <Modal open={showManualReservationModal} onClose={() => setShowManualReservationModal(false)} title="Crear Reserva Manual">
+        <ManualReservationForm 
+          packages={packages}
+          vehicles={vehicles}
+          onCancel={() => setShowManualReservationModal(false)}
+          onSave={async (data) => {
+            try {
+              await createManualReservation(data)
+              setReservations(await fetchReservations())
+              setShowManualReservationModal(false)
+              alert('Reserva creada exitosamente')
+            } catch (error) {
+              alert(`Error: ${error instanceof Error ? error.message : 'No se pudo crear la reserva'}`)
+            }
+          }}
+        />
+      </Modal>
+
+      <Modal open={showMarkPaymentModal} onClose={() => setShowMarkPaymentModal(false)} title="Marcar Pago Completo Manual">
+        <MarkPaymentForm
+          onCancel={() => {
+            setShowMarkPaymentModal(false)
+            setSelectedReservationForPayment(null)
+          }}
+          onSave={async (data) => {
+            if (!selectedReservationForPayment) return
+            try {
+              await markPaymentCompleteManual(selectedReservationForPayment, data)
+              setReservations(await fetchReservations())
+              setShowMarkPaymentModal(false)
+              setSelectedReservationForPayment(null)
+              alert('Pago marcado como completo exitosamente')
+            } catch (error) {
+              alert(`Error: ${error instanceof Error ? error.message : 'No se pudo marcar el pago'}`)
+            }
+          }}
+        />
       </Modal>
       </div>
     </div>
@@ -1231,7 +1063,7 @@ function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCancel, o
               />
               <div className="space-y-1">
                 <p className="text-sm text-white font-semibold">{v.name}</p>
-                <p className="text-xs text-gray-300">{v.seats} asientos · {v.rate || 'Tarifa variable'}</p>
+                <p className="text-xs text-gray-300">{v.seats} asientos</p>
                 <p className="text-xs text-gray-400">{v.category}</p>
               </div>
             </label>
@@ -1270,7 +1102,7 @@ function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCancel, o
 }
 
 function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadImage }: { vehicle: Vehicle; categories?: string[]; onCancel: () => void; onSave: (v: Vehicle) => void; uploadImage: (file: File) => Promise<string> }) {
-  const [state, setState] = useState<Vehicle>({
+  const [state, setState] = useState<Vehicle & { quantity?: number }>({
     ...vehicle,
     name: vehicle.name || '',
     category: vehicle.category || '',
@@ -1279,6 +1111,7 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
     features: vehicle.features || [],
     imageUrl: vehicle.imageUrl || '',
     id: vehicle.id || '',
+    quantity: 1,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -1311,8 +1144,6 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
     if (!state.category.trim()) newErrors.category = 'La categoría es requerida'
     const seatsValue = typeof state.seats === 'string' ? Number(state.seats) : state.seats
     if (!Number.isFinite(seatsValue) || seatsValue < 1) newErrors.seats = 'Mínimo 1 asiento'
-    const rateStr = typeof state.rate === 'string' ? state.rate : String(state.rate || '')
-    if (!rateStr.trim()) newErrors.rate = 'La tarifa es requerida'
     if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
     return newErrors
   }
@@ -1340,16 +1171,29 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
         placeholder="Ej: Camioneta Escalade"
       />
       <div className="admin-form__group-row">
-        <InputField
-          label="Categoría"
-          required
-          name="category"
-          value={state.category}
-          onChange={handleChange}
-          error={errors.category}
-          placeholder="Nueva o existente"
-          list="veh-cats"
-        />
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Categoría <span className="text-red-500">*</span>
+          </label>
+          <select
+            name="category"
+            value={state.category}
+            onChange={(e) => {
+              setState((s) => ({ ...s, category: e.target.value }))
+              if (errors.category) setErrors((e) => ({ ...e, category: '' }))
+            }}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
+            required
+          >
+            <option value="">Selecciona una categoría</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          {errors.category && <p className="mt-1 text-sm text-red-500">{errors.category}</p>}
+        </div>
         <InputField
           label="Asientos"
           required
@@ -1360,19 +1204,22 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
           error={errors.seats}
           min="1"
         />
+        <InputField
+          label="Cantidad de unidades"
+          required
+          type="number"
+          name="quantity"
+          value={state.quantity || 1}
+          onChange={(e) => {
+            const { value } = e.target
+            if (/^\d*$/.test(value)) {
+              setState((s) => ({ ...s, quantity: value ? Number(value) : 1 }))
+            }
+          }}
+          placeholder="Ej: 3"
+          min="1"
+        />
       </div>
-      <datalist id="veh-cats">
-        {categories.map((c) => <option key={c} value={c} />)}
-      </datalist>
-      <InputField
-        label="Tarifa"
-        required
-        name="rate"
-        value={state.rate}
-        onChange={handleChange}
-        error={errors.rate}
-        placeholder="Ej: $150/hora"
-      />
       <TextareaField
         label="Características (separadas por comas)"
         name="features"
@@ -1659,6 +1506,318 @@ function AdminHeroSlideForm({ slide, onCancel, onSave, uploadImage }: { slide: H
       <div className="admin-form__actions">
         <Button variant="primary" type="submit" className="admin-form__actions-primary">
           Guardar
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+// =======================
+// Manual Reservation Form
+// =======================
+
+interface ManualReservationFormProps {
+  packages: any[]
+  vehicles: Vehicle[]
+  onCancel: () => void
+  onSave: (data: CreateManualReservationData) => void
+}
+
+function ManualReservationForm({ packages, vehicles, onCancel, onSave }: ManualReservationFormProps) {
+  const [state, setState] = useState({
+    nombre: '',
+    email: '',
+    telefono: '',
+    paqueteId: '',
+    vehiculoId: '',
+    fechaEvento: '',
+    horaInicio: '',
+    horaFin: '',
+    numeroPersonas: 1,
+    anticipo: 0,
+    estadoInicial: 'PAGO_PENDIENTE' as 'PAGO_PENDIENTE' | 'PAGO_PARCIAL' | 'CONFIRMADA',
+    observaciones: '',
+    conductor: '',
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const handleChange = (e: any) => {
+    const { name, value } = e.target
+    setState(prev => ({ ...prev, [name]: value }))
+    setErrors(prev => ({ ...prev, [name]: '' }))
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newErrors: Record<string, string> = {}
+    
+    if (!state.nombre) newErrors.nombre = 'Nombre es requerido'
+    if (!state.email) newErrors.email = 'Email es requerido'
+    if (!state.paqueteId) newErrors.paqueteId = 'Seleccione un paquete'
+    if (!state.vehiculoId) newErrors.vehiculoId = 'Seleccione un vehículo'
+    if (!state.fechaEvento) newErrors.fechaEvento = 'Fecha es requerida'
+    if (!state.horaInicio) newErrors.horaInicio = 'Hora inicio es requerida'
+    if (!state.horaFin) newErrors.horaFin = 'Hora fin es requerida'
+    if (state.numeroPersonas < 1) newErrors.numeroPersonas = 'Número de personas debe ser al menos 1'
+    if (state.anticipo < 0) newErrors.anticipo = 'Anticipo no puede ser negativo'
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+
+    onSave(state)
+  }
+
+  return (
+    <form className="admin-form" onSubmit={handleSubmit}>
+      <div className="admin-form__group-row">
+        <InputField
+          label="Nombre del cliente"
+          required
+          name="nombre"
+          value={state.nombre}
+          onChange={handleChange}
+          error={errors.nombre}
+          placeholder="Juan Pérez"
+        />
+        <InputField
+          label="Email"
+          required
+          type="email"
+          name="email"
+          value={state.email}
+          onChange={handleChange}
+          error={errors.email}
+          placeholder="cliente@ejemplo.com"
+        />
+      </div>
+
+      <div className="admin-form__group-row">
+        <InputField
+          label="Teléfono"
+          name="telefono"
+          value={state.telefono}
+          onChange={handleChange}
+          placeholder="+506 8888-8888"
+        />
+        <InputField
+          label="Conductor asignado"
+          name="conductor"
+          value={state.conductor}
+          onChange={handleChange}
+          placeholder="Nombre del conductor (opcional)"
+        />
+      </div>
+
+      <div className="admin-form__group-row">
+        <div className="admin-form__group">
+          <label className="admin-form__label">
+            Paquete <span className="admin-form__required">*</span>
+          </label>
+          <select
+            name="paqueteId"
+            value={state.paqueteId}
+            onChange={handleChange}
+            className="admin-form__input"
+            required
+          >
+            <option value="">Seleccione un paquete...</option>
+            {packages.map((pkg) => (
+              <option key={pkg.id} value={pkg.id}>
+                {pkg.name} - ${pkg.price}
+              </option>
+            ))}
+          </select>
+          {errors.paqueteId && <span className="admin-form__error">{errors.paqueteId}</span>}
+        </div>
+
+        <div className="admin-form__group">
+          <label className="admin-form__label">
+            Vehículo <span className="admin-form__required">*</span>
+          </label>
+          <select
+            name="vehiculoId"
+            value={state.vehiculoId}
+            onChange={handleChange}
+            className="admin-form__input"
+            required
+          >
+            <option value="">Seleccione un vehículo...</option>
+            {vehicles.map((veh) => (
+              <option key={veh.id} value={veh.id}>
+                {veh.name} ({veh.category})
+              </option>
+            ))}
+          </select>
+          {errors.vehiculoId && <span className="admin-form__error">{errors.vehiculoId}</span>}
+        </div>
+      </div>
+
+      <div className="admin-form__group-row">
+        <InputField
+          label="Fecha del evento"
+          required
+          type="date"
+          name="fechaEvento"
+          value={state.fechaEvento}
+          onChange={handleChange}
+          error={errors.fechaEvento}
+        />
+        <InputField
+          label="Número de personas"
+          required
+          type="number"
+          name="numeroPersonas"
+          value={state.numeroPersonas}
+          onChange={handleChange}
+          error={errors.numeroPersonas}
+          min="1"
+        />
+      </div>
+
+      <div className="admin-form__group-row">
+        <InputField
+          label="Hora de inicio"
+          required
+          type="time"
+          name="horaInicio"
+          value={state.horaInicio}
+          onChange={handleChange}
+          error={errors.horaInicio}
+        />
+        <InputField
+          label="Hora de fin"
+          required
+          type="time"
+          name="horaFin"
+          value={state.horaFin}
+          onChange={handleChange}
+          error={errors.horaFin}
+        />
+      </div>
+
+      <div className="admin-form__group-row">
+        <InputField
+          label="Anticipo recibido"
+          required
+          type="number"
+          name="anticipo"
+          value={state.anticipo}
+          onChange={handleChange}
+          error={errors.anticipo}
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+        />
+        <div className="admin-form__group">
+          <label className="admin-form__label">
+            Estado inicial <span className="admin-form__required">*</span>
+          </label>
+          <select
+            name="estadoInicial"
+            value={state.estadoInicial}
+            onChange={handleChange}
+            className="admin-form__input"
+            required
+          >
+            <option value="PAGO_PENDIENTE">Pago Pendiente</option>
+            <option value="PAGO_PARCIAL">Pago Parcial</option>
+            <option value="CONFIRMADA">Confirmada (pago completo)</option>
+          </select>
+        </div>
+      </div>
+
+      <TextareaField
+        label="Observaciones"
+        name="observaciones"
+        value={state.observaciones}
+        onChange={handleChange}
+        placeholder="Notas adicionales sobre la reserva..."
+      />
+
+      <div className="admin-form__actions">
+        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+          Crear Reserva
+        </Button>
+        <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+// =======================
+// Mark Payment Form
+// =======================
+
+interface MarkPaymentFormProps {
+  onCancel: () => void
+  onSave: (data: { tipoPago: 'SINPE' | 'TRANSFERENCIA' | 'TARJETA' | 'EFECTIVO', referenciaExterna?: string, comentario?: string }) => void
+}
+
+function MarkPaymentForm({ onCancel, onSave }: MarkPaymentFormProps) {
+  const [state, setState] = useState({
+    tipoPago: 'EFECTIVO' as 'SINPE' | 'TRANSFERENCIA' | 'TARJETA' | 'EFECTIVO',
+    referenciaExterna: '',
+    comentario: '',
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const handleChange = (e: any) => {
+    const { name, value } = e.target
+    setState(prev => ({ ...prev, [name]: value }))
+    setErrors(prev => ({ ...prev, [name]: '' }))
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSave(state)
+  }
+
+  return (
+    <form className="admin-form" onSubmit={handleSubmit}>
+      <div className="admin-form__group">
+        <label className="admin-form__label">
+          Tipo de Pago <span className="admin-form__required">*</span>
+        </label>
+        <select
+          name="tipoPago"
+          value={state.tipoPago}
+          onChange={handleChange}
+          className="admin-form__input"
+          required
+        >
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="SINPE">SINPE Móvil</option>
+          <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+          <option value="TARJETA">Tarjeta de Crédito/Débito</option>
+        </select>
+      </div>
+
+      <InputField
+        label="Referencia Externa"
+        name="referenciaExterna"
+        value={state.referenciaExterna}
+        onChange={handleChange}
+        placeholder="Número de transacción, recibo, etc."
+      />
+
+      <TextareaField
+        label="Comentario"
+        name="comentario"
+        value={state.comentario}
+        onChange={handleChange}
+        placeholder="Información adicional sobre el pago..."
+      />
+
+      <div className="admin-form__actions">
+        <Button variant="primary" type="submit" className="admin-form__actions-primary">
+          Marcar como Pagado
         </Button>
         <Button variant="ghost" type="button" onClick={onCancel} className="admin-form__actions-secondary">
           Cancelar

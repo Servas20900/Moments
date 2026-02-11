@@ -6,7 +6,7 @@ services:
     container_name: moments_postgres
     environment:
       POSTGRES_USER: moments_user
-      POSTGRES_PASSWORD: moments_secure_password_2024
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moments_dev_password}
       POSTGRES_DB: moments_db
     ports:
       - '5432:5432'

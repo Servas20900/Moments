@@ -1,0 +1,64 @@
+cosas que voy viendo 
+
+hacer una nueva vista donde haya todo un listado de las reservas que hay, fechas de creación, nombre, correo, numero de teléfono, vehiculo que va a utilizar,lugar de ida, lugar de recogida, fecha en la que ocupa el servicio, costo total del servicio, estados de pago "interar o usar enums" maybe para identificar (peniente o sin pagar(si es por sinpe y no hay pagado), adelanto y completo)
+
+
+que desde admin sea editable la fecha en la que se requiere el servicio, de igual manera, que no se pueda seleccionar la fecha de ese servicio con el carro elegido, si en esa fecha esta ocupada. 
+
+
+ademas, revisar lo que es esquema de prisma y solicitar informacion que se pueda utilizar para un analisis de datos, en lo que es la info de pago, como lo implementado de ubicacion y asi
+
+
+
+Opcion de cancelar reserva (con confirmacion)
+Ver detalle completo de la reserva como usuario con el correo que adjunto en la reserva, estaria interesante que con el numero de factura se pueda ver el estado del servicio 
+
+ocupo hacer un inicio de session rapido con google 
+
+
+Endpoints para:
+
+PATCH /reservas/:id/estado/completada - Marcar servicio completado
+PATCH /reservas/:id/cancelar - Cancelar reserva
+GET /reservas/:id/historial - Ver historial de estados
+Lógica de negocio:
+
+Liberar vehículo automáticamente después de X horas sin pago
+Procesar reembolsos al cancelar
+Lógica de penalización de cancelaciones
+Notificaciones:
+
+Emails según transiciones de estado (parcialmente implementado)
+
+
+
+
+
+vistas limpias "home" "about" "calendario" "packegeDtail" falta ver las demás
+
+vamos con la vista de  reserve
+
+falta  carrito, gallery, login, register, payments, 
+profile,  terms y admin
+
+
+que en reserve se pueda seleccionar las bebidas que proporcionamos arriba del apartado de extras
+
+en admin debo de meter el apartado de las bebidas, que sea un crud y que este se liste en reserve 
+
+luego que en reserve no permita reservar un vehiculo que este reservado ese dia
+
+validaciones en formularios 
+ 
+numeros de telefono 
+
+fechas, que no se pueda reservar de la fecha actual para atras 
+
+que si elige un carro que esta ocupado en una fecha que seleccione, que no se pueda reservar si estan ocupados, hay casos que tenemos dos vehiculos. 
+
+
+en la vista de admin ocupo que sea mas facil ingresar, como cuando se hace una encusta de whats app, que se vaya ingresando punto por punto y que si quiero mas, que pueda ir agregando mas
+Same para las caracteristicas de vehiculo  
+
+
+Hablar con fonseca, que se debe de hacer en caso que el usuario quiera alquilar mas de un carro

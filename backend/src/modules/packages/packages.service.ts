@@ -77,10 +77,31 @@ export class PackagesService {
       });
     }
 
+    // Asociar extras si se proporcionan
+    if (dto.extraIds?.length) {
+      await this.prisma.paqueteExtra.createMany({
+        data: dto.extraIds.map((extraId) => ({ paqueteId: created.id, extraId })),
+        skipDuplicates: true,
+      });
+    }
+
+    // Asociar incluidos si se proporcionan
+    if (dto.incluidoIds?.length) {
+      await this.prisma.paqueteIncluido.createMany({
+        data: dto.incluidoIds.map((incluidoId) => ({ paqueteId: created.id, incluidoId })),
+        skipDuplicates: true,
+      });
+    }
+
     // reload with vehicles after linking
     const reloaded = await this.prisma.paquete.findUnique({
       where: { id: created.id },
-      include: { categoria: true, vehiculos: { include: { vehiculo: true } } },
+      include: { 
+        categoria: true, 
+        vehiculos: { include: { vehiculo: true } },
+        extras: { include: { extra: true } },
+        incluidos: { include: { incluido: true } },
+      },
     });
 
     return this.toResponse(reloaded);
@@ -106,6 +127,8 @@ export class PackagesService {
         include: {
           categoria: true,
           vehiculos: { include: { vehiculo: true } },
+          extras: { include: { extra: true } },
+          incluidos: { include: { incluido: true } },
           imagenes: {
             include: { imagen: true },
             orderBy: { orden: "asc" },
@@ -126,6 +149,8 @@ export class PackagesService {
       include: {
         categoria: true,
         vehiculos: { include: { vehiculo: true } },
+        extras: { include: { extra: true } },
+        incluidos: { include: { incluido: true } },
         reservas: { take: 5 },
         imagenes: {
           include: { imagen: true },
@@ -160,6 +185,28 @@ export class PackagesService {
       }
     }
 
+    // Actualizar extras si se proporcionan
+    if (dto.extraIds !== undefined) {
+      await this.prisma.paqueteExtra.deleteMany({ where: { paqueteId: id } });
+      if (dto.extraIds.length) {
+        await this.prisma.paqueteExtra.createMany({
+          data: dto.extraIds.map((extraId) => ({ paqueteId: id, extraId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    // Actualizar incluidos si se proporcionan
+    if (dto.incluidoIds !== undefined) {
+      await this.prisma.paqueteIncluido.deleteMany({ where: { paqueteId: id } });
+      if (dto.incluidoIds.length) {
+        await this.prisma.paqueteIncluido.createMany({
+          data: dto.incluidoIds.map((incluidoId) => ({ paqueteId: id, incluidoId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
     const updated = await this.prisma.paquete.update({
       where: { id },
       data: {
@@ -172,6 +219,12 @@ export class PackagesService {
       include: {
         categoria: true,
         vehiculos: { include: { vehiculo: true } },
+        extras: { include: { extra: true } },
+        incluidos: { include: { incluido: true } },
+        imagenes: {
+          include: { imagen: true },
+          orderBy: { orden: "asc" },
+        },
       },
     });
     return this.toResponse(updated);
@@ -203,6 +256,24 @@ export class PackagesService {
       category: v.vehiculo?.categoria,
       rate: v.vehiculo ? Number(v.vehiculo.tarifaPorHora) : undefined,
     })) || [];
+    
+    const extras = pkg.extras?.map((e: any) => ({
+      id: e.extra?.id,
+      nombre: e.extra?.nombre,
+      descripcion: e.extra?.descripcion,
+      precio: e.extra?.precio ? Number(e.extra.precio) : 0,
+      categoria: e.extra?.categoria,
+      estado: e.extra?.estado,
+    })) || [];
+    
+    const incluidos = pkg.incluidos?.map((i: any) => ({
+      id: i.incluido?.id,
+      nombre: i.incluido?.nombre,
+      descripcion: i.incluido?.descripcion,
+      categoriaId: i.incluido?.categoriaId,
+      estado: i.incluido?.estado,
+    })) || [];
+
     return {
       id: pkg.id,
       name: pkg.nombre,
@@ -212,6 +283,8 @@ export class PackagesService {
       maxPeople: pkg.maxPersonas,
       vehicle: vehicles[0]?.name ?? "N/A",
       vehicles,
+      extras,
+      incluidos,
       imageUrl: imgUrl,
       estado: pkg.estado,
       creadoEn: pkg.creadoEn,

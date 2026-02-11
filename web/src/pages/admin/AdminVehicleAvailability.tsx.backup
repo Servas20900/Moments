@@ -1,0 +1,630 @@
+import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { FaCheckCircle, FaMoneyBillWave, FaSearch, FaFilter } from 'react-icons/fa'
+import Button from '../../components/Button'
+import Card from '../../components/Card'
+import { Layout, PageHeader, Section } from '../../components/Layout'
+import { 
+  fetchVehicles, 
+  fetchUnifiedCalendar,
+  fetchVehicleBlocks, 
+  createVehicleBlock, 
+  deleteVehicleBlock, 
+  fetchReservations, 
+  confirmAdelanto, 
+  confirmPagoCompleto, 
+  type ReservationView 
+} from '../../api/api'
+import type { VehicleView, MonthlyAvailability, VehicleBlock } from '../../data/content'
+
+const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+
+const AdminVehicleAvailability = () => {
+  const navigate = useNavigate()
+  const today = new Date()
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth())
+  const [currentYear, setCurrentYear] = useState(today.getFullYear())
+  
+  const [vehicles, setVehicles] = useState<VehicleView[]>([])
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>('')
+  const [monthlyData, setMonthlyData] = useState<MonthlyAvailability | null>(null)
+  const [blocks, setBlocks] = useState<VehicleBlock[]>([])
+  const [reservations, setReservations] = useState<ReservationView[]>([])
+  const [loading, setLoading] = useState(true)
+  const [calendarLoading, setCalendarLoading] = useState(false)
+  const [filterMode, setFilterMode] = useState<'all' | 'thisMonth'>('all')
+  
+  // Form para crear bloqueos
+  const [blockForm, setBlockForm] = useState({
+    fecha: '',
+    motivo: 'BLOQUEADO_ADMIN' as 'RESERVADO' | 'MANTENIMIENTO' | 'BLOQUEADO_ADMIN' | 'OTRO',
+    detalles: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  // Cargar vehículos y reservas al inicio
+  useEffect(() => {
+    let mounted = true
+    Promise.all([fetchVehicles(), fetchReservations()])
+      .then(([v, r]) => {
+        if (!mounted) return
+        setVehicles(v)
+        setReservations(r)
+        if (v.length > 0) {
+          setSelectedVehicleId(v[0].id)
+        }
+        setLoading(false)
+      })
+      .catch(() => {
+        if (mounted) setLoading(false)
+      })
+    return () => { mounted = false }
+  }, [])
+
+  const getEstadoBadge = (estado: string) => {
+    const badges = {
+      'PAGO_PENDIENTE': 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-300',
+      'PAGO_PARCIAL': 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
+      'CONFIRMADA': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+      'CANCELADA': 'bg-red-500/15 text-red-700 dark:text-red-300',
+      'COMPLETADA': 'bg-purple-500/15 text-purple-700 dark:text-purple-300'
+    }
+    return badges[estado as keyof typeof badges] || badges['PAGO_PENDIENTE']
+  }
+
+  const getEstadoTexto = (estado: string) => {
+    const textos = {
+      'PAGO_PENDIENTE': 'Pago Pendiente',
+      'PAGO_PARCIAL': 'Pago Parcial',
+      'CONFIRMADA': 'Confirmada',
+      'CANCELADA': 'Cancelada',
+      'COMPLETADA': 'Completada'
+    }
+    return textos[estado as keyof typeof textos] || estado
+  }
+
+  const handleConfirmarAdelanto = async (id: string) => {
+    if (!confirm('¿Confirmar que se recibió el adelanto?')) return
+    try {
+      const updated = await confirmAdelanto(id)
+      setReservations(prev => prev.map(r => r.id === id ? updated : r))
+      alert('Adelanto confirmado exitosamente')
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : 'No se pudo confirmar'}`)
+    }
+  }
+
+  const handleConfirmarPagoCompleto = async (id: string) => {
+    if (!confirm('¿Confirmar que se recibió el pago completo?')) return
+    try {
+      const updated = await confirmPagoCompleto(id)
+      setReservations(prev => prev.map(r => r.id === id ? updated : r))
+      alert('Pago completo confirmado exitosamente')
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : 'No se pudo confirmar'}`)
+    }
+  }
+
+  // Cargar datos del mes actual cuando se selecciona un vehículo
+  useEffect(() => {
+    if (!selectedVehicleId) return
+    loadMonthData()
+    loadBlocks()
+  }, [selectedVehicleId, currentMonth, currentYear])
+
+  const loadMonthData = async () => {
+    if (!selectedVehicleId) return
+    setCalendarLoading(true)
+    try {
+      const data = await fetchMonthlyAvailability(selectedVehicleId, currentYear, currentMonth + 1)
+      setMonthlyData(data)
+    } catch (error) {
+      console.error('Error loading monthly data:', error)
+      setMonthlyData(null)
+    } finally {
+      setCalendarLoading(false)
+    }
+  }
+
+  const loadBlocks = async () => {
+    if (!selectedVehicleId) return
+    try {
+      const data = await fetchVehicleBlocks(selectedVehicleId)
+      setBlocks(data)
+    } catch (error) {
+      console.error('Error loading blocks:', error)
+      setBlocks([])
+    }
+  }
+
+  const handleCreateBlock = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedVehicleId || !blockForm.fecha) {
+      alert('Completa todos los campos requeridos')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await createVehicleBlock({
+        vehiculoId: selectedVehicleId,
+        fecha: blockForm.fecha,
+        motivo: blockForm.motivo,
+        detalles: blockForm.detalles || undefined,
+        creadoPor: 'Admin', // TODO: Get from auth context
+      })
+      alert('Bloqueo creado exitosamente')
+      setBlockForm({ fecha: '', motivo: 'BLOQUEADO_ADMIN', detalles: '' })
+      loadMonthData()
+      loadBlocks()
+    } catch (error: any) {
+      alert(error.message || 'Error al crear bloqueo')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteBlock = async (blockId: string) => {
+    if (!confirm('¿Eliminar este bloqueo?')) return
+    try {
+      await deleteVehicleBlock(blockId)
+      alert('Bloqueo eliminado')
+      loadMonthData()
+      loadBlocks()
+    } catch (error: any) {
+      alert(error.message || 'Error al eliminar bloqueo')
+    }
+  }
+
+  const previousMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11)
+      setCurrentYear(currentYear - 1)
+    } else {
+      setCurrentMonth(currentMonth - 1)
+    }
+  }
+
+  const nextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0)
+      setCurrentYear(currentYear + 1)
+    } else {
+      setCurrentMonth(currentMonth + 1)
+    }
+  }
+
+  const isToday = (day: number) => {
+    return day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()
+  }
+
+  const renderCalendarDays = () => {
+    const firstDay = new Date(currentYear, currentMonth, 1)
+    const lastDay = new Date(currentYear, currentMonth + 1, 0)
+    const daysInMonth = lastDay.getDate()
+    const startingDayOfWeek = firstDay.getDay()
+    const days = []
+
+    // Empty cells before first day
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(<div key={`empty-${i}`} className="calendar-custom__day calendar-custom__day--empty" />)
+    }
+
+    // Days of month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const dayData = monthlyData?.days.find((d) => d.date === dateKey)
+      const todayClass = isToday(day) ? 'calendar-custom__day--today' : ''
+      
+      let statusClass = ''
+      let statusText = ''
+      let statusColor = ''
+      
+      if (dayData) {
+        if (dayData.isBlocked) {
+          statusClass = 'bg-red-500/20 border-red-500/50'
+          statusText = dayData.motivo || 'Bloqueado'
+          statusColor = 'text-red-300'
+        } else if (dayData.disponibles === 0) {
+          statusClass = 'bg-yellow-500/20 border-yellow-500/50'
+          statusText = `${dayData.reservasCount}/${dayData.cantidadTotal} reservadas`
+          statusColor = 'text-yellow-300'
+        } else if (dayData.reservasCount > 0) {
+          statusClass = 'bg-blue-500/20 border-blue-500/50'
+          statusText = `${dayData.disponibles} disponibles`
+          statusColor = 'text-blue-300'
+        } else {
+          statusClass = 'bg-emerald-500/20 border-emerald-500/50'
+          statusText = 'Disponible'
+          statusColor = 'text-emerald-300'
+        }
+      }
+
+      days.push(
+        <div key={day} className={`calendar-custom__day ${todayClass} ${statusClass}`}>
+          <div className="calendar-custom__day-number">{day}</div>
+          {dayData && (
+            <div className="mt-1">
+              <div className={`text-[10px] font-semibold ${statusColor}`}>
+                {statusText}
+              </div>
+              {dayData.reservasCount > 0 && (
+                <div className="text-[9px] text-gray-400 mt-0.5">
+                  {dayData.reservasCount} reserva{dayData.reservasCount > 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    return days
+  }
+
+  const filteredBlocks = useMemo(() => {
+    if (filterMode === 'thisMonth') {
+      const monthStr = String(currentMonth + 1).padStart(2, '0')
+      return blocks.filter((b) => b.fecha.startsWith(`${currentYear}-${monthStr}`))
+    }
+    return blocks
+  }, [blocks, filterMode, currentMonth, currentYear])
+
+  const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId)
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-12 text-gray-300">
+          Cargando disponibilidad...
+        </div>
+      </Layout>
+    )
+  }
+
+  if (vehicles.length === 0) {
+    return (
+      <Layout>
+        <PageHeader
+          eyebrow="Administración"
+          title="Disponibilidad de Vehículos"
+          description="No hay vehículos registrados"
+        />
+        <Section spacing="md">
+          <Button variant="primary" onClick={() => navigate('/admin')}>
+            Volver a Admin
+          </Button>
+        </Section>
+      </Layout>
+    )
+  }
+
+  return (
+    <Layout>
+      <PageHeader
+        eyebrow="Administración"
+        title="Disponibilidad de Vehículos"
+        description="Gestiona bloqueos y disponibilidad por día"
+      />
+
+      <Section spacing="md">
+        <div className="flex gap-3">
+          <Button variant="ghost" onClick={() => navigate('/admin')}>
+            ← Volver a Admin
+          </Button>
+        </div>
+      </Section>
+
+      {/* Selector de vehículo */}
+      <Section spacing="lg" className="mb-16">
+        <Card title="Seleccionar vehículo">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <label className="flex-1">
+              <span className="text-sm text-gray-200 block mb-2">Vehículo:</span>
+              <select
+                value={selectedVehicleId}
+                onChange={(e) => setSelectedVehicleId(e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
+              >
+                {vehicles.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} - {v.category} ({v.seats} asientos)
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selectedVehicle && (
+              <div className="flex flex-col text-sm text-gray-300">
+                <span className="text-amber-300 font-semibold">Información:</span>
+                <span>{selectedVehicle.name}</span>
+                <span>{selectedVehicle.category} · {selectedVehicle.seats} asientos</span>
+                <span className="text-xs text-gray-400">
+                  Unidades: {monthlyData?.cantidadTotal ?? 1}
+                </span>
+              </div>
+            )}
+          </div>
+        </Card>
+      </Section>
+
+      {/* Reservas */}
+      <Section spacing="lg" className="mb-16">
+        <Card title="Reservas" subtitle="Estados de pago y conflictos">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <p className="text-sm text-gray-400">{reservations.length} reservas registradas</p>
+            <Button variant="primary" onClick={async () => setReservations(await fetchReservations())}>Refrescar</Button>
+          </div>
+          <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)]">
+                  <tr className="text-left uppercase tracking-wide text-gray-200">
+                    <th className="p-3">Cliente</th>
+                    <th className="p-3">Fecha</th>
+                    <th className="p-3">Horario</th>
+                    <th className="p-3">Total</th>
+                    <th className="p-3">Adelanto</th>
+                    <th className="p-3">Restante</th>
+                    <th className="p-3">Estado</th>
+                    <th className="p-3">Conflicto</th>
+                    <th className="p-3">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reservations.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="p-4 text-center text-gray-400">No hay reservas aún</td>
+                    </tr>
+                  )}
+                  {reservations.map((reserva) => (
+                    <tr key={reserva.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="p-3">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{reserva.nombre}</span>
+                          <span className="text-xs text-gray-400">{reserva.email}</span>
+                          <span className="text-xs text-gray-400">{reserva.telefono}</span>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        {new Date(reserva.fechaEvento).toLocaleDateString('es-CR')}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-col text-xs">
+                          <span>{new Date(reserva.horaInicio).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="text-gray-400">a</span>
+                          <span>{new Date(reserva.horaFin).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 font-semibold">${reserva.precioTotal.toFixed(2)}</td>
+                      <td className="p-3">${reserva.anticipo.toFixed(2)}</td>
+                      <td className="p-3">${reserva.restante.toFixed(2)}</td>
+                      <td className="p-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full ${getEstadoBadge(reserva.estado)}`}>
+                          {getEstadoTexto(reserva.estado)}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        {reserva.hasConflict ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-red-500/15 text-red-700 dark:text-red-300" title="Este vehículo tiene otra reserva en el mismo horario">
+                            ⚠️ Conflicto
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                            ✓ Sin conflicto
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex gap-2">
+                          {reserva.estado === 'PAGO_PENDIENTE' && (
+                            <button
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                              onClick={() => handleConfirmarAdelanto(reserva.id)}
+                              title="Confirmar adelanto recibido"
+                            >
+                              <FaCheckCircle size={12} />
+                              Adelanto
+                            </button>
+                          )}
+                          {reserva.estado === 'PAGO_PARCIAL' && (
+                            <button
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
+                              onClick={() => handleConfirmarPagoCompleto(reserva.id)}
+                              title="Confirmar pago completo"
+                            >
+                              <FaMoneyBillWave size={12} />
+                              Completo
+                            </button>
+                          )}
+                          {(reserva.estado === 'CONFIRMADA' || reserva.estado === 'COMPLETADA') && (
+                            <span className="text-xs text-gray-400 italic">Sin acciones</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Card>
+      </Section>
+
+      {/* Calendario */}
+      <Section spacing="lg" className="mb-16">
+        <div className="mx-auto max-w-4xl">
+          <Card title="Calendario de Disponibilidad" subtitle={`${MONTHS[currentMonth]} ${currentYear}`}>
+            {calendarLoading ? (
+              <div className="text-center py-4 text-gray-400">Cargando calendario...</div>
+            ) : (
+              <>
+                <div className="calendar-custom">
+                  <div className="calendar-custom__header">
+                    <h2 className="calendar-custom__title">
+                      {MONTHS[currentMonth]} {currentYear}
+                    </h2>
+                    <div className="calendar-custom__controls">
+                      <button className="calendar-custom__btn" onClick={previousMonth} aria-label="Mes anterior">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 15L7 10L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      <button className="calendar-custom__btn" onClick={nextMonth} aria-label="Siguiente mes">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 5L13 10L8 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="calendar-custom__legend">
+                    <div className="calendar-custom__legend-item">
+                      <div className="calendar-custom__legend-dot" style={{ background: 'rgb(16 185 129)' }} />
+                      <span>Disponible</span>
+                    </div>
+                    <div className="calendar-custom__legend-item">
+                      <div className="calendar-custom__legend-dot" style={{ background: 'rgb(59 130 246)' }} />
+                      <span>Parcialmente ocupado</span>
+                    </div>
+                    <div className="calendar-custom__legend-item">
+                      <div className="calendar-custom__legend-dot" style={{ background: 'rgb(234 179 8)' }} />
+                      <span>Totalmente reservado</span>
+                    </div>
+                    <div className="calendar-custom__legend-item">
+                      <div className="calendar-custom__legend-dot" style={{ background: 'rgb(239 68 68)' }} />
+                      <span>Bloqueado</span>
+                    </div>
+                  </div>
+
+                  <div className="calendar-custom__weekdays">
+                    {DAYS.map(day => (
+                      <div key={day} className="calendar-custom__weekday">{day}</div>
+                    ))}
+                  </div>
+
+                  <div className="calendar-custom__grid">
+                    {renderCalendarDays()}
+                  </div>
+                </div>
+              </>
+            )}
+          </Card>
+        </div>
+      </Section>
+
+      {/* Formulario de bloqueo */}
+      <Section spacing="lg" className="mb-16">
+        <Card title="Crear Bloqueo" subtitle="Bloquear una fecha específica">
+          <form onSubmit={handleCreateBlock} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="flex flex-col gap-2">
+                <span className="text-sm text-gray-200">Fecha</span>
+                <input
+                  type="date"
+                  value={blockForm.fecha}
+                  onChange={(e) => setBlockForm((prev) => ({ ...prev, fecha: e.target.value }))}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
+                  required
+                />
+              </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-sm text-gray-200">Motivo</span>
+                <select
+                  value={blockForm.motivo}
+                  onChange={(e) => setBlockForm((prev) => ({ ...prev, motivo: e.target.value as any }))}
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
+                >
+                  <option value="BLOQUEADO_ADMIN">Bloqueado por Admin</option>
+                  <option value="MANTENIMIENTO">Mantenimiento</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+              </label>
+            </div>
+
+            <label className="flex flex-col gap-2">
+              <span className="text-sm text-gray-200">Detalles (opcional)</span>
+              <textarea
+                value={blockForm.detalles}
+                onChange={(e) => setBlockForm((prev) => ({ ...prev, detalles: e.target.value }))}
+                rows={2}
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
+                placeholder="Ej: Servicio programado, evento privado..."
+              />
+            </label>
+
+            <Button variant="primary" type="submit" disabled={submitting}>
+              {submitting ? 'Creando...' : 'Crear Bloqueo'}
+            </Button>
+          </form>
+        </Card>
+      </Section>
+
+      {/* Listado de bloqueos */}
+      <Section spacing="lg">
+        <Card title="Bloqueos Vigentes" subtitle={`${filteredBlocks.length} bloqueos`}>
+          <div className="flex gap-2 mb-4">
+            <button
+              className={`px-3 py-1 rounded-lg text-sm transition ${
+                filterMode === 'all' ? 'bg-amber-300 text-black font-semibold' : 'bg-white/5 text-gray-300 hover:bg-white/10'
+              }`}
+              onClick={() => setFilterMode('all')}
+            >
+              Todas vigentes
+            </button>
+            <button
+              className={`px-3 py-1 rounded-lg text-sm transition ${
+                filterMode === 'thisMonth' ? 'bg-amber-300 text-black font-semibold' : 'bg-white/5 text-gray-300 hover:bg-white/10'
+              }`}
+              onClick={() => setFilterMode('thisMonth')}
+            >
+              Este mes
+            </button>
+          </div>
+
+          {filteredBlocks.length === 0 ? (
+            <p className="text-gray-400 text-center py-4">No hay bloqueos vigentes</p>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {filteredBlocks.map((block) => (
+                <div
+                  key={block.id}
+                  className="flex items-start justify-between gap-3 p-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 transition"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white font-semibold">{block.fecha}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        block.motivo === 'BLOQUEADO_ADMIN' ? 'bg-red-500/20 text-red-300' :
+                        block.motivo === 'MANTENIMIENTO' ? 'bg-yellow-500/20 text-yellow-300' :
+                        'bg-gray-500/20 text-gray-300'
+                      }`}>
+                        {block.motivo}
+                      </span>
+                    </div>
+                    {block.detalles && (
+                      <p className="text-sm text-gray-400">{block.detalles}</p>
+                    )}
+                    {block.creadoPor && (
+                      <p className="text-xs text-gray-500 mt-1">Por: {block.creadoPor}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteBlock(block.id)}
+                    className="px-3 py-1 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 text-sm transition"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </Section>
+    </Layout>
+  )
+}
+
+export default AdminVehicleAvailability

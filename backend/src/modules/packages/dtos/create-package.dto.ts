@@ -42,4 +42,24 @@ export class CreatePackageDto {
   @IsArray()
   @IsString({ each: true })
   vehicleIds?: string[];
+
+  @ApiProperty({
+    required: false,
+    type: [String],
+    description: "IDs de extras asociados al paquete",
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  extraIds?: string[];
+
+  @ApiProperty({
+    required: false,
+    type: [String],
+    description: "IDs de incluidos (bebidas) asociados al paquete",
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  incluidoIds?: string[];
 }

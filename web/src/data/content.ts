@@ -92,6 +92,42 @@ export type VehicleOccupancy = {
   isOccupied: boolean
 }
 
+export type VehicleAvailability = {
+  available: boolean
+  bloqueadoPor: 'RESERVADO' | 'MANTENIMIENTO' | 'BLOQUEADO_ADMIN' | 'OTRO' | null
+  detalles: string | null
+  cantidadDisponible: number
+  cantidadTotal: number
+}
+
+export type VehicleBlock = {
+  id: string
+  vehiculoId: string
+  fecha: string
+  motivo: 'RESERVADO' | 'MANTENIMIENTO' | 'BLOQUEADO_ADMIN' | 'OTRO'
+  detalles?: string
+  creadoPor?: string
+  creadoEn: string
+}
+
+export type MonthlyAvailabilityDay = {
+  date: string
+  isBlocked: boolean
+  motivo?: string
+  detalles?: string
+  reservasCount: number
+  disponibles: number
+  cantidadTotal: number
+}
+
+export type MonthlyAvailability = {
+  vehiculoId: string
+  year: number
+  month: number
+  cantidadTotal: number
+  days: MonthlyAvailabilityDay[]
+}
+
 // Alias legacy names usados en Admin
 export type Package = PackageView
 export type Vehicle = VehicleView

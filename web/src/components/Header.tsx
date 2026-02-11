@@ -65,9 +65,9 @@ export default function Header() {
           </span>
         </button>
 
-        <div className="text-lg font-semibold tracking-wide">Moments</div>
+        <NavLink to="/" className="text-2xl font-bold tracking-wide hover:opacity-80 transition">Moments</NavLink>
 
-        <nav className="ml-auto hidden items-center gap-2 md:flex" aria-label="Navegación principal">
+        <nav className="hidden items-center gap-2 md:flex md:ml-auto" aria-label="Navegación principal">
           {nav.map((item) => (
             <NavLink
               key={item.to}
@@ -79,7 +79,7 @@ export default function Header() {
           ))}
         </nav>
 
-        <div className="ml-2 flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           <CartButton />
           <Account />
         </div>

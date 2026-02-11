@@ -73,7 +73,7 @@ const Register = () => {
       <header className="mx-auto max-w-6xl mb-12">
         <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-[color:var(--color-accent)]">Registro</p>
         <h1 className="text-4xl sm:text-5xl font-bold mb-3 text-[color:var(--color-text)]">Crea tu cuenta</h1>
-        <p className="text-lg text-[color:var(--color-muted)]">Regístrate para completar reservas y ver tu historial.</p>
+        <p className="text-lg text-[color:var(--color-muted)]">Regístrate para acceder a tu historial, gestionar tus servicios y coordinar más rápidamente.</p>
       </header>
 
       <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -98,16 +98,16 @@ const Register = () => {
               {form.password && (
                 <div className="space-y-1 text-xs">
                   <div className={form.password.length >= 6 ? 'text-green-400' : 'text-gray-500'}>
-                    {form.password.length >= 6 ? '✓' : '○'} Mínimo 6 caracteres
+                    Mínimo 6 caracteres
                   </div>
                   <div className={/[A-Za-z]/.test(form.password) ? 'text-green-400' : 'text-gray-500'}>
-                    {/[A-Za-z]/.test(form.password) ? '✓' : '○'} Al menos una letra
+                    Al menos una letra
                   </div>
                   <div className={/\d/.test(form.password) ? 'text-green-400' : 'text-gray-500'}>
-                    {/\d/.test(form.password) ? '✓' : '○'} Al menos un número
+                    Al menos un número
                   </div>
                   <div className={/[@$!%*#?&._-]/.test(form.password) ? 'text-green-400' : 'text-gray-500'}>
-                    {/[@$!%*#?&._-]/.test(form.password) ? '✓' : '○'} Al menos un símbolo (@$!%*#?&._-)
+                    Al menos un símbolo (@$!%*#?&._-)
                   </div>
                 </div>
               )}
@@ -120,9 +120,9 @@ const Register = () => {
 
         <Card title="Beneficios">
           <ul className="flex flex-col gap-3">
-            <li className="flex items-center gap-2 text-[color:var(--color-muted)]"><span className="text-[color:var(--color-accent)]">✓</span> Guardar reservas</li>
-            <li className="flex items-center gap-2 text-[color:var(--color-muted)]"><span className="text-[color:var(--color-accent)]">✓</span> Recibir confirmaciones</li>
-            <li className="flex items-center gap-2 text-[color:var(--color-muted)]"><span className="text-[color:var(--color-accent)]">✓</span> Historial y perfiles</li>
+            <li className="flex items-center gap-2 text-[color:var(--color-muted)]">• Historial de reservas</li>
+            <li className="flex items-center gap-2 text-[color:var(--color-muted)]">• Estado del servicio</li>
+            <li className="flex items-center gap-2 text-[color:var(--color-muted)]">• Coordinación más rápida</li>
           </ul>
         </Card>
       </div>

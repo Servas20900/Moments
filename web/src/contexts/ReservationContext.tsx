@@ -6,6 +6,22 @@ export type ExtraOption = {
   name: string
   price: number
   description?: string
+  categoria?: 'SIN_ALCOHOL' | 'PREMIUM_ALCOHOL'
+  estado?: 'ACTIVO' | 'INACTIVO' | 'SUSPENDIDO'
+  creadoEn?: string
+  actualizadoEn?: string
+}
+
+export type IncluídoOption = {
+  id: string
+  nombre: string
+  descripcion: string | null
+  categoriaId: number
+  categoriaNombre: string
+  estado: 'ACTIVO' | 'INACTIVO'
+  creadoEn: Date
+  actualizadoEn: Date
+  packageIds?: string[]
 }
 
 export type ReservationCart = {
@@ -18,6 +34,7 @@ export type ReservationCart = {
   destination: string
   people: number
   extras: ExtraOption[]
+  incluidos: IncluídoOption[]
   total: number
   deposit: number
   notes?: string

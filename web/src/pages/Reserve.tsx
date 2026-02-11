@@ -3,16 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Layout, PageHeader, Section } from '../components/Layout'
 import Button from '../components/Button'
 import SafeImage from '../components/SafeImage'
-import { fetchPackages, fetchVehicles, fetchPackageExtras, fetchExtras, fetchVehicleAvailability } from '../api/api'
-import type { PackageView, VehicleView } from '../data/content'
+import { fetchPackages, fetchVehicles, fetchPackageExtras, fetchExtras, fetchVehicleAvailability, checkVehicleAvailability, fetchAllIncluidos, fetchPackageIncluidosGrouped } from '../api/api'
+import type { PackageView, VehicleView, VehicleAvailability } from '../data/content'
+import type { Incluido } from '../api/api'
 import { useReservation, type ExtraOption } from '../contexts/ReservationContext'
 import { useCalendarContext } from '../contexts/CalendarContext'
-
-const fallbackExtras: ExtraOption[] = [
-  { id: 'escort', name: 'Escolta motorizada', price: 80, description: 'Acompañamiento con escolta durante el recorrido' },
-  { id: 'photographer', name: 'Fotógrafo del evento', price: 120, description: 'Cobertura fotográfica básica de la llegada y salida' },
-  { id: 'drinks', name: 'Bebidas de cortesía', price: 40, description: 'Agua y bebidas sin alcohol a bordo' },
-]
+import { useTheme } from '../hooks/useTheme'
+import { useAlert } from '../contexts/AlertContext'
+import Card from '@/components/Card'
 
 type FormState = {
   date: string
@@ -23,6 +21,7 @@ type FormState = {
   customDestination: string
   notes: string
   extras: string[]
+  incluidos: string[]
   vehicleId?: string
 }
 
@@ -33,6 +32,8 @@ const Reserve = () => {
   const navigate = useNavigate()
   const { selectedPackage, startReservation, setReservation } = useReservation()
   const { events } = useCalendarContext()
+  const { theme } = useTheme()
+  const { showAlert } = useAlert()
 
   const sortedEvents = useMemo(() => {
     return events
@@ -45,6 +46,10 @@ const Reserve = () => {
   const [vehicles, setVehicles] = useState<VehicleView[]>([])
   const [occupiedVehicleIds, setOccupiedVehicleIds] = useState<string[]>([])
   const [extras, setExtras] = useState<ExtraOption[]>([])
+  const [incluidos, setIncluidos] = useState<Incluido[]>([])
+  const [incluidosGrouped, setIncluidosGrouped] = useState<Record<number, { categoria: { id: number; nombre: string }; incluidos: Incluido[] }>>({})
+  const [vehicleAvailability, setVehicleAvailability] = useState<VehicleAvailability | null>(null)
+  const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -59,6 +64,7 @@ const Reserve = () => {
     customDestination: '',
     notes: '',
     extras: [],
+    incluidos: [],
     vehicleId: undefined,
   })
 
@@ -94,10 +100,39 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
             if (pkgExtras.length > 0) setExtras(pkgExtras)
             else {
               const globalExtras = await fetchExtras()
-              setExtras(globalExtras.length ? globalExtras : fallbackExtras)
+              setExtras(globalExtras)
             }
           } catch {
-            setExtras(fallbackExtras)
+            setExtras([])
+          }
+
+          // Cargar incluidos asociados al paquete; si no hay, cargar catálogo global
+          try {
+            const pkgIncluidos = await fetchPackageIncluidosGrouped(foundPackage.id)
+            if (Object.keys(pkgIncluidos).length > 0) {
+              setIncluidosGrouped(pkgIncluidos)
+              // Aplanar los incluidos para el estado simple
+              const allIncluidos = Object.values(pkgIncluidos).flatMap((cat) => cat.incluidos)
+              setIncluidos(allIncluidos)
+            } else {
+              const globalIncluidos = await fetchAllIncluidos()
+              setIncluidos(globalIncluidos)
+              // Agrupar los incluidos globales por categoría
+              const grouped = globalIncluidos.reduce((acc, inc) => {
+                if (!acc[inc.categoriaId]) {
+                  acc[inc.categoriaId] = {
+                    categoria: { id: inc.categoriaId, nombre: inc.categoriaNombre },
+                    incluidos: [],
+                  }
+                }
+                acc[inc.categoriaId].incluidos.push(inc)
+                return acc
+              }, {} as Record<number, { categoria: { id: number; nombre: string }; incluidos: Incluido[] }>)
+              setIncluidosGrouped(grouped)
+            }
+          } catch {
+            setIncluidos([])
+            setIncluidosGrouped({})
           }
         }
         setVehicles(vehiclesData)
@@ -140,6 +175,35 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
     }
   }, [form.date, form.time])
 
+  // Verificar disponibilidad por día (admin blocks + vehicle units)
+  useEffect(() => {
+    let active = true
+
+    if (!form.vehicleId || !form.date) {
+      setVehicleAvailability(null)
+      return () => { active = false }
+    }
+
+    setCheckingAvailability(true)
+    checkVehicleAvailability(form.vehicleId, form.date)
+      .then((availability) => {
+        if (active) {
+          setVehicleAvailability(availability)
+          setCheckingAvailability(false)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setVehicleAvailability(null)
+          setCheckingAvailability(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [form.vehicleId, form.date])
+
   const peopleCount = Number(form.people)
 
   const packageVehicleIds = useMemo(() => {
@@ -166,6 +230,10 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
     if (form.vehicleId && !compatibleVehicles.some((v) => v.id === form.vehicleId)) {
       setForm((prev) => ({ ...prev, vehicleId: undefined }))
     }
+    // Auto-select if only one vehicle available
+    if (!form.vehicleId && compatibleVehicles.length === 1) {
+      setForm((prev) => ({ ...prev, vehicleId: compatibleVehicles[0].id }))
+    }
   }, [compatibleVehicles, form.vehicleId])
 
   const selectedExtras = useMemo(
@@ -183,6 +251,12 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
   const total = packagePrice + extrasTotal + vehicleFee
   const deposit = total * 0.5
 
+  const tomorrow = useMemo(() => {
+    const date = new Date()
+    date.setDate(date.getDate() + 1)
+    return date.toISOString().split('T')[0]
+  }, [])
+
   const availabilityHint = !form.date || !form.time
     ? 'Selecciona fecha y hora para validar disponibilidad.'
     : 'Mostrando solo vehículos disponibles en ese horario.'
@@ -190,6 +264,36 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
   const noVehiclesMessage = !form.date || !form.time
     ? `No hay vehículos compatibles con ${form.people} personas.`
     : `No hay vehículos disponibles para ${form.people} personas en ese horario.`
+
+  // Validación de incluidos: verifica que cada categoría tenga al menos una selección
+  const validateIncluidos = (): boolean => {
+    const categories = Object.values(incluidosGrouped)
+    if (categories.length === 0) return true // Si no hay categorías, es válido
+    
+    for (const category of categories) {
+      const categoryIncludoIds = category.incluidos.map(inc => inc.id)
+      const hasSelection = categoryIncludoIds.some(id => form.incluidos.includes(id))
+      if (!hasSelection) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // Obtiene las categorías sin selección para mensajes de error
+  const getMissingIncludoCategories = (): string[] => {
+    const missing: string[] = []
+    const categories = Object.values(incluidosGrouped)
+    
+    for (const category of categories) {
+      const categoryIncludoIds = category.incluidos.map(inc => inc.id)
+      const hasSelection = categoryIncludoIds.some(id => form.incluidos.includes(id))
+      if (!hasSelection) {
+        missing.push(category.categoria.nombre)
+      }
+    }
+    return missing
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -199,11 +303,11 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
     }
     const peopleValue = Number(form.people)
     if (!Number.isFinite(peopleValue) || peopleValue < 1) {
-      alert('Ingresa un número válido de personas')
+      showAlert('Validación', 'Ingresa un número válido de personas', 'warning')
       return
     }
     if (pkg.maxPeople && peopleValue > pkg.maxPeople) {
-      alert(`El paquete admite hasta ${pkg.maxPeople} personas`)
+      showAlert('Límite de personas', `El paquete admite hasta ${pkg.maxPeople} personas`, 'warning')
       return
     }
     const selectedEvent = events.find((e) => e.id === form.destinationOption)
@@ -212,12 +316,27 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
       : (selectedEvent?.title || '')
 
     if (!form.date || !form.time || !form.origin.trim() || !destinationText) {
-      alert('Completa fecha, horario, origen y destino para continuar')
+      showAlert('Campos incompletos', 'Completa fecha, horario, origen y destino para continuar', 'warning')
+      return
+    }
+
+    // Validar que se haya seleccionado uno de cada categoría de incluidos
+    if (!validateIncluidos()) {
+      const missing = getMissingIncludoCategories()
+      const categoriasText = missing.length === 1 
+        ? `categoría "${missing[0]}"`
+        : `categorías: ${missing.map(c => `"${c}"`).join(', ')}`
+      showAlert(
+        'Selección incompleta',
+        `Debes seleccionar una opción para cada categoría de incluidos. Falta elegir en: ${categoriasText}`,
+        'warning'
+      )
       return
     }
 
     setSubmitting(true)
     const vehicle = vehicles.find((v) => v.id === form.vehicleId)
+    const selectedIncluidos = incluidos.filter((inc) => form.incluidos.includes(inc.id))
     const reservation = {
       id: buildReservationId(),
       package: {
@@ -243,6 +362,7 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
       destination: destinationText,
       people: peopleValue,
       extras: selectedExtras,
+      incluidos: selectedIncluidos,
       total,
       deposit,
       notes: form.notes.trim() || undefined,
@@ -282,8 +402,14 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
       <PageHeader
         eyebrow="Reserva"
         title="Configura tu experiencia"
-        description="Define fecha, horario, vehículo y extras antes de confirmar y pasar al carrito."
       />
+      <Section spacing="lg">
+        <Card className="mb-8">
+          <p className="text-gray-300">
+            Completa los datos necesarios para coordinar tu servicio. La información proporcionada permite verificar disponibilidad y preparar la experiencia según tus preferencias.
+          </p>
+        </Card>
+      </Section>
 
       <Section spacing="lg">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -304,16 +430,90 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
             </div>
 
             <form className="space-y-6" onSubmit={handleSubmit}>
+
+
+              <div className="space-y-3">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-200">Selecciona vehículo</p>
+                    <span className="text-xs text-gray-400">Solo opciones del paquete con suficientes asientos</span>
+                  </div>
+                  <p className="text-xs text-gray-500">{availabilityHint}</p>
+                </div>
+                <div className="space-y-3">
+                  {compatibleVehicles.length === 0 && (
+                    <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+                      {noVehiclesMessage} Reduce el número o contáctanos para opciones especiales.
+                    </div>
+                  )}
+                  {compatibleVehicles.map((vehicle) => (
+                    <label
+                      key={vehicle.id}
+                      className={`flex items-center gap-4 rounded-xl border px-4 py-3 cursor-pointer transition ${
+                        form.vehicleId === vehicle.id ? 'border-amber-300 bg-amber-300/10' : 'border-white/10 bg-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="vehicle"
+                        value={vehicle.id}
+                        checked={form.vehicleId === vehicle.id}
+                        onChange={(e) => setForm((prev) => ({ ...prev, vehicleId: e.target.value }))}
+                        className="accent-amber-300"
+                      />
+                      <div className="w-24 h-16 rounded-lg overflow-hidden border border-white/10">
+                        <SafeImage src={vehicle.imageUrl} alt={vehicle.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-white font-semibold">{vehicle.name}</p>
+                        <p className="text-sm text-gray-400">{vehicle.seats} asientos</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mensaje de disponibilidad del vehículo */}
+              {form.vehicleId && form.date && (
+                <div className="space-y-2">
+                  {checkingAvailability && (
+                    <div className="rounded-lg border border-blue-400/30 bg-blue-400/10 px-4 py-3 text-sm text-blue-200">
+                      Verificando disponibilidad...
+                    </div>
+                  )}
+                  {!checkingAvailability && vehicleAvailability && (
+                    <>
+                      {vehicleAvailability.available ? (
+                        <div className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+                          ✓ Vehículo disponible para esta fecha · {vehicleAvailability.cantidadDisponible} de {vehicleAvailability.cantidadTotal} unidades disponibles
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+                          ✗ Vehículo no disponible para esta fecha 
+                          {vehicleAvailability.bloqueadoPor && ` · Motivo: ${vehicleAvailability.bloqueadoPor}`}
+                          {vehicleAvailability.detalles && ` · ${vehicleAvailability.detalles}`}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              <p className="text-gray-300">
+                  Información de reserva
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="flex flex-col gap-2">
                   <span className="text-sm text-gray-200">Fecha</span>
                   <input
                     type="date"
                     value={form.date}
+                    min={tomorrow}
                     onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
                     className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
                     required
                   />
+                  <span className="text-xs text-gray-400">Solo fechas futuras</span>
                 </label>
                 <label className="flex flex-col gap-2">
                   <span className="text-sm text-gray-200">Horario</span>
@@ -401,80 +601,136 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
               </div>
 
               <div className="space-y-3">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-200">Selecciona vehículo</p>
-                    <span className="text-xs text-gray-400">Solo opciones del paquete con suficientes asientos</span>
+                <p className="text-sm text-gray-200">Extras</p>
+                {extras.length === 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-400">
+                    No hay extras disponibles en este momento
                   </div>
-                  <p className="text-xs text-gray-500">{availabilityHint}</p>
-                </div>
-                <div className="space-y-3">
-                  {compatibleVehicles.length === 0 && (
-                    <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
-                      {noVehiclesMessage} Reduce el número o contáctanos para opciones especiales.
-                    </div>
-                  )}
-                  {compatibleVehicles.map((vehicle) => (
-                    <label
-                      key={vehicle.id}
-                      className={`flex items-center gap-4 rounded-xl border px-4 py-3 cursor-pointer transition ${
-                        form.vehicleId === vehicle.id ? 'border-amber-300 bg-amber-300/10' : 'border-white/10 bg-white/5 hover:border-white/20'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="vehicle"
-                        value={vehicle.id}
-                        checked={form.vehicleId === vehicle.id}
-                        onChange={(e) => setForm((prev) => ({ ...prev, vehicleId: e.target.value }))}
-                        className="accent-amber-300"
-                      />
-                      <div className="w-24 h-16 rounded-lg overflow-hidden border border-white/10">
-                        <SafeImage src={vehicle.imageUrl} alt={vehicle.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-white font-semibold">{vehicle.name}</p>
-                        <p className="text-sm text-gray-400">{vehicle.seats} asientos · Tarifa: {vehicle.rate}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {extras.map((extra) => {
+                      const checked = form.extras.includes(extra.id)
+                      return (
+                        <label
+                          key={extra.id}
+                          className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
+                            checked ? 'border-amber-300 bg-amber-300/10' : 'border-white/10 bg-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setForm((prev) => ({
+                                ...prev,
+                                extras: e.target.checked
+                                  ? [...prev.extras, extra.id]
+                                  : prev.extras.filter((id) => id !== extra.id),
+                              }))
+                            }}
+                            className="accent-amber-300 mt-1"
+                          />
+                          <div className="flex-1">
+                            <p className="text-white font-semibold">{extra.name}</p>
+                            <p className="text-sm text-gray-400">{extra.description}</p>
+                            {extra.categoria && <p className="text-xs text-amber-300/60 mt-1">{extra.categoria === 'SIN_ALCOHOL' ? 'Sin alcohol' : 'Premium con alcohol'}</p>}
+                          </div>
+                          <span className="text-amber-300 font-semibold">+${extra.price}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-3">
-                <p className="text-sm text-gray-200">Extras</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {extras.map((extra) => {
-                    const checked = form.extras.includes(extra.id)
-                    return (
-                      <label
-                        key={extra.id}
-                        className={`flex items-start gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
-                          checked ? 'border-amber-300 bg-amber-300/10' : 'border-white/10 bg-white/5 hover:border-white/20'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            setForm((prev) => ({
-                              ...prev,
-                              extras: e.target.checked
-                                ? [...prev.extras, extra.id]
-                                : prev.extras.filter((id) => id !== extra.id),
-                            }))
-                          }}
-                          className="accent-amber-300 mt-1"
-                        />
-                        <div className="flex-1">
-                          <p className="text-white font-semibold">{extra.name}</p>
-                          <p className="text-sm text-gray-400">{extra.description}</p>
+              <div className="space-y-4">
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>Incluidos / Bebidas</p>
+                {incluidos.length === 0 ? (
+                  <div className={`rounded-xl border px-4 py-3 text-sm ${theme === 'dark' ? 'border-white/10 bg-white/5 text-gray-400' : 'border-gray-300 bg-gray-100 text-gray-600'}`}>
+                    No hay incluidos disponibles en este momento
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {Object.values(incluidosGrouped).length === 0 ? (
+                      <div className={`rounded-xl border px-4 py-3 text-sm ${theme === 'dark' ? 'border-white/10 bg-white/5 text-gray-400' : 'border-gray-300 bg-gray-100 text-gray-600'}`}>
+                        Sin categorías disponibles
+                      </div>
+                    ) : (
+                      Object.values(incluidosGrouped).map((group) => (
+                        <div
+                          key={group.categoria.id}
+                          className={`rounded-lg border p-4 ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-300 bg-gray-50'}`}
+                        >
+                          <p className={`mb-3 text-sm font-semibold ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                            {group.categoria.nombre}
+                          </p>
+                          <div className="space-y-2">
+                            {group.incluidos.map((incluido) => {
+                              const isSelected = form.incluidos.includes(incluido.id)
+                              return (
+                                <label
+                                  key={incluido.id}
+                                  className={`flex cursor-pointer items-start gap-3 rounded-lg p-2 transition ${
+                                    isSelected
+                                      ? theme === 'dark'
+                                        ? 'bg-amber-300/15 border border-amber-300/40'
+                                        : 'bg-amber-100/40 border border-amber-200'
+                                      : theme === 'dark'
+                                        ? 'hover:bg-white/5'
+                                        : 'hover:bg-gray-100'
+                                  } border`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`categoria_${group.categoria.id}`}
+                                    value={incluido.id}
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      // Remove any other selection from this category
+                                      const otherCategories = form.incluidos.filter(
+                                        (id) => !group.incluidos.find((inc) => inc.id === id)
+                                      )
+                                      setForm((prev) => ({
+                                        ...prev,
+                                        incluidos: [...otherCategories, e.target.value],
+                                      }))
+                                    }}
+                                    className="mt-1"
+                                  />
+                                  <div className="flex-1">
+                                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                                      {incluido.nombre}
+                                    </p>
+                                    {incluido.descripcion && (
+                                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        {incluido.descripcion}
+                                      </p>
+                                    )}
+                                  </div>
+                                </label>
+                              )
+                            })}
+                          </div>
                         </div>
-                        <span className="text-amber-300 font-semibold">+${extra.price}</span>
-                      </label>
-                    )
-                  })}
-                </div>
+                      ))
+                    )}
+                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Selecciona una opción por cada categoría
+                    </p>
+                    {!validateIncluidos() && (
+                      <div className={`rounded-lg border p-3 ${theme === 'dark' ? 'border-red-500/40 bg-red-500/10' : 'border-red-300 bg-red-50'}`}>
+                        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-red-400' : 'text-red-700'}`}>
+                          ⚠ Faltan selecciones:
+                        </p>
+                        <ul className={`mt-2 list-inside list-disc text-xs ${theme === 'dark' ? 'text-red-300/80' : 'text-red-600'}`}>
+                          {getMissingIncludoCategories().map((cat) => (
+                            <li key={cat}>{cat}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <label className="flex flex-col gap-2">
@@ -490,7 +746,11 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
 
               <div className="flex items-center justify-between gap-4">
                 <Button variant="ghost" onClick={() => navigate('/paquetes')}>Volver</Button>
-                <Button variant="primary" type="submit" disabled={submitting || !form.date || !form.time}>
+                <Button 
+                  variant="primary" 
+                  type="submit" 
+                  disabled={submitting || !form.date || !form.time || !validateIncluidos() || Boolean(form.vehicleId && vehicleAvailability && !vehicleAvailability.available)}
+                >
                   {submitting ? 'Guardando...' : 'Añadir al carrito'}
                 </Button>
               </div>

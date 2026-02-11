@@ -151,17 +151,17 @@ export function validate(config: Record<string, unknown>) {
     extraErrors.forEach((msg) => errorMessages.push(`  • ${msg}`));
 
     throw new Error(
-      `❌ CONFIGURACIÓN INVÁLIDA - Variables de entorno:\n${errorMessages.join("\n")}\n\n` +
-        `🔧 Verifica tu archivo .env y asegúrate de tener todas las variables requeridas.\n` +
-        `📝 Consulta .env.example para ver un ejemplo de configuración.`,
+      `CONFIGURACIÓN INVÁLIDA - Variables de entorno:\n${errorMessages.join("\n")}\n\n` +
+        `Verifica tu archivo .env y asegúrate de tener todas las variables requeridas.\n` +
+        `Consulta .env.example para ver un ejemplo de configuración.`,
     );
   }
 
   if (extraErrors.length > 0) {
     throw new Error(
-      `❌ CONFIGURACIÓN INVÁLIDA - Variables de entorno:\n  • ${extraErrors.join(", ")}\n\n` +
-        `🔧 Verifica tu archivo .env y asegúrate de tener todas las variables requeridas para production.\n` +
-        `📝 Consulta .env.example para ver un ejemplo de configuración.`,
+      `CONFIGURACIÓN INVÁLIDA - Variables de entorno:\n  • ${extraErrors.join(", ")}\n\n` +
+        `Verifica tu archivo .env y asegúrate de tener todas las variables requeridas para production.\n` +
+        `Consulta .env.example para ver un ejemplo de configuración.`,
     );
   }
 

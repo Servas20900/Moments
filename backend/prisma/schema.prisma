@@ -58,18 +58,19 @@ model CategoriaPaquete {
 }
 
 model Paquete {
-  id            String            @id @default(cuid())
+  id            String             @id @default(cuid())
   categoriaId   Int
   nombre        String
   descripcion   String
-  precioBase    Decimal           @db.Decimal(10, 2)
+  precioBase    Decimal            @db.Decimal(10, 2)
   maxPersonas   Int
-  creadoEn      DateTime          @default(now())
-  actualizadoEn DateTime          @updatedAt
-  estado        EstadoActivo      @default(ACTIVO)
+  creadoEn      DateTime           @default(now())
+  actualizadoEn DateTime           @updatedAt
+  estado        EstadoActivo       @default(ACTIVO)
   imagenes      ImagenPaquete[]
-  categoria     CategoriaPaquete  @relation(fields: [categoriaId], references: [id])
+  categoria     CategoriaPaquete   @relation(fields: [categoriaId], references: [id])
   extras        PaqueteExtra[]
+  incluidos     PaqueteIncluido[]
   vehiculos     PaqueteVehiculo[]
   reservas      Reserva[]
 
@@ -88,8 +89,36 @@ model Vehiculo {
   imagenes      ImagenVehiculo[]
   paquetes      PaqueteVehiculo[]
   reservas      Reserva[]
+  unidad        VehiculoUnidad?
+  bloqueos      DisponibilidadVehiculo[]
 
   @@map("vehiculos")
+}
+
+model VehiculoUnidad {
+  id            String       @id @default(cuid())
+  vehiculoId    String       @unique
+  cantidad      Int          @default(1)
+  estado        EstadoActivo @default(ACTIVO)
+  creadoEn      DateTime     @default(now())
+  actualizadoEn DateTime     @updatedAt
+  vehiculo      Vehiculo     @relation(fields: [vehiculoId], references: [id])
+
+  @@map("vehiculos_unidades")
+}
+
+model DisponibilidadVehiculo {
+  id         String               @id @default(cuid())
+  vehiculoId String
+  fecha      DateTime
+  motivo     MotivoDisponibilidad
+  detalles   String?
+  creadoPor  String?
+  creadoEn   DateTime             @default(now())
+  vehiculo   Vehiculo             @relation(fields: [vehiculoId], references: [id])
+
+  @@index([vehiculoId, fecha])
+  @@map("disponibilidades_vehiculos")
 }
 
 model PaqueteVehiculo {
@@ -166,42 +195,55 @@ model ImagenEvento {
 }
 
 model Reserva {
-  id               String                   @id @default(cuid())
-  usuarioId        String?
-  paqueteId        String
-  vehiculoId       String
-  conductorId      String?
-  nombre           String
-  email            String
-  telefono         String
-  identificacion   String?
-  tipoEvento       String
-  fechaEvento      DateTime
-  horaInicio       DateTime
-  horaFin          DateTime
-  origen           String
-  destino          String
-  numeroPersonas   Int
-  precioBase       Decimal                  @db.Decimal(10, 2)
-  precioTotal      Decimal                  @db.Decimal(10, 2)
-  anticipo         Decimal                  @db.Decimal(10, 2)
-  restante         Decimal                  @db.Decimal(10, 2)
-  estado           EstadoReserva
-  tipoPago         TipoPago?
-  creadoEn         DateTime                 @default(now())
-  actualizadoEn    DateTime                 @updatedAt
-  eventoCalendario EventoCalendario?
-  historialEstados HistorialEstadoReserva[]
-  pagos            PagoReserva[]
-  conductor        Conductor?               @relation(fields: [conductorId], references: [id])
-  paquete          Paquete                  @relation(fields: [paqueteId], references: [id])
-  usuario          Usuario?                 @relation(fields: [usuarioId], references: [id])
-  vehiculo         Vehiculo                 @relation(fields: [vehiculoId], references: [id])
-  extras           ReservaExtra[]
+  id                 String                   @id @default(cuid())
+  usuarioId          String?
+  paqueteId          String
+  vehiculoId         String?
+  conductorId        String?
+  nombre             String
+  email              String
+  telefono           String
+  direccion          String?
+  tipoIdentificacion String?
+  identificacion     String?
+  tipoEvento         String
+  fechaEvento        DateTime
+  horaInicio         DateTime
+  horaFin            DateTime
+  origen             String
+  destino            String
+  numeroPersonas     Int
+  precioBase         Decimal                  @db.Decimal(10, 2)
+  precioTotal        Decimal                  @db.Decimal(10, 2)
+  anticipo           Decimal                  @db.Decimal(10, 2)
+  restante           Decimal                  @db.Decimal(10, 2)
+  estado             EstadoReserva
+  tipoPago           TipoPago?
+  origenReserva      OrigenReserva            @default(WEB)
+  notasInternas      String?
+  numeroFactura      String?                  @unique
+  // Campos operativos para seguimiento
+  contactoCliente    EstadoContacto           @default(PENDIENTE)
+  adelantoRecibido   Boolean                  @default(false)
+  pagoCompleto       Boolean                  @default(false)
+  choferAsignado     Boolean                  @default(false)
+  eventoRealizado    Boolean                  @default(false)
+  creadoEn           DateTime                 @default(now())
+  actualizadoEn      DateTime                 @updatedAt
+  eventoCalendario   EventoCalendario?
+  historialEstados   HistorialEstadoReserva[]
+  pagos              PagoReserva[]
+  conductor          Conductor?               @relation(fields: [conductorId], references: [id])
+  paquete            Paquete                  @relation(fields: [paqueteId], references: [id])
+  usuario            Usuario?                 @relation(fields: [usuarioId], references: [id])
+  vehiculo           Vehiculo?                @relation(fields: [vehiculoId], references: [id])
+  extras             ReservaExtra[]
+  incluidos          ReservaIncluido[]
 
   @@index([fechaEvento])
   @@index([estado])
   @@index([vehiculoId, fechaEvento])
+  @@index([numeroFactura])
   @@map("reservas")
 }
 
@@ -236,13 +278,14 @@ model EventoCalendario {
 }
 
 model Extra {
-  id            String         @id @default(cuid())
+  id            String           @id @default(cuid())
   nombre        String
   descripcion   String?
-  precio        Decimal        @db.Decimal(10, 2)
-  estado        EstadoActivo   @default(ACTIVO)
-  creadoEn      DateTime       @default(now())
-  actualizadoEn DateTime       @updatedAt
+  precio        Decimal          @db.Decimal(10, 2)
+  categoria     CategoriaExtra   @default(SIN_ALCOHOL)
+  estado        EstadoActivo     @default(ACTIVO)
+  creadoEn      DateTime         @default(now())
+  actualizadoEn DateTime         @updatedAt
   paquetes      PaqueteExtra[]
   reservas      ReservaExtra[]
 
@@ -270,6 +313,52 @@ model ReservaExtra {
   reserva        Reserva  @relation(fields: [reservaId], references: [id])
 
   @@map("reservas_extras")
+}
+
+model CategoriaIncluido {
+  id        Int          @id @default(autoincrement())
+  nombre    String       @unique
+  estado    EstadoActivo @default(ACTIVO)
+  creadoEn  DateTime     @default(now())
+  incluidos Incluido[]
+
+  @@map("categorias_incluidos")
+}
+
+model Incluido {
+  id            String            @id @default(cuid())
+  nombre        String
+  descripcion   String?
+  categoriaId   Int
+  estado        EstadoActivo      @default(ACTIVO)
+  creadoEn      DateTime          @default(now())
+  actualizadoEn DateTime          @updatedAt
+  categoria     CategoriaIncluido @relation(fields: [categoriaId], references: [id])
+  paquetes      PaqueteIncluido[]
+  reservas      ReservaIncluido[]
+
+  @@map("incluidos")
+}
+
+model PaqueteIncluido {
+  paqueteId String
+  incluidoId String
+  incluido  Incluido @relation(fields: [incluidoId], references: [id])
+  paquete   Paquete  @relation(fields: [paqueteId], references: [id])
+
+  @@id([paqueteId, incluidoId])
+  @@map("paquetes_incluidos")
+}
+
+model ReservaIncluido {
+  id         String   @id @default(cuid())
+  reservaId  String
+  incluidoId String
+  creadoEn   DateTime @default(now())
+  incluido   Incluido @relation(fields: [incluidoId], references: [id])
+  reserva    Reserva  @relation(fields: [reservaId], references: [id])
+
+  @@map("reservas_incluidos")
 }
 
 model Provincia {
@@ -325,6 +414,7 @@ model HistorialEstadoReserva {
 
 enum EstadoReserva {
   PAGO_PENDIENTE
+  PAGO_PARCIAL
   CONFIRMADA
   CANCELADA
   COMPLETADA
@@ -349,6 +439,18 @@ enum TipoPago {
   TRANSFERENCIA
 }
 
+enum MotivoDisponibilidad {
+  RESERVADO
+  MANTENIMIENTO
+  BLOQUEADO_ADMIN
+  OTRO
+}
+
+enum CategoriaExtra {
+  SIN_ALCOHOL
+  PREMIUM_ALCOHOL
+}
+
 enum CategoriaImagen {
   LANDING_PAGE
   EXPERIENCIA
@@ -362,4 +464,20 @@ enum EstadoActivo {
   ACTIVO
   INACTIVO
   SUSPENDIDO
+}
+
+enum OrigenReserva {
+  WEB
+  ADMIN
+  WHATSAPP
+  INSTAGRAM
+  CORREO
+  MANUAL
+  CORPORATIVO
+}
+
+enum EstadoContacto {
+  PENDIENTE
+  CONTACTADO
+  CONFIRMADO
 }

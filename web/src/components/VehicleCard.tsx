@@ -30,7 +30,6 @@ const VehicleCard = ({ vehicle, onClick }: VehicleCardProps) => {
         <div>
           <h3 className="m-0 font-bold text-xl">{vehicle.name}</h3>
           <p className="m-0 text-gray-400 text-sm">{vehicle.category}</p>
-          <p className="m-0 text-lg font-bold text-[#c9a24d]">{vehicle.rate}</p>
 
           <div className="flex flex-col gap-2 mt-auto">
             {vehicle.features.slice(0, 3).map((feature, index) => (

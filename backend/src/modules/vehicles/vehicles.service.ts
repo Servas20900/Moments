@@ -88,6 +88,12 @@ export class VehiclesService {
         asientos: dto.asientos ?? existing.asientos,
         tarifaPorHora: dto.tarifaPorHora ?? existing.tarifaPorHora,
       },
+      include: {
+        imagenes: {
+          include: { imagen: true },
+          orderBy: { orden: "asc" },
+        },
+      },
     });
     return this.toResponse(updated);
   }

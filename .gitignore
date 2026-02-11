@@ -4,6 +4,13 @@
 .env.docker
 .env.*.local
 .env.production
+backend/.env
+web/.env
+
+# Secrets and credentials
+**/.env
+**/.env.local
+**/.env.production
 
 # IDEs
 .vscode/

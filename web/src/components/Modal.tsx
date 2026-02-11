@@ -30,41 +30,22 @@ const Modal = ({ open, title, actions, onClose, children }: ModalProps) => {
     
     document.body.style.overflow = 'hidden'
 
-    // focus first focusable element in panel (or panel)
-    const focusable = panelRef.current?.querySelector<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-    ;(focusable ?? panelRef.current)?.focus()
-
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-      if (e.key === 'Tab') {
-        // basic focus trap
-        const nodes = panelRef.current?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        )
-        if (!nodes || nodes.length === 0) return
-        const first = nodes[0]
-        const last = nodes[nodes.length - 1]
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault()
-          last.focus()
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault()
-          first.focus()
-        }
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
       }
     }
 
-    document.addEventListener('keydown', handleKey)
+    document.addEventListener('keydown', handleEscape)
     return () => {
-      document.removeEventListener('keydown', handleKey)
+      document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = prevOverflow
       document.body.style.paddingRight = prevPaddingRight
       // restore focus
       ;(previouslyFocused.current as HTMLElement | null)?.focus?.()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Button from '../components/Button'
 import SafeImage from '../components/SafeImage'
 import { Layout, PageHeader, Section } from '../components/Layout'
@@ -9,6 +10,7 @@ const formatMoney = (value: number) => `$${value.toFixed(2)}`
 const Cart = () => {
   const { cart, clearReservation } = useReservation()
   const navigate = useNavigate()
+  const [paymentOption, setPaymentOption] = useState<'50' | '100'>('50')
 
   if (!cart) {
     return (
@@ -32,13 +34,14 @@ const Cart = () => {
 
   const extrasTotal = cart.extras.reduce((acc, extra) => acc + extra.price, 0)
   const vehicleLabel = cart.vehicle ? `${cart.vehicle.name} · ${cart.vehicle.seats} asientos` : 'Asignaremos el mejor disponible'
+  const amountToPay = paymentOption === '50' ? cart.deposit : cart.total
 
   return (
     <Layout>
       <PageHeader
         eyebrow="Carrito"
-        title="Confirma tu reserva"
-        description="Revisa los detalles antes de confirmar y proceder al pago."
+        title="Revisa tu servicio"
+        description="Revisa el resumen de tu servicio antes de continuar con el pago."
       />
 
       <Section spacing="lg">
@@ -116,18 +119,58 @@ const Cart = () => {
                 <span>Extras</span>
                 <span>{formatMoney(extrasTotal)}</span>
               </div>
-              <div className="flex items-center justify-between text-sm text-gray-300">
-                <span>Vehículo</span>
-                <span>{cart.vehicle ? cart.vehicle.rate : 'Incluido'}</span>
-              </div>
               <div className="border-t border-white/10 pt-3 flex items-center justify-between text-lg font-bold text-white">
                 <span>Total</span>
                 <span>{formatMoney(cart.total)}</span>
               </div>
-              <div className="flex items-center justify-between text-sm text-amber-200">
-                <span>Anticipo (50%)</span>
-                <span>{formatMoney(cart.deposit)}</span>
+              
+              <div className="space-y-3">
+                <p className="text-sm text-gray-200 font-semibold">Selecciona cómo deseas realizar el pago:</p>
+                <label className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
+                  paymentOption === '50' ? 'border-amber-300 bg-amber-300/10' : 'border-white/10 bg-white/5 hover:border-white/20'
+                }`}>
+                  <input
+                    type="radio"
+                    name="paymentOption"
+                    value="50"
+                    checked={paymentOption === '50'}
+                    onChange={() => setPaymentOption('50')}
+                    className="accent-amber-300"
+                  />
+                  <div className="flex-1">
+                    <p className="text-white font-semibold">Adelanto del 50%</p>
+                    <p className="text-sm text-gray-400">{formatMoney(cart.deposit)}</p>
+                  </div>
+                </label>
+                <label className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition ${
+                  paymentOption === '100' ? 'border-amber-300 bg-amber-300/10' : 'border-white/10 bg-white/5 hover:border-white/20'
+                }`}>
+                  <input
+                    type="radio"
+                    name="paymentOption"
+                    value="100"
+                    checked={paymentOption === '100'}
+                    onChange={() => setPaymentOption('100')}
+                    className="accent-amber-300"
+                  />
+                  <div className="flex-1">
+                    <p className="text-white font-semibold">Pago total del 100%</p>
+                    <p className="text-sm text-gray-400">{formatMoney(cart.total)}</p>
+                  </div>
+                </label>
               </div>
+
+              <div className="rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-2 space-y-1">
+                <p className="text-sm text-sky-100 font-semibold">Precios</p>
+                <p className="text-sm text-sky-100/90">Total: USD {formatMoney(cart.total)}</p>
+                <p className="text-xs text-sky-100/70">Estimado en colones: ₡{(cart.total * 500).toLocaleString()} (referencia)</p>
+              </div>
+
+              <div className="flex items-center justify-between text-base font-bold text-amber-200">
+                <span>A pagar ahora:</span>
+                <span>{formatMoney(amountToPay)}</span>
+              </div>
+
               <div className="rounded-xl border border-amber-300/40 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
                 No se ha realizado ningún cobro. Confirmarás en el siguiente paso.
               </div>

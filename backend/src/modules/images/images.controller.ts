@@ -11,7 +11,10 @@ import {
   UseGuards,
   UploadedFile,
   UseInterceptors,
+  Inject,
 } from "@nestjs/common";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import type { Cache } from "cache-manager";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { CategoriaImagen, EstadoActivo } from "@prisma/client";
 import { ImagesService } from "./images.service";
@@ -21,6 +24,9 @@ import { AttachImageToPackageDto } from "./dtos/attach-image-to-package.dto";
 import { AttachImageToVehicleDto } from "./dtos/attach-image-to-vehicle.dto";
 import { AttachImageToEventDto } from "./dtos/attach-image-to-event.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { Role } from "../auth/roles.enum";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes } from "@nestjs/swagger";
 import type { Express } from "express";
@@ -28,7 +34,10 @@ import type { Express } from "express";
 @ApiTags("Imágenes")
 @Controller("imagenes")
 export class ImagesController {
-  constructor(private readonly imagesService: ImagesService) {}
+  constructor(
+    private readonly imagesService: ImagesService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "Listar imágenes con filtros opcionales" })
@@ -56,7 +65,8 @@ export class ImagesController {
   }
 
   @Post("upload")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @UseInterceptors(
     FileInterceptor("file", {
       limits: {
@@ -106,7 +116,8 @@ export class ImagesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Crear imagen (admin)" })
   async create(@Body() dto: CreateImageDto) {
@@ -114,7 +125,8 @@ export class ImagesController {
   }
 
   @Patch(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Actualizar metadata de imagen (admin)" })
   async update(@Param("id") id: string, @Body() dto: UpdateImageDto) {
@@ -123,7 +135,8 @@ export class ImagesController {
 
   // Alias PUT para compatibilidad con frontend
   @Put(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Actualizar metadata de imagen (admin) - alias PUT" })
   async updatePut(@Param("id") id: string, @Body() dto: UpdateImageDto) {
@@ -131,7 +144,8 @@ export class ImagesController {
   }
 
   @Delete(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Desactivar imagen (admin)" })
   async deactivate(@Param("id") id: string) {
@@ -139,35 +153,44 @@ export class ImagesController {
   }
 
   @Post(":id/paquetes")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Asociar imagen a paquete con orden (admin)" })
   async attachToPackage(
     @Param("id") id: string,
     @Body() dto: AttachImageToPackageDto,
   ) {
-    return this.imagesService.attachToPackage(id, dto);
+    const result = await this.imagesService.attachToPackage(id, dto);
+    await this.cacheManager.reset();
+    return result;
   }
 
   @Post(":id/vehiculos")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Asociar imagen a vehículo con orden (admin)" })
   async attachToVehicle(
     @Param("id") id: string,
     @Body() dto: AttachImageToVehicleDto,
   ) {
-    return this.imagesService.attachToVehicle(id, dto);
+    const result = await this.imagesService.attachToVehicle(id, dto);
+    await this.cacheManager.reset();
+    return result;
   }
 
   @Post(":id/eventos")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Asociar imagen a evento con orden (admin)" })
   async attachToEvent(
     @Param("id") id: string,
     @Body() dto: AttachImageToEventDto,
   ) {
-    return this.imagesService.attachToEvent(id, dto);
+    const result = await this.imagesService.attachToEvent(id, dto);
+    await this.cacheManager.reset();
+    return result;
   }
 }

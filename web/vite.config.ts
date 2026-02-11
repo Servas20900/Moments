@@ -30,17 +30,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        '/paquetes': proxyTarget,
-        '/vehiculos': proxyTarget,
-        '/eventos': proxyTarget,
-        '/auth': proxyTarget,
-        '/usuarios': proxyTarget,
-        '/reservas': proxyTarget,
-        '/experiencias': proxyTarget,
-        '/imagenes': proxyTarget,
-        '/resenas': proxyTarget,
-        '/notificaciones': proxyTarget,
-        '/health': proxyTarget,
+        '/api': proxyTarget,
       },
     },
   }

@@ -13,6 +13,9 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { UsersService } from "./users.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { Role } from "../auth/roles.enum";
 import { UpdateUserDto } from "./dtos/update-user.dto";
 import { ChangePasswordDto } from "./dtos/change-password.dto";
 
@@ -22,7 +25,8 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Listar usuarios (admin)" })
   async findAll(@Query("skip") skip?: string, @Query("take") take?: string) {
@@ -35,7 +39,8 @@ export class UsersController {
   }
 
   @Get(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Obtener usuario por ID" })
   async findById(@Param("id") id: string) {
@@ -51,7 +56,8 @@ export class UsersController {
   }
 
   @Put(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Actualizar usuario por ID" })
   async update(@Param("id") id: string, @Body() dto: UpdateUserDto) {
@@ -59,7 +65,8 @@ export class UsersController {
   }
 
   @Delete(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Eliminar usuario" })
   async delete(@Param("id") id: string) {

@@ -517,16 +517,16 @@ const Profile = () => {
                 {passwordForm.nueva && (
                   <div className="space-y-1 text-xs">
                     <div className={passwordForm.nueva.length >= 6 ? 'text-green-400' : 'text-gray-500'}>
-                      {passwordForm.nueva.length >= 6 ? '✓' : '○'} Mínimo 6 caracteres
+                      Mínimo 6 caracteres
                     </div>
                     <div className={/[A-Za-z]/.test(passwordForm.nueva) ? 'text-green-400' : 'text-gray-500'}>
-                      {/[A-Za-z]/.test(passwordForm.nueva) ? '✓' : '○'} Al menos una letra
+                      Al menos una letra
                     </div>
                     <div className={/\d/.test(passwordForm.nueva) ? 'text-green-400' : 'text-gray-500'}>
-                      {/\d/.test(passwordForm.nueva) ? '✓' : '○'} Al menos un número
+                      Al menos un número
                     </div>
                     <div className={/[@$!%*#?&._-]/.test(passwordForm.nueva) ? 'text-green-400' : 'text-gray-500'}>
-                      {/[@$!%*#?&._-]/.test(passwordForm.nueva) ? '✓' : '○'} Al menos un símbolo (@$!%*#?&._-)
+                      Al menos un símbolo (@$!%*#?&._-)
                     </div>
                   </div>
                 )}
@@ -545,7 +545,7 @@ const Profile = () => {
                 />
                 {passwordForm.confirmar && passwordForm.nueva && (
                   <div className={`text-xs ${passwordForm.confirmar === passwordForm.nueva ? 'text-green-400' : 'text-red-400'}`}>
-                    {passwordForm.confirmar === passwordForm.nueva ? '✓ Las contraseñas coinciden' : '✗ Las contraseñas no coinciden'}
+                    {passwordForm.confirmar === passwordForm.nueva ? 'Las contraseñas coinciden' : 'Las contraseñas no coinciden'}
                   </div>
                 )}
               </label>

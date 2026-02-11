@@ -13,6 +13,9 @@ import {
 import { CacheInterceptor } from "@nestjs/cache-manager";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { Role } from "../auth/roles.enum";
 import { VehiclesService } from "./vehicles.service";
 import { CreateVehicleDto } from "./dtos/create-vehicle.dto";
 import { UpdateVehicleDto } from "./dtos/update-vehicle.dto";
@@ -60,7 +63,8 @@ export class VehiclesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Crear vehiculo (admin)" })
   async create(@Body() dto: CreateVehicleDto) {
@@ -68,7 +72,8 @@ export class VehiclesController {
   }
 
   @Put(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Actualizar vehiculo (admin)" })
   async update(@Param("id") id: string, @Body() dto: UpdateVehicleDto) {
@@ -76,7 +81,8 @@ export class VehiclesController {
   }
 
   @Delete(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Eliminar (soft delete) vehiculo (admin)" })
   async delete(@Param("id") id: string) {

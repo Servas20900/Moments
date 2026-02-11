@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Layout, PageHeader, Section } from '../components/Layout'
+import { Link, useNavigate } from 'react-router-dom'
+import { Layout, Section } from '../components/Layout'
 import Button from '../components/Button'
 import SafeImage from '../components/SafeImage'
 import Modal from '../components/Modal'
 import { useReservation } from '../contexts/ReservationContext'
+import { useAlert } from '../contexts/AlertContext'
 import { getCurrentUser, isAuthenticated } from '../utils/auth'
 import { submitReservation } from '../api/api'
 
@@ -15,6 +16,7 @@ const SINPE_PHONE = '8888-8888'  // Cambiar por el número real
 const Payment = () => {
   const { cart, clearReservation } = useReservation()
   const navigate = useNavigate()
+  const { showAlert } = useAlert()
   const [showSinpeModal, setShowSinpeModal] = useState(false)
   const [reservationId, setReservationId] = useState<string | null>(null)
 
@@ -25,7 +27,7 @@ const Payment = () => {
     address: '',
     identificationType: 'Cédula',
     identificationNumber: '',
-    paymentMethod: 'TARJETA',
+    paymentMethod: 'SINPE',
   })
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -50,7 +52,17 @@ const Payment = () => {
   if (!cart) {
     return (
       <Layout>
-        <PageHeader eyebrow="Pago" title="No hay reserva en el carrito" description="Configura una reserva antes de proceder al pago." />
+        <header className="mb-12 space-y-4 lg:mb-16">
+          <span className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-300/80">
+            Pago
+          </span>
+          <h1 className="text-3xl font-semibold text-white sm:text-4xl md:text-5xl">
+            No hay reserva en el carrito
+          </h1>
+          <p className="max-w-3xl text-sm text-gray-300 sm:text-base">
+            Configura una reserva antes de proceder al pago.
+          </p>
+        </header>
         <Section spacing="md">
           <Button variant="primary" onClick={() => navigate('/paquetes')}>Ver paquetes</Button>
         </Section>
@@ -60,19 +72,31 @@ const Payment = () => {
 
   const handleConfirm = async () => {
     if (!contact.name.trim() || !contact.email.trim()) {
-      alert('Completa nombre y email para continuar')
+      showAlert('Datos incompletos', 'Completa nombre y email para continuar', 'warning')
+      return
+    }
+    if (!contact.phone.trim()) {
+      showAlert('Teléfono requerido', 'El número de teléfono es requerido', 'warning')
+      return
+    }
+    if (contact.phone.replace(/[^\d]/g, '').length < 8) {
+      showAlert('Teléfono inválido', 'El teléfono debe tener mínimo 8 dígitos', 'warning')
       return
     }
     if (!contact.address.trim()) {
-      alert('La dirección física es requerida')
+      showAlert('Dirección requerida', 'La dirección física es requerida', 'warning')
       return
     }
     if (!contact.identificationNumber.trim()) {
-      alert('El número de identificación es requerido')
+      showAlert('Identificación requerida', 'El número de identificación es requerido', 'warning')
+      return
+    }
+    if (contact.identificationNumber.replace(/[^\d]/g, '').length < 9) {
+      showAlert('Identificación inválida', 'La identificación debe tener mínimo 9 dígitos', 'warning')
       return
     }
     if (!acceptedTerms) {
-      alert('Debes aceptar los términos y condiciones')
+      showAlert('Términos y condiciones', 'Debes aceptar los términos y condiciones', 'warning')
       return
     }
     setLoading(true)
@@ -91,24 +115,26 @@ const Payment = () => {
         nombre: contact.name,
         email: contact.email,
         telefono: contact.phone,
-        direccion: contact.address,
-        tipoIdentificacion: contact.identificationType,
-        numeroIdentificacion: contact.identificationNumber,
+        direccion: contact.address || '',
+        tipoIdentificacion: contact.identificationType || 'Cédula',
+        numeroIdentificacion: contact.identificationNumber || '',
         tipoEvento: cart.package.category || 'Evento',
-        date: cart.date,
+        fechaEvento: `${fecha}T00:00:00.000Z`,  // Convertir a ISO format
         horaInicio,
         horaFin,
         origen: cart.origin,
         destino: cart.destination,
         numeroPersonas: cart.people,
         paqueteId: cart.package.id,
-        vehiculoId: cart.vehicle?.id,
+        vehiculoId: cart.vehicle?.id || null,  // ← Convertir undefined a null
         tipoPago: contact.paymentMethod,
         precioBase: cart.package.price,
         precioTotal: cart.total,
         anticipo: cart.deposit,
         restante: Math.max(0, cart.total - cart.deposit),
         extras: cart.extras.map((e) => ({ extraId: e.id, precioUnitario: e.price, cantidad: 1 })),
+        incluidos: cart.incluidos?.map((i) => ({ incluidoId: i.id })) || [],
+        notasInternas: cart.notes || undefined,
       }
 
       const res = await submitReservation(payload)
@@ -120,16 +146,16 @@ const Payment = () => {
           setShowSinpeModal(true)
         } else {
           // Redirigir a CompraClick (futuro)
-          alert(`Reserva creada (#${res.id}). Redirección a CompraClick pendiente de implementar.`)
+          showAlert('Reserva creada', `Reserva creada (#${res.id}). Redirección a CompraClick pendiente de implementar.`, 'success')
           // TODO: Integrar con CompraClick
           // window.location.href = compraClickUrl
         }
       } else {
-        alert('No se pudo crear la reserva. Intenta de nuevo.')
+        showAlert('Error', 'No se pudo crear la reserva. Intenta de nuevo.', 'error')
       }
     } catch (error) {
       console.error('Error al crear reserva:', error)
-      alert('Error al procesar la reserva. Por favor intenta nuevamente.')
+      showAlert('Error', 'Error al procesar la reserva. Por favor intenta nuevamente.', 'error')
     } finally {
       setLoading(false)
     }
@@ -137,11 +163,19 @@ const Payment = () => {
 
   return (
     <Layout>
-      <PageHeader
-        eyebrow="Pago"
-        title="Confirmación previa al pago"
-        description="Revisa tu pedido y completa tus datos de contacto antes de proceder con el pago."
-      />
+      <header className="mb-12 space-y-4 lg:mb-16">
+        <span className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-300/80">
+          Pago
+        </span>
+        <h1 className="text-3xl font-semibold text-white sm:text-4xl md:text-5xl">
+          <Link to="/" className="transition hover:text-amber-200">
+            Confirmación previa al pago
+          </Link>
+        </h1>
+        <p className="max-w-3xl text-sm text-gray-300 sm:text-base">
+          Una vez confirmado el pago, recibirás un correo y/o mensaje de WhatsApp con el resumen oficial de tu reserva.
+        </p>
+      </header>
 
       <Section spacing="lg">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -223,14 +257,18 @@ const Payment = () => {
                   />
                 </label>
                 <label className="flex flex-col gap-2">
-                  <span className="text-sm text-gray-200">Teléfono (opcional)</span>
+                  <span className="text-sm text-gray-200">Teléfono</span>
                   <input
                     type="tel"
                     value={contact.phone}
                     onChange={(e) => setContact((s) => ({ ...s, phone: e.target.value }))}
                     className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
-                    placeholder="Tu teléfono"
+                    placeholder="Tu teléfono (mínimo 8 dígitos)"
+                    required
                   />
+                  {contact.phone && contact.phone.replace(/[^\d]/g, '').length < 8 && (
+                    <span className="text-xs text-red-400">Mínimo 8 dígitos requeridos</span>
+                  )}
                 </label>
               </div>
 
@@ -256,8 +294,6 @@ const Payment = () => {
                   >
                     <option value="Cédula">Cédula</option>
                     <option value="Pasaporte">Pasaporte</option>
-                    <option value="Licencia">Licencia</option>
-                    <option value="Otro">Otro</option>
                   </select>
                 </label>
                 <label className="flex flex-col gap-2">
@@ -267,23 +303,23 @@ const Payment = () => {
                     value={contact.identificationNumber}
                     onChange={(e) => setContact((s) => ({ ...s, identificationNumber: e.target.value }))}
                     className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
-                    placeholder="123456789"
+                    placeholder="Mínimo 9 dígitos"
+                    minLength={9}
                     required
                   />
+                  {contact.identificationNumber && contact.identificationNumber.replace(/[^\d]/g, '').length < 9 && (
+                    <span className="text-xs text-red-400">Mínimo 9 dígitos requeridos</span>
+                  )}
                 </label>
               </div>
 
-              <label className="flex flex-col gap-2">
-                <span className="text-sm text-gray-200">Método de pago preferido</span>
-                <select
-                  value={contact.paymentMethod}
-                  onChange={(e) => setContact((s) => ({ ...s, paymentMethod: e.target.value }))}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
-                >
-                  <option value="TARJETA">Tarjeta de crédito/débito</option>
-                  <option value="SINPE">SINPE Móvil</option>
-                </select>
-              </label>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-gray-200">Método de pago</span>
+                <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white">
+                  <p className="font-medium">SINPE Móvil</p>
+                  <p className="text-xs text-gray-400">Por el momento, solo se aceptan pagos mediante SINPE Móvil</p>
+                </div>
+              </div>
 
               <label className="flex items-start gap-3 p-4 rounded-lg border border-white/10 bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
                 <input
@@ -310,6 +346,11 @@ const Payment = () => {
                 Aún no se realiza ningún cobro. Continuar te llevará al proveedor de pagos.
               </div>
 
+              <div className="rounded-xl border border-sky-400/30 bg-sky-400/10 px-4 py-3 space-y-1">
+                <p className="text-sm text-sky-100 font-semibold">Nota de seguridad</p>
+                <p className="text-xs text-sky-100/90">La coordinación final del servicio se realiza únicamente por los canales oficiales indicados en la confirmación.</p>
+              </div>
+
               <div className="flex flex-col gap-3">
                 <Button variant="primary" onClick={handleConfirm} disabled={loading} className="w-full">
                   {loading ? 'Procesando...' : 'Confirmar y pagar'}
@@ -334,10 +375,6 @@ const Payment = () => {
                 <span>Extras</span>
                 <span>{formatMoney(extrasTotal)}</span>
               </div>
-              <div className="flex items-center justify-between text-sm text-gray-300">
-                <span>Vehículo</span>
-                <span>{cart.vehicle ? cart.vehicle.rate : 'Incluido'}</span>
-              </div>
               <div className="border-t border-white/10 pt-3 flex items-center justify-between text-lg font-bold text-white">
                 <span>Total</span>
                 <span>{formatMoney(cart.total)}</span>
@@ -346,12 +383,17 @@ const Payment = () => {
                 <span>Anticipo (50%)</span>
                 <span>{formatMoney(cart.deposit)}</span>
               </div>
+              <div className="rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-2 space-y-1">
+                <p className="text-xs text-sky-100 font-semibold">Importante:</p>
+                <p className="text-xs text-sky-100/90">Todos los montos se muestran en dólares estadounidenses (USD).</p>
+                <p className="text-xs text-sky-100/90">El estimado en colones es únicamente de referencia.</p>
+              </div>
             </div>
           </aside>
         </div>
       </Section>
 
-      <Modal open={showSinpeModal} onClose={() => {}} title="Instrucciones de pago - SINPE Móvil">
+      <Modal open={showSinpeModal} onClose={() => {}} title="Confirmación de Pago">
         <div className="space-y-6">
           <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
             <div className="flex items-start gap-3">
@@ -359,10 +401,17 @@ const Payment = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div>
-                <p className="text-green-100 font-semibold mb-1">¡Reserva creada exitosamente!</p>
+                <p className="text-green-100 font-semibold mb-1">¡Reserva recibida exitosamente!</p>
                 <p className="text-sm text-green-200">Número de reserva: <span className="font-mono font-bold">#{reservationId}</span></p>
+                <p className="text-sm text-green-200 mt-2">Hemos recibido tu pago y comenzaremos la coordinación de tu experiencia.</p>
+                <p className="text-sm text-green-200">En breve recibirás la confirmación oficial con los detalles del servicio.</p>
               </div>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+            <p className="text-amber-100 font-semibold text-sm">Nota importante</p>
+            <p className="text-amber-100/90 text-sm mt-1">Recuerda mantener tu teléfono disponible para la coordinación previa al evento.</p>
           </div>
 
           <div className="space-y-4">
@@ -413,7 +462,7 @@ const Payment = () => {
 
           <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
             <p className="text-sm text-blue-100">
-              <span className="font-semibold">📧 Recibirás por correo:</span>
+              <span className="font-semibold">Recibirás por correo:</span>
             </p>
             <ul className="mt-2 space-y-1 text-sm text-blue-200">
               <li>• Confirmación de tu reserva</li>
@@ -425,23 +474,13 @@ const Payment = () => {
 
           <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
             <p className="text-sm text-yellow-100">
-              <span className="font-semibold">⚠️ Importante:</span> Nos pondremos en contacto contigo 48 horas antes del servicio para coordinar la hora y lugar de recogida.
+              <span className="font-semibold">Importante:</span> Nos pondremos en contacto contigo 48 horas antes del servicio para coordinar la hora y lugar de recogida.
             </p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <Button 
-              variant="primary" 
-              onClick={() => {
-                clearReservation()
-                navigate('/profile')
-              }}
-              className="w-full"
-            >
-              Entendido, ir a mi perfil
-            </Button>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="primary"
               onClick={() => {
                 clearReservation()
                 navigate('/')

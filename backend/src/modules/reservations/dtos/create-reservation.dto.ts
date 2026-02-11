@@ -21,9 +21,10 @@ export class CreateReservationDto {
   @IsString()
   paqueteId: string;
 
-  @ApiProperty({ example: "cm5xmb3ym00004m7a5wvg6p43" })
+  @ApiProperty({ example: "cm5xmb3ym00004m7a5wvg6p43", required: false })
+  @IsOptional()
   @IsString()
-  vehiculoId: string;
+  vehiculoId?: string;
 
   @ApiProperty({ example: "cm5xmb3ym00004m7a5wvg6p44", required: false })
   @IsOptional()
@@ -87,33 +88,15 @@ export class CreateReservationDto {
   @Min(1)
   numeroPersonas: number;
 
-  @ApiProperty({ example: 150.0, required: false })
+  @ApiProperty({ 
+    example: 100.0, 
+    description: 'Adelanto mínimo 50% del total (calculado en backend)',
+    required: true 
+  })
   @Type(() => Number)
-  @IsOptional()
   @IsNumber()
   @Min(0)
-  precioBase?: number;
-
-  @ApiProperty({ example: 200.0, required: false })
-  @Type(() => Number)
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  precioTotal?: number;
-
-  @ApiProperty({ example: 100.0, required: false })
-  @Type(() => Number)
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  anticipo?: number;
-
-  @ApiProperty({ example: 100.0, required: false })
-  @Type(() => Number)
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  restante?: number;
+  anticipo: number;
 
   @ApiProperty({ enum: ["TARJETA", "SINPE", "TRANSFERENCIA"], required: false })
   @IsOptional()
@@ -139,4 +122,29 @@ export class CreateReservationDto {
     cantidad?: number;
     precioUnitario?: number;
   }>;
+
+  @ApiProperty({
+    required: false,
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        incluidoId: { type: 'string' },
+      },
+    },
+    description: 'Lista de incluidos (bebidas) seleccionados para la reserva',
+  })
+  @IsOptional()
+  incluidos?: Array<{
+    incluidoId: string;
+  }>;
+
+  @ApiProperty({
+    example: 'El cliente solicitó música en vivo durante la reserva',
+    required: false,
+    description: 'Notas internas adicionales sobre la reserva',
+  })
+  @IsOptional()
+  @IsString()
+  notasInternas?: string;
 }

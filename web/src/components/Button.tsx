@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react'
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'ghost'
+  variant?: 'primary' | 'ghost' | 'danger'
   size?: 'md' | 'lg'
 }
 
@@ -13,7 +13,8 @@ const Button = ({ variant = 'primary', size = 'md', className = '', children, ..
   }
   const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
     primary: 'bg-gradient-to-br from-[#c9a24d] to-[#e0bc6a] text-[#0b0c10] shadow-[0_12px_30px_rgba(201,162,77,0.35)] hover:-translate-y-[1px] hover:shadow-[0_18px_34px_rgba(224,188,106,0.45)] focus-visible:ring-[#c9a24d]',
-    ghost: 'bg-white/10 border border-white/20 text-white hover:border-white/30 hover:bg-white/20 focus-visible:ring-[#c9a24d]'
+    ghost: 'bg-white/10 border border-white/20 text-white hover:border-white/30 hover:bg-white/20 focus-visible:ring-[#c9a24d]',
+    danger: 'bg-gradient-to-br from-red-600 to-red-700 text-white shadow-[0_12px_30px_rgba(220,38,38,0.35)] hover:-translate-y-[1px] hover:shadow-[0_18px_34px_rgba(239,68,68,0.45)] focus-visible:ring-red-600'
   }
 
   const classes = [base, sizes[size], variants[variant], className].filter(Boolean).join(' ')

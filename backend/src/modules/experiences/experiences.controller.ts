@@ -10,6 +10,9 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { Role } from "../auth/roles.enum";
 import { ExperiencesService } from "./experiences.service";
 
 @ApiTags("Experiencias")
@@ -24,7 +27,8 @@ export class ExperiencesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Crear experiencia (admin)" })
   async create(@Body() body: any) {
@@ -32,7 +36,8 @@ export class ExperiencesController {
   }
 
   @Put(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Actualizar experiencia (admin)" })
   async update(@Param("id") id: string, @Body() body: any) {
@@ -40,7 +45,8 @@ export class ExperiencesController {
   }
 
   @Delete(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Eliminar (soft) experiencia (admin)" })
   async delete(@Param("id") id: string) {

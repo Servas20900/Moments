@@ -8,7 +8,16 @@ const PackageDetail = lazy(() => import('../pages/PackageDetail'))
 const CalendarPage = lazy(() => import('../pages/CalendarPage'))
 const About = lazy(() => import('../pages/About'))
 const Gallery = lazy(() => import('../pages/Gallery'))
-const Admin = lazy(() => import('../pages/Admin'))
+const Admin = lazy(() => import('../pages/admin/Admin'))
+const AdminVehicleAvailability = lazy(() => import('../pages/admin/AdminVehicleAvailability'))
+const AdminEventos = lazy(() => import('../pages/admin/AdminEventos'))
+const AdminSistema = lazy(() => import('../pages/admin/AdminSistema'))
+const AdminPaquetes = lazy(() => import('../pages/admin/AdminPaquetes'))
+const AdminVehiculos = lazy(() => import('../pages/admin/AdminVehiculos'))
+const AdminExtras = lazy(() => import('../pages/admin/AdminExtras'))
+const AdminIncluidos = lazy(() => import('../pages/admin/AdminIncluidos'))
+const AdminPackageExtras = lazy(() => import('../pages/admin/AdminPackageExtras'))
+const AdminReservationsTable = lazy(() => import('../pages/admin/AdminReservationsTable'))
 const Login = lazy(() => import('../pages/Login'))
 const Register = lazy(() => import('../pages/Register'))
 const Profile = lazy(() => import('../pages/Profile'))
@@ -39,6 +48,16 @@ export class AppRoutes {
     { path: '/vehiculos/:id', element: <VehicleDetail /> },
     { path: '/calendario', element: <CalendarPage /> },
     { path: '/galeria', element: <Gallery /> },
+    { path: '/admin/disponibilidad-vehiculos', element: <ProtectedRoute element={<AdminVehicleAvailability />} /> },
+    { path: '/admin/reservas', element: <ProtectedRoute element={<AdminReservationsTable />} /> },
+    { path: '/admin/sistema', element: <ProtectedRoute element={<AdminSistema />} /> },
+    { path: '/admin/eventos', element: <ProtectedRoute element={<AdminEventos />} /> },
+    { path: '/admin/paquetes', element: <ProtectedRoute element={<AdminPaquetes />} /> },
+    { path: '/admin/paquetes-extras', element: <ProtectedRoute element={<AdminPackageExtras />} /> },
+    { path: '/admin/vehiculos', element: <ProtectedRoute element={<AdminVehiculos />} /> },
+    { path: '/admin/extras', element: <ProtectedRoute element={<AdminExtras />} /> },
+    { path: '/admin/incluidos', element: <ProtectedRoute element={<AdminIncluidos />} /> },
+    { path: '/admin/categorias-incluidos', element: <ProtectedRoute element={<AdminIncluidos />} /> },
     { path: '/admin', element: <ProtectedRoute element={<Admin />} /> },
     { path: '/login', element: <Login /> },
     { path: '/about', element: <About /> },
@@ -48,7 +67,7 @@ export class AppRoutes {
     { path: '/pago', element: <Payment /> },
     { path: '/terminos', element: <Terms /> },
     { path: '/error', element: <Error /> },
-    { path: '*', element: <NotFound /> }, // Catch-all para 404
+    { path: '*', element: <NotFound /> }, 
   ]
 }
 

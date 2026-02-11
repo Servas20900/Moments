@@ -65,9 +65,6 @@ const CalendarPage = () => {
     navigate(`/paquetes?event=${encodeURIComponent(eventId)}`)
   }
 
-  const goToReserveForEvent = (eventId: string) => {
-    navigate(`/paquetes?event=${encodeURIComponent(eventId)}`)
-  }
 
   const isToday = (day: number) => {
     return day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()
@@ -117,9 +114,21 @@ const CalendarPage = () => {
     <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 pb-16 sm:px-6 lg:px-8">
       <header className="space-y-4">
         <span className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-300/80">Calendario</span>
-        <h1 className="text-3xl font-semibold text-white sm:text-4xl md:text-5xl">Disponibilidad y eventos referencia</h1>
-        <p className="max-w-3xl text-sm text-gray-300 sm:text-base">Consulta fechas ocupadas y ventanas abiertas. El calendario muestra conciertos, bodas y galas para planificar con claridad.</p>
+        <h1 className="text-3xl font-semibold text-white sm:text-4xl md:text-5xl">Calendario de eventos</h1>
       </header>
+
+      <section className="space-y-6">
+        <div className="mx-auto max-w-3xl px-4">
+          <Card title="Calendario" subtitle="Calendario de eventos">
+            <p className="text-gray-300">
+              El calendario muestra fechas con alta demanda y eventos programados.
+            </p>
+            <p className="text-gray-300 mt-3">
+              La disponibilidad final se confirma al completar la solicitud de reserva y el pago correspondiente.
+            </p>
+          </Card>
+        </div>
+      </section>
 
       <section className="space-y-6">
         <div className="mx-auto max-w-3xl px-4">
@@ -162,14 +171,6 @@ const CalendarPage = () => {
         </div>
       </section>
 
-      <section className="space-y-6">
-        <div className="mx-auto max-w-3xl px-4">
-          <Card title="Necesitas otra fecha" subtitle="Contáctanos para abrir agenda prioritaria en fechas especiales o fuera de horario">
-            <p className="section__copy">Manejamos listas de espera y producción bajo solicitud. Si el día que buscas ya está tomado, escríbenos para evaluar opciones con flota extendida.</p>
-          </Card>
-        </div>
-      </section>
-
       <section className="space-y-6" ref={listRef}>
         <div className="mx-auto max-w-3xl px-4">
           <Card title="Eventos este mes" subtitle={`${MONTHS[currentMonth]} ${currentYear}`}>
@@ -203,9 +204,8 @@ const CalendarPage = () => {
                       <td className="px-3 py-2.5 max-w-[360px] text-gray-400 truncate" title={ev.detail ?? ''}>{ev.detail ?? '—'}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap text-gray-400">{ev.date}</td>
                       <td className="px-3 py-2.5">
-                        <div className="flex gap-2 justify-end whitespace-nowrap">
+                        <div className="flex justify-end whitespace-nowrap">
                           <button className="btn btn-ghost btn-sm rounded-lg" onClick={() => goToPackagesForEvent(ev.id)}>Ver paquetes</button>
-                          <button className="btn btn-primary btn-sm rounded-lg" onClick={() => goToReserveForEvent(ev.id)}>Reservar</button>
                         </div>
                       </td>
                     </tr>
@@ -244,13 +244,20 @@ const CalendarPage = () => {
                     <p className="text-sm text-gray-400 mb-3 line-clamp-2">{ev.detail}</p>
                   )}
                   
-                  <div className="flex gap-2">
+                  <div className="flex">
                     <button className="btn btn-ghost btn-sm flex-1 rounded-lg" onClick={() => goToPackagesForEvent(ev.id)}>Ver paquetes</button>
-                    <button className="btn btn-primary btn-sm flex-1 rounded-lg" onClick={() => goToReserveForEvent(ev.id)}>Reservar</button>
                   </div>
                 </div>
               ))}
             </div>
+          </Card>
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <div className="mx-auto max-w-3xl px-4">
+          <Card title="Necesitas otra fecha" subtitle="Contáctanos para abrir agenda prioritaria en fechas especiales o fuera de horario">
+            <p className="text-gray-300">Manejamos listas de espera y producción bajo solicitud. Si el día que buscas ya está tomado, escríbenos para evaluar opciones con flota extendida.</p>
           </Card>
         </div>
       </section>

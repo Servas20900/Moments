@@ -40,8 +40,8 @@ const Gallery = () => {
     <Layout>
       <PageHeader
         eyebrow="Galería"
-        title="Nuestras experiencias"
-        description="Cada momento especial capturado a través de nuestro servicio de lujo. Conoce los eventos que hemos tenido el privilegio de acompañar."
+        title="Algunas experiencias hablan por sí solas"
+        description="Nuestra galería muestra momentos reales coordinados por Moments, reflejando el estilo, la elegancia y la atención al detalle de cada servicio."
       />
 
       <Section spacing="lg">

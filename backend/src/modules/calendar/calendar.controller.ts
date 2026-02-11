@@ -10,6 +10,9 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { Role } from "../auth/roles.enum";
 import { CalendarService } from "./calendar.service";
 
 @ApiTags("Eventos")
@@ -24,7 +27,8 @@ export class CalendarController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Crear evento (admin)" })
   async create(@Body() body: any) {
@@ -33,7 +37,8 @@ export class CalendarController {
   }
 
   @Put(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Actualizar evento (admin)" })
   async update(@Param("id") id: string, @Body() body: any) {
@@ -41,7 +46,8 @@ export class CalendarController {
   }
 
   @Delete(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Eliminar evento (admin)" })
   async delete(@Param("id") id: string) {

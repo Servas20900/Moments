@@ -16,6 +16,9 @@ import { ReservationsModule } from "./modules/reservations/reservations.module";
 import { CalendarModule } from "./modules/calendar/calendar.module";
 import { ImagesModule } from "./modules/images/images.module";
 import { ExtrasModule } from "./modules/extras/extras.module";
+import { IncluidosModule } from "./modules/incluidos/incluidos.module";
+import { CategoriasIncluidosModule } from "./modules/categorias-incluidos/categorias-incluidos.module";
+import { VehicleAvailabilityModule } from "./modules/vehicle-availability/vehicle-availability.module";
 import { HealthController } from "./common/health/health.controller";
 import { validate } from "./config/env.validation";
 
@@ -32,9 +35,9 @@ import { validate } from "./config/env.validation";
       max: 100,
     }),
     ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), "..", "public"),
+      rootPath: join(process.cwd(), '..', process.env.NODE_ENV === 'production' ? 'public' : 'web/dist'),
       serveRoot: "/",
-      exclude: ["/api*", "/auth*", "/usuarios*", "/paquetes*", "/vehiculos*", "/experiencias*", "/reservas*", "/eventos*", "/imagenes*", "/extras*", "/health*"],
+      exclude: ["/api*", "/auth*", "/paquetes*", "/vehiculos*", "/eventos*", "/experiencias*", "/reservas*", "/imagenes*", "/extras*", "/usuarios*", "/calendario*", "/health*", "/categorias-incluidos*", "/incluidos*"],
     }),
     ThrottlerModule.forRoot([
       {
@@ -60,6 +63,9 @@ import { validate } from "./config/env.validation";
     CalendarModule,
     ImagesModule,
     ExtrasModule,
+    IncluidosModule,
+    CategoriasIncluidosModule,
+    VehicleAvailabilityModule,
   ],
   controllers: [HealthController],
 })

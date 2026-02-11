@@ -36,7 +36,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li><Link to="/about" className="hover:text-[color:var(--color-accent)] transition">Sobre nosotros</Link></li>
               <li><Link to="/terms" className="hover:text-[color:var(--color-accent)] transition">Términos</Link></li>
-              <li><a href="mailto:info@moments.cr" className="hover:text-[color:var(--color-accent)] transition">Contacto</a></li>
+              <li><a href="mailto:contact@momentswrld.com" className="hover:text-[color:var(--color-accent)] transition">Contacto</a></li>
               <li><a href="tel:+506 8703 2112" className="hover:text-[color:var(--color-accent)] transition">+506 8703 2112</a></li>
             </ul>
           </div>
@@ -46,19 +46,19 @@ export default function Footer() {
             <h4 className="font-semibold text-sm uppercase tracking-wide">Contacto</h4>
             <ul className="space-y-2 text-sm text-[color:var(--color-muted)]">
               <li className="flex items-start gap-2">
-                <span className="text-[color:var(--color-accent)] mt-0.5">📍</span>
+                <span className="text-[color:var(--color-accent)] mt-0.5">•</span>
                 <span>San José, Costa Rica</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-[color:var(--color-accent)] mt-0.5">📧</span>
-                <a href="mailto:concierge@moments.cr" className="hover:text-[color:var(--color-accent)] transition">concierge@moments.cr</a>
+                <span className="text-[color:var(--color-accent)] mt-0.5">•</span>
+                <a href="mailto:contact@momentswrld.com" className="hover:text-[color:var(--color-accent)] transition">contact@momentswrld.com</a>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-[color:var(--color-accent)] mt-0.5">📞</span>
+                <span className="text-[color:var(--color-accent)] mt-0.5">•</span>
                 <a href="tel:+50687032112" className="hover:text-[color:var(--color-accent)] transition">+506 8703 2112</a>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-[color:var(--color-accent)] mt-0.5">🕐</span>
+                <span className="text-[color:var(--color-accent)] mt-0.5">•</span>
                 <span>24/7 disponible</span>
               </li>
             </ul>
