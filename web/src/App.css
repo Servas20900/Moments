@@ -2211,11 +2211,11 @@
 }
 
 .hero-copy {
-  background: rgba(9, 10, 14, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 10, 14, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.03);
   border-radius: 16px;
   padding: 20px;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(1px);
   box-shadow: none;
 }
 
@@ -2246,8 +2246,8 @@
 }
 
 :root[data-theme='light'] .hero-copy {
-  background: rgba(9, 10, 14, 0.3);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(9, 10, 14, 0.08);
+  border-color: rgba(255, 255, 255, 0.03);
 }
 
 @media (max-width: 768px) {
