@@ -111,9 +111,9 @@ const Home = () => {
           )}
           <div
             className={`absolute inset-0 bg-cover bg-center transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            style={{ backgroundImage: `linear-gradient(160deg, rgba(11,12,16,0.88), rgba(11,12,16,0.5)), url(${slide.imageUrl})` }}
+            style={{ backgroundImage: `linear-gradient(180deg, rgba(6, 8, 12, 0.75) 0%, rgba(6, 8, 12, 0.35) 45%, rgba(6, 8, 12, 0.75) 100%), url(${slide.imageUrl})` }}
+            aria-hidden="true"
           />
-          <div className="hero-scrim" aria-hidden="true" />
 
           <div className="relative flex min-h-[520px] flex-col justify-between gap-10 p-8 sm:p-12">
             <div className="hero-copy flex max-w-2xl flex-col gap-4">
