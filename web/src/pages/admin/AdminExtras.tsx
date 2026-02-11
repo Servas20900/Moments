@@ -226,7 +226,7 @@ const AdminExtras = () => {
         )}
 
         {/* Modal */}
-        <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingExtra ? 'Editar Extra' : 'Crear Extra'}>
+        <Modal open={showModal} onClose={() => setShowModal(false)} title={editingExtra ? 'Editar Extra' : 'Crear Extra'}>
           <div className="space-y-4">
             <InputField
               label="Nombre del Extra"
