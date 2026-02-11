@@ -870,7 +870,7 @@ export function AdminManualReservationForm({ packages, vehicles, onCancel, onSav
               value={state.telefono}
               onChange={handleChange}
               error={errors.telefono}
-              placeholder="+506 8888-8888"
+              placeholder="+506 XXXX-XXXX"
             />
           </div>
           <InputField

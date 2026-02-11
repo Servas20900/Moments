@@ -101,10 +101,10 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="mt-12">
               <p className="mb-4 text-sm text-gray-500">Si el problema persiste, contacta a soporte</p>
               <a 
-                href="mailto:support@moments.com" 
+                href="mailto:contact@momentswrld.com" 
                 className="text-sm text-amber-300/80 transition hover:text-amber-300"
               >
-                support@moments.com
+                contact@momentswrld.com
               </a>
             </div>
           </div>

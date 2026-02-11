@@ -740,8 +740,8 @@ export const submitReservation = async (payload: any) => {
       : undefined,
   }
 
-  const res = await http<{ id: string }>('/reservas', { method: 'POST', body: JSON.stringify(body) })
-  return { ok: true, id: (res as any).id }
+  const res = await http<{ id: string; numeroFactura: string }>('/reservas', { method: 'POST', body: JSON.stringify(body) })
+  return { ok: true, id: (res as any).id, numeroFactura: (res as any).numeroFactura }
 }
 
 export const sendConfirmationEmail = async (_email: string, _data: any) => ({ ok: true })

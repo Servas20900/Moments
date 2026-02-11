@@ -11,7 +11,7 @@ import { submitReservation } from '../api/api'
 
 const formatMoney = (value: number) => `$${value.toFixed(2)}`
 
-const SINPE_PHONE = '8888-8888'  // Cambiar por el número real
+const SINPE_PHONE = '8703-2112'
 
 const Payment = () => {
   const { cart, clearReservation } = useReservation()
@@ -19,6 +19,7 @@ const Payment = () => {
   const { showAlert } = useAlert()
   const [showSinpeModal, setShowSinpeModal] = useState(false)
   const [reservationId, setReservationId] = useState<string | null>(null)
+  const [invoiceNumber, setInvoiceNumber] = useState<string | null>(null)
 
   const [contact, setContact] = useState({
     name: '',
@@ -140,6 +141,7 @@ const Payment = () => {
       const res = await submitReservation(payload)
       if (res?.ok) {
         setReservationId(res.id)
+        setInvoiceNumber(res.numeroFactura)
         
         if (contact.paymentMethod === 'SINPE') {
           // Mostrar modal de SINPE con instrucciones
@@ -393,92 +395,128 @@ const Payment = () => {
         </div>
       </Section>
 
-      <Modal open={showSinpeModal} onClose={() => {}} title="Confirmación de Pago">
+      <Modal open={showSinpeModal} onClose={() => {}} title="¡Reserva recibida exitosamente!">
         <div className="space-y-6">
-          <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
+          {/* Header con número de factura */}
+          <div className="rounded-xl border border-green-500/30 bg-green-50 p-4">
             <div className="flex items-start gap-3">
-              <svg className="w-6 h-6 text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-6 h-6 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div>
-                <p className="text-green-100 font-semibold mb-1">¡Reserva recibida exitosamente!</p>
-                <p className="text-sm text-green-200">Número de reserva: <span className="font-mono font-bold">#{reservationId}</span></p>
-                <p className="text-sm text-green-200 mt-2">Hemos recibido tu pago y comenzaremos la coordinación de tu experiencia.</p>
-                <p className="text-sm text-green-200">En breve recibirás la confirmación oficial con los detalles del servicio.</p>
+              <div className="flex-1">
+                <p className="text-gray-800 text-sm mb-2">Número de Factura: <span className="font-mono font-bold text-gray-900">#{invoiceNumber}</span></p>
+                <p className="text-sm text-gray-700">Hemos recibido tu solicitud de reserva.</p>
+                <p className="text-sm text-gray-700 mt-1">Para confirmar el servicio, es necesario completar el pago del anticipo.</p>
+                <p className="text-sm text-gray-700 mt-2">En breve recibirás la confirmación oficial con los detalles del servicio una vez validado el pago.</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-            <p className="text-amber-100 font-semibold text-sm">Nota importante</p>
-            <p className="text-amber-100/90 text-sm mt-1">Recuerda mantener tu teléfono disponible para la coordinación previa al evento.</p>
+          {/* Nota importante */}
+          <div className="rounded-xl border border-amber-400/50 bg-amber-50 p-4">
+            <p className="text-amber-900 font-semibold text-sm mb-1">Nota importante</p>
+            <p className="text-amber-800 text-sm">Mantén tu teléfono disponible. Nuestro equipo se pondrá en contacto para la coordinación previa al evento.</p>
           </div>
 
+          {/* Pasos */}
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-white">Pasos para completar tu pago</h3>
+            <h3 className="text-lg font-bold text-gray-900">Pasos para completar tu pago</h3>
             
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Paso 1 */}
               <div className="flex gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 font-bold">1</div>
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-amber-700 font-bold">1</div>
                 <div className="flex-1">
-                  <p className="text-white font-semibold">Realiza el SINPE Móvil</p>
-                  <p className="text-sm text-gray-300 mt-1">Envía el anticipo del <span className="text-amber-300 font-bold">{formatMoney(cart.deposit)}</span> (50% del total) al siguiente número:</p>
-                  <div className="mt-2 p-3 rounded-lg bg-white/5 border border-white/10">
-                    <p className="text-xs text-gray-400 mb-1">Número de SINPE Móvil</p>
-                    <p className="text-2xl font-mono font-bold text-white">{SINPE_PHONE}</p>
+                  <p className="text-gray-900 font-semibold mb-2">Realiza el pago por SINPE Móvil</p>
+                  <p className="text-sm text-gray-700">Envía el anticipo de <span className="text-amber-700 font-bold">{formatMoney(cart.deposit)} USD</span> (50% del total) al siguiente número:</p>
+                  
+                  <div className="mt-3 p-3 rounded-lg bg-gray-50 border border-gray-300">
+                    <p className="text-xs text-gray-600 mb-1">SINPE Móvil</p>
+                    <p className="text-2xl font-mono font-bold text-gray-900">+506 {SINPE_PHONE}</p>
+                    <p className="text-sm text-gray-700 mt-2">Nombre: <span className="text-gray-900 font-semibold">Moments Transportation CR</span></p>
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">Nombre: Moments Transportation CR</p>
+
+                  <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-300">
+                    <p className="text-xs text-blue-800">Los montos se muestran en dólares estadounidenses (USD).</p>
+                    <p className="text-xs text-blue-800">El equivalente en colones es solo de referencia.</p>
+                  </div>
                 </div>
               </div>
 
+              {/* Paso 2 */}
               <div className="flex gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 font-bold">2</div>
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-amber-700 font-bold">2</div>
                 <div className="flex-1">
-                  <p className="text-white font-semibold">Envía el comprobante</p>
-                  <p className="text-sm text-gray-300 mt-1">
-                    Toma una captura de pantalla del comprobante y envíala al correo <a href={`mailto:pagos@moments.cr?subject=Comprobante Reserva ${reservationId}`} className="text-amber-300 underline">pagos@moments.cr</a>
-                  </p>
-                  <p className="text-xs text-gray-400 mt-2">Asunto: Comprobante Reserva #{reservationId}</p>
+                  <p className="text-gray-900 font-semibold mb-2">Envía el comprobante</p>
+                  <p className="text-sm text-gray-700 mb-3">Luego de realizar el pago, envía una captura del comprobante al correo:</p>
+                  
+                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-300">
+                    <p className="text-xs text-gray-600 mb-1">Correo:</p>
+                    <a 
+                      href={`mailto:contact@momentswrld.com?subject=Comprobante Reserva. Numero de Factura: ${invoiceNumber}`} 
+                      className="text-blue-600 underline hover:text-blue-700 transition"
+                    >
+                      contact@momentswrld.com
+                    </a>
+                    <p className="text-xs text-gray-600 mt-3">Asunto:</p>
+                    <p className="text-sm text-gray-800 font-mono">Comprobante Reserva. Numero de Factura: {invoiceNumber}</p>
+                  </div>
                 </div>
               </div>
 
+              {/* Paso 3 */}
               <div className="flex gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 font-bold">3</div>
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-amber-700 font-bold">3</div>
                 <div className="flex-1">
-                  <p className="text-white font-semibold">Espera la confirmación</p>
-                  <p className="text-sm text-gray-300 mt-1">Te enviaremos un correo a <span className="text-amber-300 font-semibold">{contact.email}</span> confirmando tu reserva en un máximo de 24 horas.</p>
+                  <p className="text-gray-900 font-semibold mb-2">Confirmación de la reserva</p>
+                  <p className="text-sm text-gray-700">Te enviaremos un correo de confirmación a <span className="text-amber-700 font-semibold">{contact.email}</span> en un plazo máximo de 24 horas una vez validado el pago.</p>
                 </div>
               </div>
 
+              {/* Paso 4 */}
               <div className="flex gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 font-bold">4</div>
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-amber-700 font-bold">4</div>
                 <div className="flex-1">
-                  <p className="text-white font-semibold">Pago del restante</p>
-                  <p className="text-sm text-gray-300 mt-1">El restante de <span className="text-amber-300 font-bold">{formatMoney(cart.total - cart.deposit)}</span> se paga antes del servicio.</p>
+                  <p className="text-gray-900 font-semibold mb-2">Pago del monto restante</p>
+                  <p className="text-sm text-gray-700">El monto restante de <span className="text-amber-700 font-bold">{formatMoney(cart.total - cart.deposit)} USD</span> deberá cancelarse antes del servicio, según se coordine con nuestro equipo.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
-            <p className="text-sm text-blue-100">
-              <span className="font-semibold">Recibirás por correo:</span>
-            </p>
-            <ul className="mt-2 space-y-1 text-sm text-blue-200">
-              <li>• Confirmación de tu reserva</li>
+          {/* Recibirás por correo */}
+          <div className="rounded-xl border border-blue-300 bg-blue-50 p-4">
+            <p className="text-sm text-blue-900 font-semibold mb-2">Recibirás por correo:</p>
+            <ul className="space-y-1 text-sm text-blue-800">
+              <li>• Confirmación oficial de tu reserva</li>
+              <li>• Detalles del paquete y extras seleccionados</li>
               <li>• Términos y condiciones del servicio</li>
-              <li>• Detalles del paquete y extras</li>
-              <li>• Información de contacto para coordinar pickup 48h antes</li>
+              <li>• Información de contacto para coordinar el servicio</li>
             </ul>
           </div>
 
-          <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
-            <p className="text-sm text-yellow-100">
-              <span className="font-semibold">Importante:</span> Nos pondremos en contacto contigo 48 horas antes del servicio para coordinar la hora y lugar de recogida.
+          {/* Información importante */}
+          <div className="rounded-xl border border-purple-300 bg-purple-50 p-4">
+            <p className="text-sm text-purple-900">
+              <span className="font-semibold">Importante:</span> Nuestro equipo se pondrá en contacto contigo 48 horas antes del servicio para confirmar hora y lugar de recogida.
             </p>
           </div>
 
-          <div className="flex flex-col gap-2">
+          {/* Contacto */}
+          <div className="rounded-xl border border-gray-300 bg-gray-50 p-4">
+            <p className="text-sm text-gray-900 font-semibold mb-3">¿Tienes dudas o necesitas asistencia?</p>
+            <div className="space-y-2 text-sm text-gray-700">
+              <p>
+                WhatsApp / Teléfono: <a href="https://wa.me/50685666276" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 transition underline">+506 8566 6276</a>
+              </p>
+              <p>
+                Correo: <a href="mailto:contact@momentswrld.com" className="text-blue-600 hover:text-blue-700 transition underline">contact@momentswrld.com</a>
+              </p>
+            </div>
+          </div>
+
+          {/* Botón */}
+          <div className="flex flex-col gap-2 pt-2">
             <Button
               variant="primary"
               onClick={() => {

@@ -13,9 +13,9 @@ export default function Footer() {
             <h3 className="font-bold text-lg">Moments</h3>
             <p className="text-sm text-[color:var(--color-muted)]">Transporte de lujo para momentos especiales. Chofer profesional, confort premium y disponibilidad garantizada.</p>
             <div className="flex gap-4 pt-2">
-              <a href="https://wa.me/506 8703 2112" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">WhatsApp</a>
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">Facebook</a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">Instagram</a>
+              <a href="https://wa.me/50685666276" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">WhatsApp</a>
+              <a href="https://instagram.com/momentswrld" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">Instagram</a>
+              <a href="https://tiktok.com/@momentswrld" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-[color:var(--color-accent)] transition">TikTok</a>
             </div>
           </div>
 
@@ -37,7 +37,7 @@ export default function Footer() {
               <li><Link to="/about" className="hover:text-[color:var(--color-accent)] transition">Sobre nosotros</Link></li>
               <li><Link to="/terms" className="hover:text-[color:var(--color-accent)] transition">Términos</Link></li>
               <li><a href="mailto:contact@momentswrld.com" className="hover:text-[color:var(--color-accent)] transition">Contacto</a></li>
-              <li><a href="tel:+506 8703 2112" className="hover:text-[color:var(--color-accent)] transition">+506 8703 2112</a></li>
+              <li><a href="tel:+50685666276" className="hover:text-[color:var(--color-accent)] transition">+506 8566 6276</a></li>
             </ul>
           </div>
 
@@ -55,7 +55,7 @@ export default function Footer() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[color:var(--color-accent)] mt-0.5">•</span>
-                <a href="tel:+50687032112" className="hover:text-[color:var(--color-accent)] transition">+506 8703 2112</a>
+                <a href="tel:+50685666276" className="hover:text-[color:var(--color-accent)] transition">+506 8566 6276</a>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[color:var(--color-accent)] mt-0.5">•</span>
@@ -72,8 +72,8 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[color:var(--color-muted)]">
           <p>&copy; {currentYear} Moments Luxury Chauffeur. Todos los derechos reservados.</p>
           <div className="flex gap-4">
-            <a href="mailto:privacy@moments.cr" className="hover:text-[color:var(--color-accent)] transition">Privacidad</a>
-            <a href="mailto:terms@moments.cr" className="hover:text-[color:var(--color-accent)] transition">Términos</a>
+            <a href="mailto:contact@momentswrld.com" className="hover:text-[color:var(--color-accent)] transition">Privacidad</a>
+            <a href="mailto:contact@momentswrld.com" className="hover:text-[color:var(--color-accent)] transition">Términos</a>
           </div>
         </div>
       </div>

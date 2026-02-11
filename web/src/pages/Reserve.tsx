@@ -50,6 +50,8 @@ const Reserve = () => {
   const [incluidosGrouped, setIncluidosGrouped] = useState<Record<number, { categoria: { id: number; nombre: string }; incluidos: Incluido[] }>>({})
   const [vehicleAvailability, setVehicleAvailability] = useState<VehicleAvailability | null>(null)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [checkingDateAvailability, setCheckingDateAvailability] = useState(false)
+  const [noVehiclesAvailableForDate, setNoVehiclesAvailableForDate] = useState(false)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -175,6 +177,51 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
     }
   }, [form.date, form.time])
 
+  const peopleCount = Number(form.people)
+
+  const packageVehicleIds = useMemo(() => {
+    if (pkg?.vehicleIds?.length) return pkg.vehicleIds
+    if (pkg?.vehicles?.length) return pkg.vehicles.map((v) => v.id)
+    return []
+  }, [pkg])
+
+  const baseVehicles = useMemo(() => {
+    if (packageVehicleIds.length === 0) return vehicles
+    return vehicles.filter((v) => packageVehicleIds.includes(v.id))
+  }, [vehicles, packageVehicleIds])
+
+  // Verificar disponibilidad de vehículos del paquete para la fecha seleccionada
+  useEffect(() => {
+    let active = true
+
+    if (!form.date || packageVehicleIds.length === 0) {
+      setNoVehiclesAvailableForDate(false)
+      return () => { active = false }
+    }
+
+    setCheckingDateAvailability(true)
+    
+    // Verificar disponibilidad de todos los vehículos del paquete
+    Promise.all(
+      packageVehicleIds.map(vehicleId => 
+        checkVehicleAvailability(vehicleId, form.date)
+          .then(availability => ({ vehicleId, available: availability.available }))
+          .catch(() => ({ vehicleId, available: false }))
+      )
+    ).then((results) => {
+      if (active) {
+        // Verificar si al menos un vehículo está disponible
+        const hasAvailableVehicle = results.some(result => result.available)
+        setNoVehiclesAvailableForDate(!hasAvailableVehicle)
+        setCheckingDateAvailability(false)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [form.date, packageVehicleIds])
+
   // Verificar disponibilidad por día (admin blocks + vehicle units)
   useEffect(() => {
     let active = true
@@ -203,19 +250,6 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
       active = false
     }
   }, [form.vehicleId, form.date])
-
-  const peopleCount = Number(form.people)
-
-  const packageVehicleIds = useMemo(() => {
-    if (pkg?.vehicleIds?.length) return pkg.vehicleIds
-    if (pkg?.vehicles?.length) return pkg.vehicles.map((v) => v.id)
-    return []
-  }, [pkg])
-
-  const baseVehicles = useMemo(() => {
-    if (packageVehicleIds.length === 0) return vehicles
-    return vehicles.filter((v) => packageVehicleIds.includes(v.id))
-  }, [vehicles, packageVehicleIds])
 
   const compatibleVehicles = useMemo(
     () => baseVehicles.filter((v) => {
@@ -308,6 +342,10 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
     }
     if (pkg.maxPeople && peopleValue > pkg.maxPeople) {
       showAlert('Límite de personas', `El paquete admite hasta ${pkg.maxPeople} personas`, 'warning')
+      return
+    }
+    if (noVehiclesAvailableForDate) {
+      showAlert('Fecha no disponible', 'No hay vehículos disponibles para la fecha seleccionada. Por favor elige otra fecha.', 'warning')
       return
     }
     const selectedEvent = events.find((e) => e.id === form.destinationOption)
@@ -502,6 +540,19 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
               <p className="text-gray-300">
                   Información de reserva
               </p>
+              
+              {/* Alerta de disponibilidad de fecha */}
+              {checkingDateAvailability && form.date && (
+                <div className="rounded-lg border border-blue-400/30 bg-blue-400/10 px-4 py-3 text-sm text-blue-200">
+                  Verificando disponibilidad de vehículos para esta fecha...
+                </div>
+              )}
+              {!checkingDateAvailability && noVehiclesAvailableForDate && form.date && (
+                <div className="rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+                  ✗ No hay vehículos del paquete disponibles para la fecha seleccionada. Por favor elige otra fecha.
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="flex flex-col gap-2">
                   <span className="text-sm text-gray-200">Fecha</span>
@@ -510,7 +561,7 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
                     value={form.date}
                     min={tomorrow}
                     onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-amber-300/60 focus:outline-none"
+                    className={`rounded-lg border px-3 py-2 text-white focus:outline-none ${noVehiclesAvailableForDate && form.date ? 'border-red-400/50 bg-red-400/5 focus:border-red-400/70' : 'border-white/10 bg-white/5 focus:border-amber-300/60'}`}
                     required
                   />
                   <span className="text-xs text-gray-400">Solo fechas futuras</span>

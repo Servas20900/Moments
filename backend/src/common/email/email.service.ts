@@ -48,8 +48,8 @@ interface ReservationEmailData {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private readonly SINPE_PHONE = process.env.SINPE_PHONE || '8888-8888';
-  private readonly COMPANY_EMAIL = process.env.COMPANY_EMAIL || 'pagos@moments.cr';
+  private readonly SINPE_PHONE = process.env.SINPE_PHONE || '8703-2112';
+  private readonly COMPANY_EMAIL = process.env.COMPANY_EMAIL || 'contact@momentswrld.com';
   private readonly COMPANY_NAME = 'Moments Transportation CR';
   private transporter: Transporter | null = null;
 
@@ -69,7 +69,7 @@ export class EmailService {
       await this.transporter.sendMail({
         to: data.email,
         from: this.COMPANY_EMAIL,
-        subject: `Reserva Confirmada - Factura ${data.numeroFactura || data.reservaId} | Moments`,
+        subject: `Reserva Creada – Factura #${data.numeroFactura || data.reservaId} | Moments`,
         html: htmlContent,
         replyTo: this.COMPANY_EMAIL,
       });
@@ -171,18 +171,19 @@ export class EmailService {
       minute: '2-digit',
     }) : 'Por confirmar';
 
-    const depositoFormato = `₡${data.anticipo.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const totalFormato = `₡${data.total.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // Formateo en USD
+    const depositoFormato = `$${data.anticipo.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
+    const totalFormato = `$${data.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
     const restante = data.restante ?? (data.total - data.anticipo);
-    const restanteFormato = `₡${restante.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const restanteFormato = `$${restante.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
     
     const precioBaseFormato = data.precioBase 
-      ? `₡${data.precioBase.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ? `$${data.precioBase.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`
       : totalFormato;
     
     const precioExtrasFormato = data.precioExtras && data.precioExtras > 0
-      ? `₡${data.precioExtras.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : '₡0.00';
+      ? `$${data.precioExtras.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`
+      : '$0.00 USD';
 
     const extrasHTML = data.extras && data.extras.length > 0
       ? `<div class="section">
@@ -191,7 +192,7 @@ export class EmailService {
             ${data.extras.map((extra) => `
               <div class="payment-item">
                 <span>${extra.nombre} (x${extra.cantidad})</span>
-                <span>₡${extra.precio.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>$${extra.precio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
               </div>
             `).join('')}
           </div>
@@ -383,13 +384,15 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <h1>Reserva Confirmada</h1>
-      ${data.numeroFactura ? `<p style="margin: 10px 0 0 0; font-size: 14px;">Factura #<strong>${data.numeroFactura}</strong></p>` : '<p style="margin: 10px 0 0 0; font-size: 14px;">Factura: <strong>Pendiente</strong></p>'}
+      <h1>Reserva Creada - Factura #${data.numeroFactura || data.reservaId}</h1>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #c9a24d;">Moments Transportation CR</p>
     </div>
 
     <div class="content">
       <p>Hola <strong>${data.nombre}</strong>,</p>
-      <p>¡Gracias por reservar con nosotros! Tu reserva ha sido creada exitosamente. A continuación encontrarás los detalles y los próximos pasos.</p>
+      <p>Gracias por confiar en Moments Transportation CR.<br>
+      Tu reserva ha sido creada correctamente y se encuentra pendiente de confirmación de pago.</p>
+      <p>A continuación te compartimos los detalles y los pasos a seguir.</p>
 
       <!-- Detalles de la Reserva -->
       <div class="section">
@@ -399,6 +402,7 @@ export class EmailService {
             <div class="info-label">Paquete</div>
             <div class="info-value">${data.paquete}</div>
           </div>
+          ${tipoEventoHTML}
           <div class="info-item">
             <div class="info-label">Fecha</div>
             <div class="info-value">${fechaFormato}</div>
@@ -412,7 +416,7 @@ export class EmailService {
             <div class="info-value">${horaFin}</div>
           </div>
           <div class="info-item">
-            <div class="info-label">Personas</div>
+            <div class="info-label">Número de Personas</div>
             <div class="info-value">${data.numeroPersonas}</div>
           </div>
           <div class="info-item">
@@ -424,16 +428,15 @@ export class EmailService {
             <div class="info-value">${data.destino}</div>
           </div>
           ${vehiculoHTML}
-          ${tipoEventoHTML}
         </div>
       </div>
 
-      <!-- Resumen de Precios -->
+      <!-- Resumen de Pago -->
       <div class="section">
         <h2>Resumen de Pago</h2>
         <div class="payment-box">
           <div class="payment-item">
-            <span>Paquete Base</span>
+            <span>Paquete base</span>
             <span>${precioBaseFormato}</span>
           </div>
           ${data.precioExtras && data.precioExtras > 0 ? `
@@ -442,78 +445,104 @@ export class EmailService {
             <span>${precioExtrasFormato}</span>
           </div>
           ` : ''}
-          <div class="payment-item">
-            <span style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">Subtotal</span>
-            <span style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">${totalFormato}</span>
-          </div>
-          <div class="payment-item highlight">
-            <strong>Anticipo Requerido (50%)</strong>
-            <strong>${depositoFormato}</strong>
-          </div>
-          <div class="payment-item">
-            <span>A Pagar Antes del Servicio</span>
-            <span>${restanteFormato}</span>
-          </div>
           <div class="payment-total">
             <span>Total</span>
             <span>${totalFormato}</span>
           </div>
         </div>
+        <div class="payment-box" style="margin-top: 15px; background: linear-gradient(135deg, #fff3cd 0%, #fff9e6 100%); border: 2px solid #ffc107;">
+          <div class="payment-item">
+            <strong>Anticipo requerido (50%)</strong>
+            <strong style="color: #c9a24d; font-size: 18px;">${depositoFormato}</strong>
+          </div>
+          <div class="payment-item">
+            <span>Saldo pendiente</span>
+            <span>${restanteFormato}</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; color: #666; margin-top: 15px; font-style: italic;">
+          Todos los montos se muestran en dólares estadounidenses (USD).<br>
+          El equivalente en colones es únicamente de referencia.
+        </p>
       </div>
 
       ${extrasHTML}
 
       <!-- Instrucciones de SINPE -->
       <div class="section">
-        <h2>Próximos Pasos - SINPE Móvil</h2>
+        <h2>Pago por SINPE Móvil (Acción Requerida)</h2>
         <div class="sinpe-instructions">
-          <h3>Realiza el SINPE Móvil</h3>
-          <p>Envía el anticipo (50% del total) al siguiente número:</p>
-          <div class="sinpe-phone">${this.SINPE_PHONE}</div>
+          <p style="margin-top: 0; font-size: 15px;">Para confirmar tu reserva, realiza el pago del anticipo mediante SINPE Móvil:</p>
+          <div class="sinpe-phone">+506 ${this.SINPE_PHONE}</div>
           <p style="margin: 10px 0 0 0; font-size: 14px;">
-            <strong>A nombre de:</strong> ${this.COMPANY_NAME}
+            <strong>Nombre:</strong> ${this.COMPANY_NAME}
           </p>
-
-          <h3 style="margin-top: 20px;">Pasos para Completar tu Pago</h3>
-          <ol class="steps">
-            <li><strong>Realiza el pago:</strong> Envía el SINPE Móvil con el monto ${depositoFormato}</li>
-            <li><strong>Toma captura:</strong> Guarda una captura de pantalla del comprobante</li>
-            <li><strong>Envía el comprobante:</strong> Envíalo a <a href="mailto:${this.COMPANY_EMAIL}?subject=Comprobante%20Factura%20${data.numeroFactura || data.reservaId}">pagos@moments.cr</a> con el asunto "Comprobante Factura ${data.numeroFactura || data.reservaId}"</li>
-            <li><strong>Espera confirmación:</strong> Te enviaremos un correo en máximo 24 horas confirmando tu reserva</li>
-          </ol>
+          <p style="margin: 10px 0 0 0; font-size: 14px;">
+            <strong>Monto:</strong> ${depositoFormato}
+          </p>
         </div>
       </div>
 
-      <!-- Coordinación Pickup -->
+      <!-- Envío del comprobante -->
       <div class="section">
-        <h2>Coordinación de Recogida</h2>
-        <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 6px;">
-          <p style="margin-top: 0;"><strong>Importante:</strong> Nos pondremos en contacto contigo 48 horas antes de tu reserva para coordinar la hora y lugar exacto de recogida.</p>
-          <p>Asegúrate de tener tu teléfono disponible: <strong>${data.telefono || 'No proporcionado'}</strong></p>
+        <h2>Envío del comprobante</h2>
+        <div style="background-color: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; padding: 20px;">
+          <p style="margin-top: 0;">Una vez realizado el pago, envía una captura del comprobante al correo:</p>
+          <p style="font-size: 16px; margin: 15px 0;">
+            <strong>Correo:</strong> <a href="mailto:${this.COMPANY_EMAIL}?subject=Comprobante%20Reserva%20%23${data.numeroFactura || data.reservaId}" style="color: #2196f3; text-decoration: underline;">${this.COMPANY_EMAIL}</a>
+          </p>
+          <p style="font-size: 14px; color: #555;">
+            <strong>Asunto:</strong> Comprobante Reserva #${data.numeroFactura || data.reservaId}
+          </p>
+          <p style="font-size: 13px; color: #666; margin-bottom: 0;">
+            Recibirás un correo de confirmación en un plazo máximo de 24 horas una vez validado el pago.
+          </p>
         </div>
       </div>
 
-      <!-- Información General -->
+      <!-- Coordinación del Servicio -->
+      <div class="section">
+        <h2>Coordinación del Servicio</h2>
+        <div style="background-color: #f9fbe7; border: 1px solid #cddc39; padding: 15px; border-radius: 6px;">
+          <p style="margin-top: 0;">Nuestro equipo se pondrá en contacto contigo 48 horas antes del evento para coordinar:</p>
+          <ul style="margin: 10px 0; padding-left: 25px;">
+            <li>Hora exacta de recogida</li>
+            <li>Punto de salida</li>
+            <li>Detalles finales del servicio</li>
+          </ul>
+          <p style="margin-bottom: 0;"><strong>Teléfono de contacto:</strong> ${data.telefono || 'No proporcionado'}</p>
+        </div>
+      </div>
+
+      <!-- Información Adicional -->
       <div class="section">
         <h2>Información Adicional</h2>
-        <p><strong>Dirección del Cliente:</strong> ${data.direccion || 'No proporcionada'}</p>
-        <p><strong>Email de Confirmación:</strong> ${data.email}</p>
-        <p style="color: #666; font-size: 14px;">Si necesitas cambiar tu reserva o tienes preguntas, responde este correo o contacta a ${this.COMPANY_EMAIL}</p>
+        <p><strong>Correo de confirmación:</strong> ${data.email}</p>
+        <p><strong>Dirección física:</strong> ${data.direccion || 'No proporcionada'}</p>
+        <p style="color: #666; font-size: 14px; margin-top: 15px;">
+          Si necesitas hacer cambios o tienes alguna consulta, puedes responder este correo o escribirnos a:
+        </p>
+        <p style="font-size: 14px;">
+          Correo: <a href="mailto:${this.COMPANY_EMAIL}" style="color: #2196f3;">${this.COMPANY_EMAIL}</a><br>
+          Teléfono: +506 8566 6276
+        </p>
       </div>
 
       <!-- Términos y Condiciones -->
       <div class="section" style="background-color: #f5f5f5; padding: 15px; border-radius: 6px;">
         <h2>Términos y Condiciones</h2>
-        <p style="font-size: 13px; margin: 0;">Al completar este pago, aceptas nuestros términos y condiciones de servicio. Lee nuestras políticas de cancelación y cambios en tu perfil de cliente.</p>
-        <p style="font-size: 13px; color: #666;">
-          <strong>Política de Cancelación:</strong> Las cancelaciones realizadas 7 días antes del servicio tendrán reembolso del 100%. Cancelaciones con menor antelación no aplican reembolso.
+        <p style="font-size: 13px; margin: 0;">Al realizar el pago del anticipo, aceptas nuestros términos y condiciones del servicio.</p>
+        <p style="font-size: 13px; color: #666; margin-top: 10px; margin-bottom: 0;">
+          <strong>Política de cancelación:</strong><br>
+          Las cancelaciones realizadas con al menos 7 días de anticipación aplican para reembolso del 100%.<br>
+          Cancelaciones fuera de este plazo no aplican para reembolso.
         </p>
       </div>
     </div>
 
     <div class="footer">
       <p><strong>Moments Transportation CR</strong></p>
-      <p>Teléfono: ${this.SINPE_PHONE} | Email: ${this.COMPANY_EMAIL}</p>
+      <p>Teléfono: +506 8566 6276 | Email: ${this.COMPANY_EMAIL}</p>
       <p>© 2026 Moments Transportation CR. Todos los derechos reservados.</p>
     </div>
   </div>

@@ -654,6 +654,7 @@ export class ReservationsService {
   private toResponse(r: any) {
     return {
       id: r.id,
+      numeroFactura: r.numeroFactura,
       nombre: r.nombre,
       email: r.email,
       telefono: r.telefono,

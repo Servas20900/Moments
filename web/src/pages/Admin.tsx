@@ -1602,7 +1602,7 @@ function ManualReservationForm({ packages, vehicles, onCancel, onSave }: ManualR
           name="telefono"
           value={state.telefono}
           onChange={handleChange}
-          placeholder="+506 8888-8888"
+          placeholder="+506 XXXX-XXXX"
         />
         <InputField
           label="Conductor asignado"

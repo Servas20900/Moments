@@ -66,7 +66,7 @@ const Error = () => {
           <p className="mb-4 text-sm text-gray-500">¿Necesitas ayuda?</p>
           <div className="flex flex-wrap justify-center gap-6 text-sm">
             <a 
-              href="mailto:support@moments.com" 
+              href="mailto:contact@momentswrld.com" 
               className="flex items-center gap-2 text-amber-300/80 transition hover:text-amber-300"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
