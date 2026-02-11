@@ -77,7 +77,7 @@ const mapPackage = (p: any): PackageView => {
     price: Number(p.precioBase ?? p.price ?? 0),
     vehicle: p.vehiculo || p.vehicle || vehicles[0]?.name || 'Chofer asignado',
     maxPeople: p.maxPersonas ?? p.maxPeople ?? 0,
-    includes: p.incluye ?? p.includes ?? ['Chofer profesional', 'Atención personalizada'],
+    includes: p.incluidos ?? p.incluye ?? p.includes ?? [],
     imageUrl: p.imagenUrl || p.imageUrl || null,
     addons: p.addons,
     vehicles,
@@ -91,7 +91,7 @@ const mapVehicle = (v: any): VehicleView => ({
   category: v.categoria || v.category,
   seats: v.asientos ?? v.seats ?? 0,
   rate: v.tarifaPorHora ?? v.rate ?? 'Consultar',
-  features: v.features || ['Chofer certificado', 'Seguro completo'],
+  features: v.caracteristicas ?? v.features ?? [],
   imageUrl: v.imagenUrl || v.imageUrl || null,
 })
 
@@ -595,6 +595,7 @@ export const createPackage = async (data: Partial<PackageView>) => {
     precioBase: data.price ?? 0,
     maxPersonas: data.maxPeople ?? 0,
     imagenUrl: data.imageUrl || '',
+    incluidos: data.includes || [],
     vehicleIds: data.vehicleIds,
   }
   const created = await http<any>('/paquetes', { method: 'POST', body: JSON.stringify(payload) })
@@ -610,11 +611,11 @@ export const updatePackage = async (id: string, patch: Partial<PackageView>) => 
     ...(patch.maxPeople !== undefined && { maxPersonas: patch.maxPeople }),
     ...(patch.imageUrl && { imagenUrl: patch.imageUrl }),
     ...(patch.vehicle && { vehiculo: patch.vehicle }),
-    ...(patch.includes && { incluye: patch.includes }),
+    ...(patch.includes !== undefined && { incluidos: patch.includes }),
     ...(patch.vehicleIds && { vehicleIds: patch.vehicleIds }),
   }
-  await http(`/paquetes/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
-  return true
+  const updated = await http<any>(`/paquetes/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+  return mapPackage(updated)
 }
 
 export const deletePackage = async (id: string) => {
@@ -629,6 +630,7 @@ export const createVehicle = async (data: Partial<VehicleView>) => {
     asientos: data.seats || 0,
     tarifaPorHora: typeof data.rate === 'string' ? parseFloat(data.rate) || 0 : data.rate || 0,
     imagenUrl: data.imageUrl || '',
+    caracteristicas: data.features || [],
   }
   const created = await http<any>('/vehiculos', { method: 'POST', body: JSON.stringify(payload) })
   return mapVehicle(created)
@@ -641,6 +643,7 @@ export const updateVehicle = async (id: string, patch: Partial<VehicleView>) => 
     ...(patch.seats !== undefined && { asientos: patch.seats }),
     ...(patch.rate && { tarifaPorHora: typeof patch.rate === 'string' ? parseFloat(patch.rate) || 0 : patch.rate }),
     ...(patch.imageUrl && { imagenUrl: patch.imageUrl }),
+    ...(patch.features && { caracteristicas: patch.features }),
   }
   await http(`/vehiculos/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
   return true

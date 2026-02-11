@@ -30,17 +30,6 @@ const VehicleCard = ({ vehicle, onClick }: VehicleCardProps) => {
         <div>
           <h3 className="m-0 font-bold text-xl">{vehicle.name}</h3>
           <p className="m-0 text-gray-400 text-sm">{vehicle.category}</p>
-
-          <div className="flex flex-col gap-2 mt-auto">
-            {vehicle.features.slice(0, 3).map((feature, index) => (
-              <div key={index} className="flex items-center gap-2 text-gray-400 text-sm">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[#c9a24d] flex-shrink-0">
-                  <path d="M13.5 4.5L6 12L2.5 8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>{feature}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* El botón de acción se elimina, la card completa es clickeable */}

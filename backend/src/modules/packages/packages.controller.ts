@@ -97,6 +97,10 @@ export class PackagesController {
       precioBase: body.precioBase ?? body.price,
       maxPersonas: body.maxPersonas ?? body.maxPeople,
       vehicleIds: Array.isArray(body.vehicleIds) ? body.vehicleIds : undefined,
+      extraIds: Array.isArray(body.extraIds) ? body.extraIds : undefined,
+      incluidoIds: Array.isArray(body.incluidoIds) ? body.incluidoIds : undefined,
+      incluidos: Array.isArray(body.incluidos) ? body.incluidos : undefined,
+      imagenUrl: body.imagenUrl ?? body.imageUrl,
     };
     const updated = await this.packagesService.update(id, dto);
     await this.cacheManager.reset();

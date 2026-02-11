@@ -70,6 +70,7 @@ export class VehiclesService {
         categoria: dto.categoria,
         asientos: dto.asientos,
         tarifaPorHora: dto.tarifaPorHora,
+        caracteristicas: dto.caracteristicas || [],
         estado: "ACTIVO",
       },
     });
@@ -87,6 +88,7 @@ export class VehiclesService {
         categoria: dto.categoria ?? existing.categoria,
         asientos: dto.asientos ?? existing.asientos,
         tarifaPorHora: dto.tarifaPorHora ?? existing.tarifaPorHora,
+        caracteristicas: dto.caracteristicas ?? existing.caracteristicas,
       },
       include: {
         imagenes: {
@@ -157,6 +159,7 @@ export class VehiclesService {
       category: v.categoria,
       seats: v.asientos,
       rate: Number(v.tarifaPorHora),
+      features: v.caracteristicas || [],
       imageUrl: imgUrl,
       estado: v.estado,
     };

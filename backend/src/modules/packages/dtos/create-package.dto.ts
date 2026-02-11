@@ -62,4 +62,15 @@ export class CreatePackageDto {
   @IsArray()
   @IsString({ each: true })
   incluidoIds?: string[];
+
+  @ApiProperty({
+    example: ["Chofer profesional", "Botella de vino", "Decoración"],
+    required: false,
+    type: [String],
+    description: "Lista de servicios y comodidades incluidas en el paquete",
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  incluidos?: string[];
 }

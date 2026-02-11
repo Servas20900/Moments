@@ -62,6 +62,7 @@ export class PackagesService {
         descripcion: dto.descripcion,
         precioBase: dto.precioBase,
         maxPersonas: dto.maxPersonas,
+        incluidos: dto.incluidos || [],
         estado: "ACTIVO",
       },
       include: {
@@ -100,7 +101,7 @@ export class PackagesService {
         categoria: true, 
         vehiculos: { include: { vehiculo: true } },
         extras: { include: { extra: true } },
-        incluidos: { include: { incluido: true } },
+        paqueteIncluidos: { include: { incluido: true } },
       },
     });
 
@@ -128,7 +129,7 @@ export class PackagesService {
           categoria: true,
           vehiculos: { include: { vehiculo: true } },
           extras: { include: { extra: true } },
-          incluidos: { include: { incluido: true } },
+          paqueteIncluidos: { include: { incluido: true } },
           imagenes: {
             include: { imagen: true },
             orderBy: { orden: "asc" },
@@ -150,7 +151,7 @@ export class PackagesService {
         categoria: true,
         vehiculos: { include: { vehiculo: true } },
         extras: { include: { extra: true } },
-        incluidos: { include: { incluido: true } },
+        paqueteIncluidos: { include: { incluido: true } },
         reservas: { take: 5 },
         imagenes: {
           include: { imagen: true },
@@ -169,6 +170,18 @@ export class PackagesService {
   async update(id: string, dto: UpdatePackageDto) {
     const pkg = await this.prisma.paquete.findUnique({
       where: { id },
+      select: {
+        id: true,
+        nombre: true,
+        descripcion: true,
+        categoriaId: true,
+        precioBase: true,
+        maxPersonas: true,
+        incluidos: true,
+        estado: true,
+        creadoEn: true,
+        actualizadoEn: true,
+      },
     });
 
     if (!pkg) {
@@ -215,12 +228,13 @@ export class PackagesService {
         descripcion: dto.descripcion || pkg.descripcion,
         precioBase: dto.precioBase || pkg.precioBase,
         maxPersonas: dto.maxPersonas || pkg.maxPersonas,
+        incluidos: dto.incluidos !== undefined ? dto.incluidos : pkg.incluidos,
       },
       include: {
         categoria: true,
         vehiculos: { include: { vehiculo: true } },
         extras: { include: { extra: true } },
-        incluidos: { include: { incluido: true } },
+        paqueteIncluidos: { include: { incluido: true } },
         imagenes: {
           include: { imagen: true },
           orderBy: { orden: "asc" },
@@ -266,7 +280,7 @@ export class PackagesService {
       estado: e.extra?.estado,
     })) || [];
     
-    const incluidos = pkg.incluidos?.map((i: any) => ({
+    const incluidosRelacionados = pkg.paqueteIncluidos?.map((i: any) => ({
       id: i.incluido?.id,
       nombre: i.incluido?.nombre,
       descripcion: i.incluido?.descripcion,
@@ -281,10 +295,10 @@ export class PackagesService {
       description: pkg.descripcion,
       price: Number(pkg.precioBase),
       maxPeople: pkg.maxPersonas,
+      incluidos: Array.isArray(pkg.incluidos) ? pkg.incluidos : [],
       vehicle: vehicles[0]?.name ?? "N/A",
       vehicles,
       extras,
-      incluidos,
       imageUrl: imgUrl,
       estado: pkg.estado,
       creadoEn: pkg.creadoEn,

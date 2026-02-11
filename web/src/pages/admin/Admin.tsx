@@ -8,6 +8,7 @@ import ConfirmationModal from '../../components/ConfirmationModal'
 import AdminSidebar from '../../components/admin/AdminSidebar'
 import { InputField, TextareaField, CheckboxField } from '../../components/FormField'
 import ImageUpload from '../../components/ImageUpload'
+import ListItemInput from '../../components/admin/ListItemInput'
 import { useTheme } from '../../hooks/useTheme'
 import { getThemeClasses } from '../../utils/themeClasses'
 import { fetchPackages, fetchVehicles, createPackage, updatePackage, deletePackage, createVehicle, updateVehicle, deleteVehicle, uploadImage, fetchNotifications, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, fetchExperiences, fetchSystemImages, createSystemImage, updateSystemImage, deleteSystemImage, fetchHeroSlides, createHeroSlide, updateHeroSlide, deleteHeroSlide, createImageRecord, attachImageToPackage, attachImageToVehicle, attachImageToEvent } from '../../api/api'
@@ -285,15 +286,15 @@ const Admin = () => {
       } else {
         // Update package
         const pkgPayload = { ...pkg, imageUrl: '' }
-        await updatePackage(pkg.id, pkgPayload)
+        const updated = await updatePackage(pkg.id, pkgPayload)
         
         // If image exists, persist it
         if (pkg.imageUrl) {
           const img = await createImageRecord({ categoria: 'PAQUETE', url: pkg.imageUrl, altText: pkg.name })
           await attachImageToPackage(img.id, pkg.id, 0)
-          pkg.imageUrl = pkg.imageUrl // Keep it for display
+          updated.imageUrl = pkg.imageUrl // Keep it for display
         }
-        setPackages((s) => s.map((x) => (x.id === pkg.id ? pkg : x)))
+        setPackages((s) => s.map((x) => (x.id === pkg.id ? updated : x)))
       }
     } catch (e) {
       console.error('Error guardando paquete:', e)
@@ -670,7 +671,7 @@ function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCancel, o
   const [price, setPrice] = useState(pkg.price?.toString() || '')
   const [maxPeople, setMaxPeople] = useState(pkg.maxPeople?.toString() || '')
   const [imageUrl, setImageUrl] = useState(pkg.imageUrl || '')
-  const [includesText, setIncludesText] = useState(pkg.includes?.join(', ') || '')
+  const [includes, setIncludes] = useState<string[]>(pkg.includes || [])
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(pkg.vehicleIds || pkg.vehicles?.map((v) => v.id) || [])
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -682,7 +683,7 @@ function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCancel, o
     setPrice(pkg.price?.toString() || '')
     setMaxPeople(pkg.maxPeople?.toString() || '')
     setImageUrl(pkg.imageUrl || '')
-    setIncludesText(pkg.includes?.join(', ') || '')
+    setIncludes(pkg.includes || [])
     setSelectedVehicleIds(pkg.vehicleIds || pkg.vehicles?.map((v) => v.id) || [])
     setErrors({})
   }, [pkg.id])
@@ -713,8 +714,6 @@ function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCancel, o
       return
     }
 
-    const includesArray = includesText.split(',').map((x) => x.trim()).filter(Boolean)
-
     onSave({
       id: pkg.id,
       name: name.trim(),
@@ -723,7 +722,7 @@ function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCancel, o
       price: Number(price),
       maxPeople: Number(maxPeople),
       imageUrl,
-      includes: includesArray,
+      includes,
       vehicle: pkg.vehicle || '',
       vehicleIds: selectedVehicleIds,
       vehicles: pkg.vehicles || [],
@@ -800,12 +799,13 @@ function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCancel, o
           error={errors.maxPeople}
         />
       </div>
-      <TextareaField
-        label="Incluye (separado por comas)"
-        name="includes"
-        value={includesText}
-        onChange={(e) => setIncludesText(e.target.value)}
-        placeholder="Chofer profesional, Botella de vino, Decoración"
+      <ListItemInput
+        label="Incluye"
+        required
+        items={includes}
+        onChange={setIncludes}
+        placeholder="Ej: Chofer profesional"
+        description="Agrega los servicios y comodidades incluidas en este paquete"
       />
       <div className="space-y-2">
         <p className="text-sm font-semibold text-white">Vehículos asignados</p>
@@ -873,11 +873,6 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
-    if (name === 'features') {
-      setState((s) => ({ ...s, features: value.split(',').map((x) => x.trim()) }))
-      if (errors[name]) setErrors((e) => ({ ...e, [name]: '' }))
-      return
-    }
 
     if (type === 'number' && name === 'seats') {
       if (/^\d*$/.test(value)) {
@@ -951,12 +946,13 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
       <datalist id="veh-cats">
         {categories.map((c) => <option key={c} value={c} />)}
       </datalist>
-      <TextareaField
-        label="Características (separadas por comas)"
-        name="features"
-        value={state.features.join(', ')}
-        onChange={handleChange}
-        placeholder="Aire acondicionado, WiFi, Mini bar"
+      <ListItemInput
+        label="Características"
+        required
+        items={state.features}
+        onChange={(features) => setState(s => ({ ...s, features }))}
+        placeholder="Ej: Aire acondicionado"
+        description="Agrega todas las características y comodidades del vehículo"
       />
       <ImageUpload
         label="Cargar imagen del vehículo"

@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsNumber, IsOptional, Min } from "class-validator";
+import { IsString, IsInt, IsNumber, IsOptional, Min, IsArray } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 
@@ -27,4 +27,15 @@ export class CreateVehicleDto {
   @IsOptional()
   @IsString()
   imagenUrl?: string;
+
+  @ApiProperty({
+    example: ["Aire acondicionado", "WiFi", "Mini bar"],
+    required: false,
+    type: [String],
+    description: "Lista de características del vehículo",
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  caracteristicas?: string[];
 }

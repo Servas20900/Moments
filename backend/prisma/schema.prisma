@@ -64,13 +64,14 @@ model Paquete {
   descripcion   String
   precioBase    Decimal            @db.Decimal(10, 2)
   maxPersonas   Int
+  incluidos     String[]           @default([])
   creadoEn      DateTime           @default(now())
   actualizadoEn DateTime           @updatedAt
   estado        EstadoActivo       @default(ACTIVO)
   imagenes      ImagenPaquete[]
   categoria     CategoriaPaquete   @relation(fields: [categoriaId], references: [id])
   extras        PaqueteExtra[]
-  incluidos     PaqueteIncluido[]
+  paqueteIncluidos PaqueteIncluido[]
   vehiculos     PaqueteVehiculo[]
   reservas      Reserva[]
 
@@ -83,6 +84,7 @@ model Vehiculo {
   categoria     String
   asientos      Int
   tarifaPorHora Decimal           @db.Decimal(10, 2)
+  caracteristicas String[]        @default([])
   creadoEn      DateTime          @default(now())
   actualizadoEn DateTime          @updatedAt
   estado        EstadoActivo      @default(ACTIVO)

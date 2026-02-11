@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Button from '../Button'
 import { InputField, TextareaField, CheckboxField } from '../FormField'
 import ImageUpload from '../ImageUpload'
+import ListItemInput from './ListItemInput'
 import { createImageRecord, type CreateManualReservationData } from '../../api/api'
 import type { CalendarSlotView, Package, Vehicle, SystemImage, HeroSlide } from '../../data/content'
 
@@ -113,7 +114,7 @@ export function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCa
   const [price, setPrice] = useState(pkg.price?.toString() || '')
   const [maxPeople, setMaxPeople] = useState(pkg.maxPeople?.toString() || '')
   const [imageUrl, setImageUrl] = useState(pkg.imageUrl || '')
-  const [includesText, setIncludesText] = useState(pkg.includes?.join(', ') || '')
+  const [includes, setIncludes] = useState<string[]>(pkg.includes || [])
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(pkg.vehicleIds || pkg.vehicles?.map((v) => v.id) || [])
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -124,7 +125,7 @@ export function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCa
     setPrice(pkg.price?.toString() || '')
     setMaxPeople(pkg.maxPeople?.toString() || '')
     setImageUrl(pkg.imageUrl || '')
-    setIncludesText(pkg.includes?.join(', ') || '')
+    setIncludes(pkg.includes || [])
     setSelectedVehicleIds(pkg.vehicleIds || pkg.vehicles?.map((v) => v.id) || [])
     setErrors({})
   }, [pkg.id])
@@ -155,8 +156,6 @@ export function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCa
       return
     }
 
-    const includesArray = includesText.split(',').map((x) => x.trim()).filter(Boolean)
-
     onSave({
       id: pkg.id,
       name: name.trim(),
@@ -165,7 +164,7 @@ export function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCa
       price: Number(price),
       maxPeople: Number(maxPeople),
       imageUrl,
-      includes: includesArray,
+      includes,
       vehicle: pkg.vehicle || '',
       vehicleIds: selectedVehicleIds,
       vehicles: pkg.vehicles || [],
@@ -242,12 +241,13 @@ export function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCa
           error={errors.maxPeople}
         />
       </div>
-      <TextareaField
-        label="Incluye (separado por comas)"
-        name="includes"
-        value={includesText}
-        onChange={(e) => setIncludesText(e.target.value)}
-        placeholder="Chofer profesional, Botella de vino, Decoracion"
+      <ListItemInput
+        label="Incluye"
+        required
+        items={includes}
+        onChange={setIncludes}
+        placeholder="Ej: Chofer profesional"
+        description="Agrega los servicios y comodidades incluidas en este paquete"
       />
       <div className="space-y-2">
         <p className="text-sm font-semibold text-white">Vehiculos asignados</p>
@@ -314,11 +314,6 @@ export function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, u
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
-    if (name === 'features') {
-      setState((s) => ({ ...s, features: value.split(',').map((x) => x.trim()) }))
-      if (errors[name]) setErrors((e) => ({ ...e, [name]: '' }))
-      return
-    }
 
     if (type === 'number' && name === 'seats') {
       if (/^\d*$/.test(value)) {
@@ -392,12 +387,13 @@ export function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, u
       <datalist id="veh-cats">
         {categories.map((c) => <option key={c} value={c} />)}
       </datalist>
-      <TextareaField
-        label="Caracteristicas (separadas por comas)"
-        name="features"
-        value={state.features.join(', ')}
-        onChange={handleChange}
-        placeholder="Aire acondicionado, WiFi, Mini bar"
+      <ListItemInput
+        label="Características"
+        required
+        items={state.features}
+        onChange={(features) => setState(s => ({ ...s, features }))}
+        placeholder="Ej: Aire acondicionado"
+        description="Agrega todas las características y comodidades del vehículo"
       />
       <ImageUpload
         label="Cargar imagen del vehiculo"
