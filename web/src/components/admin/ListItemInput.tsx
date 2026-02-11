@@ -58,6 +58,7 @@ export default function ListItemInput({
       {/* Input y botón para agregar items */}
       <div className="flex gap-2">
         <InputField
+          label=""
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
