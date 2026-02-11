@@ -36,21 +36,21 @@ async function main() {
 
   // 2. Crear usuario administrador
   console.log('Creando usuario administrador...');
-  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Moments2026!Secure#Admin';
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Moments2026!SecureAdmin';
   if (!process.env.ADMIN_DEFAULT_PASSWORD) {
     console.warn('  ADVERTENCIA: Usando contraseña por defecto para admin. Configura ADMIN_DEFAULT_PASSWORD en .env');
   }
   const hashedPasswordAdmin = await bcrypt.hash(adminPassword, 10);
   const adminUser = await prisma.usuario.upsert({
-    where: { email: 'admin@moments.com' },
+    where: { email: 'contact@momentswrld.com' },
     update: {
       contrasena: hashedPasswordAdmin,
     },
     create: {
-      email: 'admin@moments.com',
+      email: 'contact@momentswrld.com',
       contrasena: hashedPasswordAdmin,
       nombre: 'Administrador Sistema',
-      telefono: '88888888',
+      telefono: '00000000',
       estado: 'ACTIVO',
     },
   });
@@ -71,30 +71,6 @@ async function main() {
   });
 
   console.log('Usuario admin creado:', adminUser.email);
-
-  // 3. Crear categorías de paquetes
-  console.log('Creando categorías de paquetes...');
-  const categories = [
-    { nombre: 'Días Normales', codigo: 'DIAS_NORMALES' },
-    { nombre: 'Días de Evento', codigo: 'DIAS_EVENTO' },
-    { nombre: 'Ocasión Especial', codigo: 'OCASION_ESPECIAL' },
-    { nombre: 'Celebración', codigo: 'CELEBRACION' },
-  ];
-
-  for (const cat of categories) {
-    await prisma.categoriaPaquete.upsert({
-      where: { nombre: cat.nombre },
-      update: {},
-      create: {
-        nombre: cat.nombre,
-        estado: 'ACTIVO',
-      },
-    });
-  }
-
-  console.log('Categorías de paquetes creadas');
-
-  console.log('Seed completado exitosamente!');
 }
 
 main()
