@@ -110,7 +110,7 @@ export class EmailService {
     this.transporter
       .verify()
       .then(() => this.logger.log('SMTP transporter listo para enviar correos'))
-      .catch((err) => this.logger.error('Error verificando transporter SMTP:', err));
+      .catch((err: unknown) => this.logger.error('Error verificando transporter SMTP:', err));
   }
 
   private buildReservationEmailHTML(data: ReservationEmailData): string {
