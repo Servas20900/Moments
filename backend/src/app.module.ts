@@ -5,7 +5,6 @@ import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { TerminusModule } from "@nestjs/terminus";
 import { ServeStaticModule } from "@nestjs/serve-static";
-import { join } from "path";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { LoggerModule } from "./common/logger/logger.module";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -24,6 +23,9 @@ import { NotificacionesModule } from "./modules/notificaciones/notificaciones.mo
 import { HealthController } from "./common/health/health.controller";
 import { ThrottlerBehindProxyGuard } from "./common/guards/throttler-behind-proxy.guard";
 import { validate } from "./config/env.validation";
+import { resolveStaticAssetsDir } from "./config/static-assets";
+
+const staticAssetsDir = resolveStaticAssetsDir();
 
 @Module({
   imports: [
@@ -37,11 +39,15 @@ import { validate } from "./config/env.validation";
       ttl: 60_000, // 60s caching window for hot endpoints
       max: 100,
     }),
-    ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), '..', process.env.NODE_ENV === 'production' ? 'public' : 'web/dist'),
-      serveRoot: "/",
-      exclude: ["/api*", "/auth*", "/paquetes*", "/vehiculos*", "/eventos*", "/experiencias*", "/reservas*", "/imagenes*", "/extras*", "/notificaciones*", "/usuarios*", "/calendario*", "/health*", "/categorias-incluidos*", "/incluidos*"],
-    }),
+    ...(staticAssetsDir
+      ? [
+          ServeStaticModule.forRoot({
+            rootPath: staticAssetsDir,
+            serveRoot: "/",
+            exclude: ["/api*", "/auth*", "/paquetes*", "/vehiculos*", "/eventos*", "/experiencias*", "/reservas*", "/imagenes*", "/extras*", "/notificaciones*", "/usuarios*", "/calendario*", "/health*", "/categorias-incluidos*", "/incluidos*"],
+          }),
+        ]
+      : []),
     ThrottlerModule.forRoot([
       {
         name: "default",
