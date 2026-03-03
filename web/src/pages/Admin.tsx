@@ -297,7 +297,7 @@ const Admin = () => {
   }
 
   const onCreateVehicle = () => {
-    setEditingVehicle({ id: '', name: '', category: '', seats: 1, rate: '', features: [], imageUrl: '' })
+    setEditingVehicle({ id: '', name: '', category: '', seats: 1, features: [], imageUrl: '' })
     setShowVehModal(true)
   }
 
@@ -809,15 +809,14 @@ const Admin = () => {
             </div>
 
             <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
-              <div className="hidden md:grid grid-cols-5 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
+              <div className="hidden md:grid grid-cols-4 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
                 <span>Nombre</span>
                 <span>Categoría</span>
-                <span>Tarifa</span>
                 <span>Asientos</span>
                 <span>Acciones</span>
               </div>
               {vehicles.map((v) => (
-                <div key={v.id} className="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                <div key={v.id} className="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
                   <div className="flex items-center justify-between md:block">
                     <span className="md:hidden text-xs text-gray-400">Nombre</span>
                     <span>{v.name}</span>
@@ -825,10 +824,6 @@ const Admin = () => {
                   <div className="flex items-center justify-between md:block">
                     <span className="md:hidden text-xs text-gray-400">Categoría</span>
                     <span>{v.category}</span>
-                  </div>
-                  <div className="flex items-center justify-between md:block">
-                    <span className="md:hidden text-xs text-gray-400">Tarifa</span>
-                    <span>{v.rate}</span>
                   </div>
                   <div className="flex items-center justify-between md:block">
                     <span className="md:hidden text-xs text-gray-400">Asientos</span>
@@ -1233,7 +1228,7 @@ function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCancel, o
               />
               <div className="space-y-1">
                 <p className="text-sm text-white font-semibold">{v.name}</p>
-                <p className="text-xs text-gray-300">{v.seats} asientos · {v.rate || 'Tarifa variable'}</p>
+                <p className="text-xs text-gray-300">{v.seats} asientos</p>
                 <p className="text-xs text-gray-400">{v.category}</p>
               </div>
             </label>
@@ -1277,7 +1272,6 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
     name: vehicle.name || '',
     category: vehicle.category || '',
     seats: vehicle.seats ?? 1,
-    rate: vehicle.rate || '',
     features: vehicle.features || [],
     imageUrl: vehicle.imageUrl || '',
     id: vehicle.id || '',
@@ -1313,8 +1307,6 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
     if (!state.category.trim()) newErrors.category = 'La categoría es requerida'
     const seatsValue = typeof state.seats === 'string' ? Number(state.seats) : state.seats
     if (!Number.isFinite(seatsValue) || seatsValue < 1) newErrors.seats = 'Mínimo 1 asiento'
-    const rateStr = typeof state.rate === 'string' ? state.rate : String(state.rate || '')
-    if (!rateStr.trim()) newErrors.rate = 'La tarifa es requerida'
     if (!state.imageUrl) newErrors.imageUrl = 'La imagen es requerida'
     return newErrors
   }
@@ -1366,15 +1358,6 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
       <datalist id="veh-cats">
         {categories.map((c) => <option key={c} value={c} />)}
       </datalist>
-      <InputField
-        label="Tarifa"
-        required
-        name="rate"
-        value={state.rate}
-        onChange={handleChange}
-        error={errors.rate}
-        placeholder="Ej: $150/hora"
-      />
       <TextareaField
         label="Características (separadas por comas)"
         name="features"

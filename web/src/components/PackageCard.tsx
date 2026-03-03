@@ -7,6 +7,13 @@ interface PackageCardProps {
 }
 
 const PackageCard = ({ item, onClick }: PackageCardProps) => {
+  const vehicleNames = (item.vehicles ?? [])
+    .map((vehicle) => vehicle?.name)
+    .filter((name): name is string => Boolean(name && name.trim()))
+    .slice(0, 3)
+
+  const vehiclesToDisplay = vehicleNames.length > 0 ? vehicleNames : [item.vehicle]
+
   return (
     <div 
       onClick={onClick}
@@ -38,7 +45,14 @@ const PackageCard = ({ item, onClick }: PackageCardProps) => {
         
         {/* Meta */}
         <div className="flex flex-col gap-1 pt-2 border-t border-white/10 text-xs mt-auto mb-2">
-          <span className="text-white font-semibold">{item.vehicle}</span>
+          <span className="text-gray-400 uppercase tracking-wide">Vehículos incluidos</span>
+          <div className="flex flex-col gap-0.5">
+            {vehiclesToDisplay.map((vehicleName, index) => (
+              <span key={`${item.id}-vehicle-${index}`} className="text-white font-semibold">
+                {vehicleName}
+              </span>
+            ))}
+          </div>
           <span className="text-gray-400">Hasta {item.maxPeople} personas</span>
         </div>
         

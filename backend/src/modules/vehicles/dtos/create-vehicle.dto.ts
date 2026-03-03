@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsNumber, IsOptional, Min, IsArray } from "class-validator";
+import { IsString, IsInt, IsOptional, Min, IsArray } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 
@@ -25,12 +25,6 @@ export class CreateVehicleDto {
   @Min(1)
   @IsOptional()
   cantidad?: number;
-
-  @ApiProperty({ example: 25.0 })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  tarifaPorHora: number;
 
   @ApiProperty({ example: "https://res.cloudinary.com/...", required: false })
   @IsOptional()

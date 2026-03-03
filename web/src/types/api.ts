@@ -468,8 +468,6 @@ export interface components {
             categoria: string;
             /** @example 12 */
             asientos: number;
-            /** @example 25 */
-            tarifaPorHora: number;
             /** @example https://res.cloudinary.com/... */
             imagenUrl?: string;
         };
@@ -480,8 +478,6 @@ export interface components {
             categoria?: string;
             /** @example 12 */
             asientos?: number;
-            /** @example 25 */
-            tarifaPorHora?: number;
             /** @example https://res.cloudinary.com/... */
             imagenUrl?: string;
         };

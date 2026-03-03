@@ -308,7 +308,6 @@ export function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, u
     category: vehicle.category || '',
     seats: vehicle.seats ?? 1,
     quantity: vehicle.quantity ?? 1,
-    rate: vehicle.rate || '',
     features: vehicle.features || [],
     imageUrl: vehicle.imageUrl || '',
     id: vehicle.id || '',

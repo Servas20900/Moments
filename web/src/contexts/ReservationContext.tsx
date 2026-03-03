@@ -27,7 +27,7 @@ export type IncluídoOption = {
 export type ReservationCart = {
   id: string
   package: Pick<PackageView, 'id' | 'name' | 'price' | 'category' | 'imageUrl' | 'maxPeople'>
-  vehicle?: Pick<VehicleView, 'id' | 'name' | 'seats' | 'rate' | 'imageUrl'>
+  vehicle?: Pick<VehicleView, 'id' | 'name' | 'seats' | 'imageUrl'>
   date: string
   origin: string
   destination: string

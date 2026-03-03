@@ -9,7 +9,7 @@ if (!rawApiUrl) {
   throw new Error('VITE_API_URL is required. Set it in your environment before building.')
 }
 const API_URL = rawApiUrl.replace(/\/$/, '')
-const FALLBACK_IMG = 'https://res.cloudinary.com/demo/image/upload/sample.jpg'
+const FALLBACK_IMG = ''
 
 const getToken = () => getAuthToken() || ''
 const authHeaders = () => {
@@ -80,7 +80,6 @@ const mapPackage = (p: any): PackageView => {
     name: v.name ?? v.vehiculo?.nombre ?? v.nombre,
     category: v.category ?? v.vehiculo?.categoria ?? v.categoria,
     seats: v.seats ?? v.vehiculo?.asientos ?? v.asientos ?? 0,
-    rate: v.rate ?? v.vehiculo?.tarifaPorHora ?? v.tarifaPorHora ?? 'Consultar',
     features: v.features ?? v.vehiculo?.features ?? [],
     imageUrl: v.imageUrl ?? v.vehiculo?.imagenUrl ?? v.imagenUrl ?? FALLBACK_IMG,
   })) ?? []
@@ -107,7 +106,6 @@ const mapVehicle = (v: any): VehicleView => ({
   category: v.categoria || v.category,
   seats: v.asientos ?? v.seats ?? 0,
   quantity: v.cantidad ?? v.quantity ?? 1,
-  rate: v.tarifaPorHora ?? v.rate ?? 'Consultar',
   features: v.features || ['Chofer certificado', 'Seguro completo'],
   imageUrl: v.imagenUrl || v.imageUrl || FALLBACK_IMG,
 })
@@ -495,7 +493,6 @@ export const createVehicle = async (data: Partial<VehicleView>) => {
     categoria: data.category || 'General',
     asientos: data.seats || 0,
     cantidad: data.quantity ?? 1,
-    tarifaPorHora: typeof data.rate === 'string' ? parseFloat(data.rate) || 0 : data.rate || 0,
     imagenUrl: data.imageUrl || '',
   }
   const created = await http<any>('/vehiculos', { method: 'POST', body: JSON.stringify(payload) })
@@ -508,7 +505,6 @@ export const updateVehicle = async (id: string, patch: Partial<VehicleView>) => 
     ...(patch.category && { categoria: patch.category }),
     ...(patch.seats !== undefined && { asientos: patch.seats }),
     ...(patch.quantity !== undefined && { cantidad: patch.quantity }),
-    ...(patch.rate && { tarifaPorHora: typeof patch.rate === 'string' ? parseFloat(patch.rate) || 0 : patch.rate }),
     ...(patch.imageUrl && { imagenUrl: patch.imageUrl }),
   }
   const updated = await http<any>(`/vehiculos/${id}`, { method: 'PUT', body: JSON.stringify(payload) })

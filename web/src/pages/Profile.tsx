@@ -27,7 +27,6 @@ const Profile = () => {
   const [user, setUser] = useState<User | null>(null)
   const [editing, setEditing] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<Message | null>(null)
@@ -44,11 +43,6 @@ const Profile = () => {
     actual: '',
     nueva: '',
     confirmar: '',
-  })
-
-  const [paymentForm, setPaymentForm] = useState({
-    tipo: 'TARJETA',
-    referencia: '',
   })
   const { theme } = useTheme()
 
@@ -124,10 +118,6 @@ const Profile = () => {
     setPasswordForm(s => ({ ...s, [e.target.name]: e.target.value }))
   }
 
-  const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setPaymentForm(s => ({ ...s, [e.target.name]: e.target.value }))
-  }
-
   const save = async () => {
     try {
       setSaving(true)
@@ -200,32 +190,6 @@ const Profile = () => {
     } finally {
       setSaving(false)
     }
-  }
-
-  const handleAddPayment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    // Funcionalidad deshabilitada: modelo MetodoPago eliminado del backend
-    setMessage({ type: 'error', text: 'Funcionalidad no disponible actualmente' })
-    /*
-    if (!paymentForm.referencia.trim()) {
-      setMessage({ type: 'error', text: 'Ingresa una referencia válida' })
-      return
-    }
-    try {
-      setSaving(true)
-      await addPaymentMethod({ tipo: paymentForm.tipo as any, referencia: paymentForm.referencia.trim() })
-      setPaymentForm({ tipo: 'TARJETA', referencia: '' })
-      setShowPaymentModal(false)
-      setMessage({ type: 'success', text: 'Método de pago agregado correctamente' })
-      setTimeout(() => setMessage(null), 3000)
-    } catch (error) {
-      const fallback = 'Endpoint de métodos de pago no disponible. Contacta al administrador.'
-      const errorMessage = error instanceof Error ? error.message : fallback
-      setMessage({ type: 'error', text: errorMessage || fallback })
-    } finally {
-      setSaving(false)
-    }
-    */
   }
 
   const handleLogout = () => {
@@ -445,17 +409,6 @@ const Profile = () => {
               Cambiar contraseña
             </button>
           </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <h3 className="mb-2 text-lg font-semibold text-white">Métodos de Pago</h3>
-            <p className="mb-4 text-sm text-gray-400">Gestiona tus métodos de pago para reservas</p>
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-semibold text-white transition hover:bg-white/10"
-            >
-              Agregar método
-            </button>
-          </div>
         </div>
       </Section>
 
@@ -574,58 +527,6 @@ const Profile = () => {
         </div>
       )}
 
-      {/* Modal Agregar Método de Pago */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1016] p-6 sm:p-8">
-            <h2 className="mb-6 text-2xl font-semibold text-white">Agregar método de pago</h2>
-            <form onSubmit={handleAddPayment} className="space-y-4">
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-gray-300">Tipo de pago</span>
-                <select
-                  name="tipo"
-                  value={paymentForm.tipo}
-                  onChange={handlePaymentChange}
-                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white transition focus:border-amber-300/50 focus:outline-none focus:ring-1 focus:ring-amber-300/20"
-                >
-                  <option value="TARJETA" className="bg-[#0f1016]">Tarjeta de crédito</option>
-                  <option value="SINPE" className="bg-[#0f1016]">SINPE</option>
-                  <option value="TRANSFERENCIA" className="bg-[#0f1016]">Transferencia bancaria</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-gray-300">
-                  {paymentForm.tipo === 'TARJETA' ? 'Últimos 4 dígitos' : 'Referencia'}
-                </span>
-                <input
-                  name="referencia"
-                  value={paymentForm.referencia}
-                  onChange={handlePaymentChange}
-                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-gray-500 transition focus:border-amber-300/50 focus:outline-none focus:ring-1 focus:ring-amber-300/20"
-                  placeholder={paymentForm.tipo === 'TARJETA' ? 'XXXX' : 'Ingresa referencia'}
-                  maxLength={paymentForm.tipo === 'TARJETA' ? 4 : undefined}
-                />
-              </label>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 rounded-lg bg-amber-300/80 px-4 py-2.5 font-semibold text-black transition hover:bg-amber-300 disabled:opacity-50"
-                >
-                  {saving ? 'Agregando...' : 'Agregar'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 font-semibold text-white transition hover:bg-white/10"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </Layout>
   )
 }

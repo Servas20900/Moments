@@ -169,7 +169,7 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
 
   const extrasTotal = selectedExtras.reduce((acc, extra) => acc + extra.price, 0)
   const packagePrice = pkg?.price ?? 0
-  const vehicleFee = 0 // Dejarlo listo para integrar tarifas por vehículo más adelante
+  const vehicleFee = 0
   const total = packagePrice + extrasTotal + vehicleFee
   const deposit = total * 0.5
 
@@ -215,7 +215,6 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
             id: vehicle.id,
             name: vehicle.name,
             seats: vehicle.seats,
-            rate: vehicle.rate,
             imageUrl: vehicle.imageUrl,
           }
         : undefined,
@@ -403,7 +402,7 @@ const packagesPromise = needsPackage ? fetchPackages() : Promise.resolve<Package
                       </div>
                       <div className="flex-1">
                         <p className="text-white font-semibold">{vehicle.name}</p>
-                        <p className="text-sm text-gray-400">{vehicle.seats} asientos · Tarifa: {vehicle.rate}</p>
+                        <p className="text-sm text-gray-400">{vehicle.seats} asientos</p>
                       </div>
                     </label>
                   ))}

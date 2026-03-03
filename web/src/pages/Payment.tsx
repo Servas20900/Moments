@@ -310,7 +310,7 @@ const Payment = () => {
               </div>
               <div className="flex items-center justify-between text-sm text-gray-300">
                 <span>Vehículo</span>
-                <span>{cart.vehicle ? cart.vehicle.rate : 'Incluido'}</span>
+                <span>{cart.vehicle ? 'Incluido en paquete' : 'Incluido'}</span>
               </div>
               <div className="border-t border-white/10 pt-3 flex items-center justify-between text-lg font-bold text-white">
                 <span>Total</span>

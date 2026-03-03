@@ -45,7 +45,6 @@ export type VehicleView = {
   category: string
   seats: number
   quantity: number
-  rate: string
   features: string[]
   imageUrl: string
 }

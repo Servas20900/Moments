@@ -72,7 +72,6 @@ export class VehiclesService {
         categoriaId: dto.categoriaId,
         asientos: dto.asientos,
         cantidad: dto.cantidad ?? 1,
-        tarifaPorHora: dto.tarifaPorHora,
         caracteristicas: dto.caracteristicas || [],
         estado: "ACTIVO",
       },
@@ -94,7 +93,6 @@ export class VehiclesService {
         categoriaId: dto.categoriaId ?? existing.categoriaId,
         asientos: dto.asientos ?? existing.asientos,
         cantidad: dto.cantidad ?? existing.cantidad,
-        tarifaPorHora: dto.tarifaPorHora ?? existing.tarifaPorHora,
         caracteristicas: dto.caracteristicas ?? existing.caracteristicas,
       },
       include: {
@@ -177,7 +175,6 @@ export class VehiclesService {
       categoriaId: v.categoriaId,
       seats: v.asientos,
       quantity: v.cantidad ?? 1,
-      rate: Number(v.tarifaPorHora),
       features: v.caracteristicas || [],
       imageUrl: imgUrl,
       estado: v.estado,

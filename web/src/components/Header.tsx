@@ -65,7 +65,14 @@ export default function Header() {
           </span>
         </button>
 
-        <NavLink to="/" className="text-2xl font-bold tracking-wide hover:opacity-80 transition">Moments</NavLink>
+        <NavLink to="/" className="inline-flex items-center gap-2 text-2xl font-bold tracking-wide hover:opacity-80 transition">
+          <img
+            src="https://res.cloudinary.com/dshoygnrv/image/upload/v1772545797/cropped_circle_image_dt5dgg.png"
+            alt="Moments logo"
+            className="h-8 w-8 rounded-full object-cover"
+          />
+          <span>Moments</span>
+        </NavLink>
 
         <nav className="hidden items-center gap-2 md:flex md:ml-auto" aria-label="Navegación principal">
           {nav.map((item) => (

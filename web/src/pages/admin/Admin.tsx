@@ -317,7 +317,7 @@ const Admin = () => {
   }
 
   const onCreateVehicle = () => {
-    setEditingVehicle({ id: '', name: '', category: '', seats: 1, quantity: 1, rate: '', features: [], imageUrl: '' })
+    setEditingVehicle({ id: '', name: '', category: '', seats: 1, quantity: 1, features: [], imageUrl: '' })
     setShowVehModal(true)
   }
 
@@ -875,7 +875,6 @@ function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, uploadIm
     name: vehicle.name || '',
     category: vehicle.category || '',
     seats: vehicle.seats ?? 1,
-    rate: vehicle.rate || '',
     features: vehicle.features || [],
     imageUrl: vehicle.imageUrl || '',
     id: vehicle.id || '',

@@ -302,7 +302,6 @@ export class PackagesService {
       name: v.vehiculo?.nombre,
       seats: v.vehiculo?.asientos,
       category: v.vehiculo?.categoria,
-      rate: v.vehiculo ? Number(v.vehiculo.tarifaPorHora) : undefined,
     })) || [];
     return {
       id: pkg.id,

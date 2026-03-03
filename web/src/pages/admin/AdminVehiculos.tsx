@@ -146,7 +146,7 @@ const AdminVehiculos = () => {
   }
 
   const onCreateVehicle = () => {
-    setEditingVehicle({ id: '', name: '', category: '', seats: 1, quantity: 1, rate: '', features: [], imageUrl: '' })
+    setEditingVehicle({ id: '', name: '', category: '', seats: 1, quantity: 1, features: [], imageUrl: '' })
     setShowVehModal(true)
   }
 

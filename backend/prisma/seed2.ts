@@ -42,7 +42,6 @@ async function main() {
       categoriaId: suv.id,
       asientos: 6,
       cantidad: 5, // actualizado
-      tarifaPorHora: 120,
       caracteristicas: [
         'SUV ejecutiva full size',
         'Interior en cuero premium',
@@ -54,7 +53,7 @@ async function main() {
         'Año 2025',
       ],
       estado: 'ACTIVO',
-    },
+    } as any,
   });
 
   const tahoe = await prisma.vehiculo.upsert({
@@ -66,7 +65,6 @@ async function main() {
       categoriaId: suv.id,
       asientos: 4,
       cantidad: 5, // actualizado
-      tarifaPorHora: 110,
       caracteristicas: [
         'SUV ejecutiva',
         'Interior premium',
@@ -77,7 +75,7 @@ async function main() {
         'Año 2025',
       ],
       estado: 'ACTIVO',
-    },
+    } as any,
   });
 
   const ram = await prisma.vehiculo.upsert({
@@ -89,7 +87,6 @@ async function main() {
       categoriaId: pickup.id,
       asientos: 4,
       cantidad: 1,
-      tarifaPorHora: 115,
       caracteristicas: [
         'PickUp edición Limited',
         'Interior cuero premium',
@@ -99,7 +96,7 @@ async function main() {
         'Año 2025',
       ],
       estado: 'ACTIVO',
-    },
+    } as any,
   });
 
   const range = await prisma.vehiculo.upsert({
@@ -111,7 +108,6 @@ async function main() {
       categoriaId: suv.id,
       asientos: 4,
       cantidad: 1,
-      tarifaPorHora: 180,
       caracteristicas: [
         'SUV de alta gama',
         'Interior de lujo',
@@ -121,7 +117,7 @@ async function main() {
         'Año 2025',
       ],
       estado: 'ACTIVO',
-    },
+    } as any,
   });
 
   const mercedesBenz = await prisma.vehiculo.upsert({
@@ -133,7 +129,6 @@ async function main() {
       categoriaId: suv.id,
       asientos: 4,
       cantidad: 1,
-      tarifaPorHora: 170,
       caracteristicas: [
         'Vehículo premium de lujo',
         'Interior ejecutivo de alta gama',
@@ -142,7 +137,7 @@ async function main() {
         'Año 2025',
       ],
       estado: 'ACTIVO',
-    },
+    } as any,
   });
 
   const hiace = await prisma.vehiculo.upsert({
@@ -154,7 +149,6 @@ async function main() {
       categoriaId: minibus.id,
       asientos: 14,
       cantidad: 1,
-      tarifaPorHora: 140,
       caracteristicas: [
         'Minibus ejecutivo',
         'Amplia capacidad grupal',
@@ -164,7 +158,7 @@ async function main() {
         'Año 2025',
       ],
       estado: 'ACTIVO',
-    },
+    } as any,
   });
 
   const sprinter = await prisma.vehiculo.upsert({
@@ -176,7 +170,6 @@ async function main() {
       categoriaId: minibus.id,
       asientos: 11,
       cantidad: 1,
-      tarifaPorHora: 160,
       caracteristicas: [
         'Minibus versión VIP',
         'Interior cómodo y espacioso',
@@ -186,7 +179,7 @@ async function main() {
         'Año 2025',
       ],
       estado: 'ACTIVO',
-    },
+    } as any,
   });
 
   async function sincronizarImagenesVehiculo(
