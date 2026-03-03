@@ -16,8 +16,8 @@ export class VehiclesService {
       .replace(/[^a-z0-9-]/g, "");
   }
 
-  async findAll(params: { skip?: number; take?: number; categoria?: string; estado?: string }) {
-    const { skip = 0, take = 10, categoria, estado = "ACTIVO" } = params;
+  async findAll(params: { skip?: number; take?: number; categoriaId?: number; estado?: string }) {
+    const { skip = 0, take = 10, categoriaId, estado = "ACTIVO" } = params;
 
     const normalizedEstado = Object.values(EstadoActivo).includes(estado as EstadoActivo)
       ? (estado as EstadoActivo)
@@ -25,7 +25,7 @@ export class VehiclesService {
 
     const where = {
       estado: normalizedEstado,
-      ...(categoria ? { categoria } : {}),
+      ...(categoriaId ? { categoriaId } : {}),
     } as const;
 
     const [items, total] = await Promise.all([
@@ -34,6 +34,7 @@ export class VehiclesService {
         skip,
         take,
         include: {
+          categoria: true,
           imagenes: {
             include: { imagen: true },
             orderBy: { orden: "asc" },
@@ -52,6 +53,7 @@ export class VehiclesService {
     const v = await this.prisma.vehiculo.findUnique({
       where: { id },
       include: {
+        categoria: true,
         imagenes: {
           include: { imagen: true },
           orderBy: { orden: "asc" },
@@ -67,11 +69,15 @@ export class VehiclesService {
     const created = await this.prisma.vehiculo.create({
       data: {
         nombre: dto.nombre,
-        categoria: dto.categoria,
+        categoriaId: dto.categoriaId,
         asientos: dto.asientos,
+        cantidad: dto.cantidad ?? 1,
         tarifaPorHora: dto.tarifaPorHora,
         caracteristicas: dto.caracteristicas || [],
         estado: "ACTIVO",
+      },
+      include: {
+        categoria: true,
       },
     });
     return this.toResponse(created);
@@ -85,12 +91,14 @@ export class VehiclesService {
       where: { id },
       data: {
         nombre: dto.nombre ?? existing.nombre,
-        categoria: dto.categoria ?? existing.categoria,
+        categoriaId: dto.categoriaId ?? existing.categoriaId,
         asientos: dto.asientos ?? existing.asientos,
+        cantidad: dto.cantidad ?? existing.cantidad,
         tarifaPorHora: dto.tarifaPorHora ?? existing.tarifaPorHora,
         caracteristicas: dto.caracteristicas ?? existing.caracteristicas,
       },
       include: {
+        categoria: true,
         imagenes: {
           include: { imagen: true },
           orderBy: { orden: "asc" },
@@ -110,45 +118,54 @@ export class VehiclesService {
     return { message: "Vehiculo desactivado" };
   }
 
-  async getAvailability(params: { fecha?: string; horaInicio?: string; horaFin?: string }) {
-    const { fecha, horaInicio, horaFin } = params;
-    const start = this.parseDateTime(fecha, horaInicio, false);
-    const end = this.parseDateTime(fecha, horaFin, true);
-
-    if (!start || !end) {
+  async getAvailability(params: { fecha?: string }) {
+    const { fecha } = params;
+    if (!fecha) {
       return { occupiedIds: [] };
     }
 
-    const reservations = await this.prisma.reserva.findMany({
-      where: {
-        estado: { in: ["PAGO_PENDIENTE", "CONFIRMADA", "COMPLETADA"] },
-        horaInicio: { lt: end },
-        horaFin: { gt: start },
-      },
-      select: { vehiculoId: true },
-    });
+    const start = new Date(fecha);
+    if (isNaN(start.getTime())) return { occupiedIds: [] };
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
 
-    const occupiedIds = Array.from(new Set(reservations.map((r) => r.vehiculoId)));
+    const [vehiculos, bloqueos, reservasAgrupadas] = await Promise.all([
+      this.prisma.vehiculo.findMany({
+        where: { estado: "ACTIVO" },
+        select: { id: true, cantidad: true },
+      }),
+      this.prisma.disponibilidadVehiculo.findMany({
+        where: {
+          fecha: { gte: start, lt: end },
+        },
+        select: { vehiculoId: true },
+      }),
+      this.prisma.reserva.groupBy({
+        by: ["vehiculoId"],
+        where: {
+          vehiculoId: { not: null },
+          fechaEvento: { gte: start, lt: end },
+          estado: { in: ["CONFIRMADA", "PAGO_PARCIAL"] },
+        },
+        _count: { vehiculoId: true },
+      }),
+    ]);
+
+    const bloqueadosSet = new Set(bloqueos.map((b) => b.vehiculoId));
+    const countByVehiculo = new Map(
+      reservasAgrupadas.map((r) => [r.vehiculoId as string, r._count.vehiculoId]),
+    );
+
+    const occupiedIds = vehiculos
+      .filter((v) => {
+        if (bloqueadosSet.has(v.id)) return true;
+        const count = countByVehiculo.get(v.id) ?? 0;
+        return count >= (v.cantidad ?? 1);
+      })
+      .map((v) => v.id);
+
     return { occupiedIds };
-  }
-
-  private parseDateTime(fecha?: string, hora?: string, isEnd = false) {
-    if (hora && hora.includes("T")) {
-      const dt = new Date(hora);
-      return isNaN(dt.getTime()) ? null : dt;
-    }
-
-    if (fecha && hora) {
-      const dt = new Date(`${fecha}T${hora}`);
-      return isNaN(dt.getTime()) ? null : dt;
-    }
-
-    if (fecha && !hora) {
-      const dt = new Date(`${fecha}T${isEnd ? "23:59:59" : "00:00:00"}`);
-      return isNaN(dt.getTime()) ? null : dt;
-    }
-
-    return null;
   }
 
   private toResponse(v: any) {
@@ -156,8 +173,10 @@ export class VehiclesService {
     return {
       id: v.id,
       name: v.nombre,
-      category: v.categoria,
+      category: v.categoria?.nombre,
+      categoriaId: v.categoriaId,
       seats: v.asientos,
+      quantity: v.cantidad ?? 1,
       rate: Number(v.tarifaPorHora),
       features: v.caracteristicas || [],
       imageUrl: imgUrl,

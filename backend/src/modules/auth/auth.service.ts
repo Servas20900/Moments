@@ -4,17 +4,27 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
 import * as bcrypt from "bcrypt";
+import { createHash, randomBytes } from "crypto";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { EmailService } from "../../common/email/email.service";
 import { LoginDto } from "./dtos/login.dto";
 import { RegisterDto } from "./dtos/register.dto";
+import { ForgotPasswordDto } from "./dtos/forgot-password.dto";
+import { ResetPasswordDto } from "./dtos/reset-password.dto";
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
+
+  private readonly FORGOT_PASSWORD_GENERIC_MESSAGE =
+    "Si el correo existe, te enviaremos instrucciones para restablecer tu contraseña.";
 
   async register(dto: RegisterDto) {
     try {
@@ -48,7 +58,6 @@ export class AuthService {
           nombre: dto.nombre.trim(),
           telefono: dto.telefono?.trim() || "",
           identificacion: dto.identificacion?.trim(),
-          distritoId: dto.distritoId,
           estado: "ACTIVO",
         },
       });
@@ -170,6 +179,109 @@ export class AuthService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const email = dto.email.toLowerCase().trim();
+    const user = await this.prisma.usuario.findUnique({
+      where: { email },
+    });
+
+    if (!user || user.estado !== "ACTIVO") {
+      return { message: this.FORGOT_PASSWORD_GENERIC_MESSAGE };
+    }
+
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHash = this.hashResetToken(rawToken);
+    const now = new Date();
+    const resetTtlMinutes = Number(
+      this.configService.get<string>("RESET_PASSWORD_TTL_MINUTES") ?? 30,
+    );
+    const expiresAt = new Date(now.getTime() + resetTtlMinutes * 60 * 1000);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.updateMany({
+        where: {
+          usuarioId: user.id,
+          usedAt: null,
+        },
+        data: {
+          usedAt: now,
+        },
+      });
+
+      await tx.passwordResetToken.create({
+        data: {
+          usuarioId: user.id,
+          tokenHash,
+          expiresAt,
+        },
+      });
+    });
+
+    const frontendUrl =
+      this.configService.get<string>("FRONTEND_URL") || "http://localhost:5173";
+    const baseUrl = frontendUrl.endsWith("/")
+      ? frontendUrl.slice(0, -1)
+      : frontendUrl;
+    const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
+
+    await this.emailService.sendPasswordResetEmail({
+      nombre: user.nombre || "usuario",
+      email: user.email,
+      resetUrl,
+      expiresMinutes: resetTtlMinutes,
+    });
+
+    return { message: this.FORGOT_PASSWORD_GENERIC_MESSAGE };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    if (dto.nuevaPassword !== dto.confirmarPassword) {
+      throw new BadRequestException("Las contraseñas no coinciden");
+    }
+
+    const tokenHash = this.hashResetToken(dto.token.trim());
+    const tokenRecord = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+    });
+
+    if (
+      !tokenRecord ||
+      tokenRecord.usedAt ||
+      tokenRecord.expiresAt.getTime() < Date.now()
+    ) {
+      throw new BadRequestException("El token es inválido o ha expirado");
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.nuevaPassword, 10);
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.usuario.update({
+        where: { id: tokenRecord.usuarioId },
+        data: {
+          contrasena: hashedPassword,
+          actualizadoEn: now,
+        },
+      });
+
+      await tx.passwordResetToken.updateMany({
+        where: {
+          usuarioId: tokenRecord.usuarioId,
+          usedAt: null,
+        },
+        data: {
+          usedAt: now,
+        },
+      });
+    });
+
+    return { message: "Contraseña restablecida correctamente" };
+  }
+
+  private hashResetToken(token: string) {
+    return createHash("sha256").update(token).digest("hex");
   }
 
   private toResponse(access_token: string, user: any) {

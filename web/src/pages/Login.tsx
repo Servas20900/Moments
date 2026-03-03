@@ -140,6 +140,7 @@ const Login = () => {
             </label>
             <div className="flex flex-col gap-3 mt-2">
               <Button variant="primary" type="submit" disabled={loading} className="w-full">{loading ? 'Entrando...' : 'Iniciar sesión'}</Button>
+              <Button variant="ghost" type="button" onClick={() => navigate('/forgot-password')} className="w-full">Olvidé mi contraseña</Button>
               <Button variant="ghost" type="button" onClick={handleGoogle} className="w-full">Continuar con Google</Button>
             </div>
           </form>

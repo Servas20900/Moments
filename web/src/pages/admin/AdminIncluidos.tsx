@@ -300,8 +300,10 @@ const AdminIncluidos = () => {
           <p className="section__copy">Gestiona categorías de incluidos y bebidas que forman parte de los paquetes</p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-6 lg:gap-8 items-start">
-          <AdminSidebar current="incluidos" />
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 lg:gap-8 items-start">
+          <div className="sticky top-4">
+            <AdminSidebar current="incluidos" />
+          </div>
 
           <div className="min-w-0 space-y-10">
             {/* CATEGORÍAS SECTION */}

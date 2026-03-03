@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { EstadoActivo } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreatePackageDto } from "./dtos/create-package.dto";
@@ -8,61 +8,126 @@ import { UpdatePackageDto } from "./dtos/update-package.dto";
 export class PackagesService {
   constructor(private prisma: PrismaService) {}
 
-  async getCategories() {
+  async findAllCategories() {
     const categories = await this.prisma.categoriaPaquete.findMany({
       where: { estado: "ACTIVO" },
-      orderBy: { id: "asc" },
+      orderBy: { nombre: "asc" },
     });
 
-    // Si no hay categorías, crear la categoría por defecto
-    if (categories.length === 0) {
-      const defaultCategory = await this.prisma.categoriaPaquete.create({
-        data: {
-          nombre: "General",
-          estado: "ACTIVO",
-        },
-      });
-      return [defaultCategory];
+    return categories.map((category) => ({
+      id: category.id,
+      nombre: category.nombre,
+      estado: category.estado,
+    }));
+  }
+
+  async createCategory(nombre: string) {
+    const normalized = (nombre ?? "").trim();
+    if (!normalized) {
+      throw new BadRequestException("Category name is required");
     }
 
-    return categories;
+    const existing = await this.prisma.categoriaPaquete.findFirst({
+      where: { nombre: { equals: normalized, mode: "insensitive" } },
+    });
+
+    if (existing) {
+      throw new BadRequestException("Category already exists");
+    }
+
+    return this.prisma.categoriaPaquete.create({
+      data: { nombre: normalized, estado: "ACTIVO" },
+      select: { id: true, nombre: true, estado: true },
+    });
+  }
+
+  async updateCategory(id: number, nombre: string) {
+    const normalized = (nombre ?? "").trim();
+    if (!normalized) {
+      throw new BadRequestException("Category name is required");
+    }
+
+    const category = await this.prisma.categoriaPaquete.findUnique({ where: { id } });
+    if (!category) {
+      throw new NotFoundException("Category not found");
+    }
+
+    const duplicate = await this.prisma.categoriaPaquete.findFirst({
+      where: {
+        nombre: { equals: normalized, mode: "insensitive" },
+        NOT: { id },
+      },
+    });
+
+    if (duplicate) {
+      throw new BadRequestException("Category already exists");
+    }
+
+    return this.prisma.categoriaPaquete.update({
+      where: { id },
+      data: { nombre: normalized },
+      select: { id: true, nombre: true, estado: true },
+    });
+  }
+
+  async deleteCategory(id: number, fallbackCategoryId: number) {
+    const category = await this.prisma.categoriaPaquete.findUnique({ where: { id } });
+    if (!category) {
+      throw new NotFoundException("Category not found");
+    }
+
+    if (!Number.isFinite(fallbackCategoryId) || fallbackCategoryId <= 0) {
+      throw new BadRequestException("Fallback category is required");
+    }
+
+    if (fallbackCategoryId === id) {
+      throw new BadRequestException("Fallback category cannot be the same category");
+    }
+
+    const fallback = await this.prisma.categoriaPaquete.findUnique({ where: { id: fallbackCategoryId } });
+    if (!fallback) {
+      throw new NotFoundException("Fallback category not found");
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.paquete.updateMany({
+        where: { categoriaId: id },
+        data: { categoriaId: fallbackCategoryId },
+      }),
+      this.prisma.categoriaPaquete.update({
+        where: { id },
+        data: { estado: "INACTIVO" },
+      }),
+    ]);
+
+    return { message: "Category deleted successfully" };
   }
 
   async create(dto: CreatePackageDto) {
-    // Verificar que la categoría existe, si no, usar o crear la categoría por defecto
-    let categoria = await this.prisma.categoriaPaquete.findUnique({
+    const normalizedVehicleIds = this.normalizeVehicleIds(dto.vehicleIds);
+    const normalizedIncluidos = this.normalizeIncluidos(dto.incluidos);
+    if (normalizedVehicleIds.length === 0) {
+      throw new BadRequestException("Debes asignar al menos un vehículo al paquete");
+    }
+    await this.validateActiveVehicles(normalizedVehicleIds);
+
+    // Verificar que la categoría existe
+    const categoria = await this.prisma.categoriaPaquete.findUnique({
       where: { id: dto.categoriaId },
     });
 
     if (!categoria) {
-      // Intentar obtener la primera categoría activa
-      const categories = await this.prisma.categoriaPaquete.findMany({
-        where: { estado: "ACTIVO" },
-        orderBy: { id: "asc" },
-        take: 1,
-      });
-
-      if (categories.length === 0) {
-        // Si no existe ninguna categoría, crear una por defecto
-        categoria = await this.prisma.categoriaPaquete.create({
-          data: {
-            nombre: "General",
-            estado: "ACTIVO",
-          },
-        });
-      } else {
-        categoria = categories[0];
-      }
+      throw new NotFoundException("Category not found");
     }
 
     const created = await this.prisma.paquete.create({
       data: {
-        categoriaId: categoria.id,
+        categoriaId: dto.categoriaId,
         nombre: dto.nombre,
         descripcion: dto.descripcion,
         precioBase: dto.precioBase,
         maxPersonas: dto.maxPersonas,
-        incluidos: dto.incluidos || [],
+        incluidos: normalizedIncluidos,
         estado: "ACTIVO",
       },
       include: {
@@ -71,25 +136,9 @@ export class PackagesService {
       },
     });
 
-    if (dto.vehicleIds?.length) {
+    if (normalizedVehicleIds.length) {
       await this.prisma.paqueteVehiculo.createMany({
-        data: dto.vehicleIds.map((vehiculoId) => ({ paqueteId: created.id, vehiculoId })),
-        skipDuplicates: true,
-      });
-    }
-
-    // Asociar extras si se proporcionan
-    if (dto.extraIds?.length) {
-      await this.prisma.paqueteExtra.createMany({
-        data: dto.extraIds.map((extraId) => ({ paqueteId: created.id, extraId })),
-        skipDuplicates: true,
-      });
-    }
-
-    // Asociar incluidos si se proporcionan
-    if (dto.incluidoIds?.length) {
-      await this.prisma.paqueteIncluido.createMany({
-        data: dto.incluidoIds.map((incluidoId) => ({ paqueteId: created.id, incluidoId })),
+        data: normalizedVehicleIds.map((vehiculoId) => ({ paqueteId: created.id, vehiculoId })),
         skipDuplicates: true,
       });
     }
@@ -97,12 +146,7 @@ export class PackagesService {
     // reload with vehicles after linking
     const reloaded = await this.prisma.paquete.findUnique({
       where: { id: created.id },
-      include: { 
-        categoria: true, 
-        vehiculos: { include: { vehiculo: true } },
-        extras: { include: { extra: true } },
-        paqueteIncluidos: { include: { incluido: true } },
-      },
+      include: { categoria: true, vehiculos: { include: { vehiculo: true } } },
     });
 
     return this.toResponse(reloaded);
@@ -128,8 +172,6 @@ export class PackagesService {
         include: {
           categoria: true,
           vehiculos: { include: { vehiculo: true } },
-          extras: { include: { extra: true } },
-          paqueteIncluidos: { include: { incluido: true } },
           imagenes: {
             include: { imagen: true },
             orderBy: { orden: "asc" },
@@ -150,8 +192,6 @@ export class PackagesService {
       include: {
         categoria: true,
         vehiculos: { include: { vehiculo: true } },
-        extras: { include: { extra: true } },
-        paqueteIncluidos: { include: { incluido: true } },
         reservas: { take: 5 },
         imagenes: {
           include: { imagen: true },
@@ -170,18 +210,6 @@ export class PackagesService {
   async update(id: string, dto: UpdatePackageDto) {
     const pkg = await this.prisma.paquete.findUnique({
       where: { id },
-      select: {
-        id: true,
-        nombre: true,
-        descripcion: true,
-        categoriaId: true,
-        precioBase: true,
-        maxPersonas: true,
-        incluidos: true,
-        estado: true,
-        creadoEn: true,
-        actualizadoEn: true,
-      },
     });
 
     if (!pkg) {
@@ -189,32 +217,16 @@ export class PackagesService {
     }
 
     if (dto.vehicleIds) {
+      const normalizedVehicleIds = this.normalizeVehicleIds(dto.vehicleIds);
+      if (normalizedVehicleIds.length === 0) {
+        throw new BadRequestException("Debes asignar al menos un vehículo al paquete");
+      }
+      await this.validateActiveVehicles(normalizedVehicleIds);
+
       await this.prisma.paqueteVehiculo.deleteMany({ where: { paqueteId: id } });
-      if (dto.vehicleIds.length) {
+      if (normalizedVehicleIds.length) {
         await this.prisma.paqueteVehiculo.createMany({
-          data: dto.vehicleIds.map((vehiculoId) => ({ paqueteId: id, vehiculoId })),
-          skipDuplicates: true,
-        });
-      }
-    }
-
-    // Actualizar extras si se proporcionan
-    if (dto.extraIds !== undefined) {
-      await this.prisma.paqueteExtra.deleteMany({ where: { paqueteId: id } });
-      if (dto.extraIds.length) {
-        await this.prisma.paqueteExtra.createMany({
-          data: dto.extraIds.map((extraId) => ({ paqueteId: id, extraId })),
-          skipDuplicates: true,
-        });
-      }
-    }
-
-    // Actualizar incluidos si se proporcionan
-    if (dto.incluidoIds !== undefined) {
-      await this.prisma.paqueteIncluido.deleteMany({ where: { paqueteId: id } });
-      if (dto.incluidoIds.length) {
-        await this.prisma.paqueteIncluido.createMany({
-          data: dto.incluidoIds.map((incluidoId) => ({ paqueteId: id, incluidoId })),
+          data: normalizedVehicleIds.map((vehiculoId) => ({ paqueteId: id, vehiculoId })),
           skipDuplicates: true,
         });
       }
@@ -228,17 +240,11 @@ export class PackagesService {
         descripcion: dto.descripcion || pkg.descripcion,
         precioBase: dto.precioBase || pkg.precioBase,
         maxPersonas: dto.maxPersonas || pkg.maxPersonas,
-        incluidos: dto.incluidos !== undefined ? dto.incluidos : pkg.incluidos,
+        ...(dto.incluidos !== undefined ? { incluidos: this.normalizeIncluidos(dto.incluidos) } : {}),
       },
       include: {
         categoria: true,
         vehiculos: { include: { vehiculo: true } },
-        extras: { include: { extra: true } },
-        paqueteIncluidos: { include: { incluido: true } },
-        imagenes: {
-          include: { imagen: true },
-          orderBy: { orden: "asc" },
-        },
       },
     });
     return this.toResponse(updated);
@@ -261,6 +267,34 @@ export class PackagesService {
     return { message: "Package deactivated successfully" };
   }
 
+  private normalizeVehicleIds(vehicleIds?: string[]) {
+    if (!Array.isArray(vehicleIds)) return [];
+    return Array.from(new Set(vehicleIds.map((id) => (id ?? "").trim()).filter(Boolean)));
+  }
+
+  private async validateActiveVehicles(vehicleIds: string[]) {
+    if (!vehicleIds.length) return;
+
+    const existing = await this.prisma.vehiculo.findMany({
+      where: {
+        id: { in: vehicleIds },
+        estado: "ACTIVO",
+      },
+      select: { id: true },
+    });
+
+    if (existing.length !== vehicleIds.length) {
+      throw new BadRequestException("Uno o más vehículos no existen o están inactivos");
+    }
+  }
+
+  private normalizeIncluidos(incluidos?: string[]) {
+    if (!Array.isArray(incluidos)) return [];
+    return incluidos
+      .map((item) => (item ?? "").trim())
+      .filter(Boolean);
+  }
+
   private toResponse(pkg: any) {
     const imgUrl = pkg.imagenes?.[0]?.imagen?.url || pkg.imagenUrl || null;
     const vehicles = pkg.vehiculos?.map((v: any) => ({
@@ -270,24 +304,6 @@ export class PackagesService {
       category: v.vehiculo?.categoria,
       rate: v.vehiculo ? Number(v.vehiculo.tarifaPorHora) : undefined,
     })) || [];
-    
-    const extras = pkg.extras?.map((e: any) => ({
-      id: e.extra?.id,
-      nombre: e.extra?.nombre,
-      descripcion: e.extra?.descripcion,
-      precio: e.extra?.precio ? Number(e.extra.precio) : 0,
-      categoria: e.extra?.categoria,
-      estado: e.extra?.estado,
-    })) || [];
-    
-    const incluidosRelacionados = pkg.paqueteIncluidos?.map((i: any) => ({
-      id: i.incluido?.id,
-      nombre: i.incluido?.nombre,
-      descripcion: i.incluido?.descripcion,
-      categoriaId: i.incluido?.categoriaId,
-      estado: i.incluido?.estado,
-    })) || [];
-
     return {
       id: pkg.id,
       name: pkg.nombre,
@@ -295,11 +311,11 @@ export class PackagesService {
       description: pkg.descripcion,
       price: Number(pkg.precioBase),
       maxPeople: pkg.maxPersonas,
-      incluidos: Array.isArray(pkg.incluidos) ? pkg.incluidos : [],
       vehicle: vehicles[0]?.name ?? "N/A",
       vehicles,
-      extras,
       imageUrl: imgUrl,
+      incluidos: Array.isArray(pkg.incluidos) ? pkg.incluidos : [],
+      incluye: Array.isArray(pkg.incluidos) ? pkg.incluidos : [],
       estado: pkg.estado,
       creadoEn: pkg.creadoEn,
     };

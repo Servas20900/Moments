@@ -11,6 +11,11 @@ class ExtraItemDto {
   @IsInt()
   @Min(1)
   cantidad: number;
+
+  @ApiProperty({ description: 'Precio unitario del extra al momento de crear la reserva', minimum: 0 })
+  @IsNumber()
+  @Min(0)
+  precioUnitario: number;
 }
 
 export class CreateManualReservationDto {
@@ -44,11 +49,6 @@ export class CreateManualReservationDto {
   @IsString()
   vehiculoId: string;
 
-  @ApiPropertyOptional({ description: 'ID del conductor asignado' })
-  @IsOptional()
-  @IsString()
-  conductorId?: string;
-
   @ApiProperty({ description: 'Tipo de evento' })
   @IsString()
   tipoEvento: string;
@@ -56,14 +56,6 @@ export class CreateManualReservationDto {
   @ApiProperty({ description: 'Fecha del evento (YYYY-MM-DD)' })
   @IsDateString()
   fechaEvento: string;
-
-  @ApiProperty({ description: 'Hora de inicio (ISO 8601)' })
-  @IsDateString()
-  horaInicio: string;
-
-  @ApiProperty({ description: 'Hora de fin (ISO 8601)' })
-  @IsDateString()
-  horaFin: string;
 
   @ApiProperty({ description: 'Origen del viaje' })
   @IsString()
@@ -90,11 +82,29 @@ export class CreateManualReservationDto {
   @IsEnum(['WEB', 'ADMIN', 'WHATSAPP', 'INSTAGRAM', 'CORREO', 'MANUAL', 'CORPORATIVO'])
   origenReserva: 'WEB' | 'ADMIN' | 'WHATSAPP' | 'INSTAGRAM' | 'CORREO' | 'MANUAL' | 'CORPORATIVO';
 
-  @ApiPropertyOptional({ description: 'Monto de anticipo pagado', minimum: 0 })
+  @ApiPropertyOptional({ description: 'Monto de anticipo pagado (el backend recalcula total y restante desde paquete + extras)', minimum: 0 })
   @IsOptional()
   @IsNumber()
   @Min(0)
   anticipo?: number;
+
+  @ApiPropertyOptional({ description: 'Solo informativo; el backend calcula precioBase desde el paquete' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  precioBase?: number;
+
+  @ApiPropertyOptional({ description: 'Solo informativo; el backend calcula precioTotal desde paquete + extras' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  precioTotal?: number;
+
+  @ApiPropertyOptional({ description: 'Solo informativo; el backend calcula restante = precioTotal - anticipo' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  restante?: number;
 
   @ApiProperty({ 
     description: 'Estado inicial de la reserva', 
@@ -103,6 +113,14 @@ export class CreateManualReservationDto {
   })
   @IsEnum(['PAGO_PENDIENTE', 'PAGO_PARCIAL', 'CONFIRMADA'])
   estadoInicial: 'PAGO_PENDIENTE' | 'PAGO_PARCIAL' | 'CONFIRMADA';
+
+  @ApiPropertyOptional({
+    description: 'Alias legacy de estadoInicial',
+    enum: ['PAGO_PENDIENTE', 'PAGO_PARCIAL', 'CONFIRMADA'],
+  })
+  @IsOptional()
+  @IsEnum(['PAGO_PENDIENTE', 'PAGO_PARCIAL', 'CONFIRMADA'])
+  estado?: 'PAGO_PENDIENTE' | 'PAGO_PARCIAL' | 'CONFIRMADA';
 
   @ApiPropertyOptional({ description: 'Lista de extras opcionales', type: [ExtraItemDto] })
   @IsOptional()

@@ -12,6 +12,8 @@ import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { LoginDto } from "./dtos/login.dto";
 import { RegisterDto } from "./dtos/register.dto";
+import { ForgotPasswordDto } from "./dtos/forgot-password.dto";
+import { ResetPasswordDto } from "./dtos/reset-password.dto";
 
 @ApiTags("Auth")
 @Controller("auth")
@@ -40,6 +42,23 @@ export class AuthController {
       console.error("[AUTH CONTROLLER] Login error:", error);
       throw error;
     }
+  }
+
+  @Post("forgot-password")
+  @Throttle({ strict: { limit: 3, ttl: 60000 } })
+  @ApiOperation({
+    summary:
+      "Request a password reset link (always returns a generic response)",
+  })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post("reset-password")
+  @Throttle({ strict: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: "Reset password using one-time token" })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @Get("profile")

@@ -19,6 +19,8 @@ const AdminIncluidos = lazy(() => import('../pages/admin/AdminIncluidos'))
 const AdminPackageExtras = lazy(() => import('../pages/admin/AdminPackageExtras'))
 const AdminReservationsTable = lazy(() => import('../pages/admin/AdminReservationsTable'))
 const Login = lazy(() => import('../pages/Login'))
+const ForgotPassword = lazy(() => import('../pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('../pages/ResetPassword'))
 const Register = lazy(() => import('../pages/Register'))
 const Profile = lazy(() => import('../pages/Profile'))
 const Cart = lazy(() => import('../pages/Cart'))
@@ -60,6 +62,8 @@ export class AppRoutes {
     { path: '/admin/categorias-incluidos', element: <ProtectedRoute element={<AdminIncluidos />} /> },
     { path: '/admin', element: <ProtectedRoute element={<Admin />} /> },
     { path: '/login', element: <Login /> },
+    { path: '/forgot-password', element: <ForgotPassword /> },
+    { path: '/reset-password', element: <ResetPassword /> },
     { path: '/about', element: <About /> },
     { path: '/register', element: <Register /> },
     { path: '/profile', element: <Profile /> },

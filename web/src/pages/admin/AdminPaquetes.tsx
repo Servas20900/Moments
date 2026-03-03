@@ -9,7 +9,20 @@ import AdminSidebar from '../../components/admin/AdminSidebar'
 import { AdminPackageForm, CreateCategoryForm } from '../../components/admin/AdminForms'
 import { useTheme } from '../../hooks/useTheme'
 import { getThemeClasses } from '../../utils/themeClasses'
-import { fetchPackages, fetchVehicles, createPackage, updatePackage, deletePackage, uploadImage, createImageRecord, attachImageToPackage } from '../../api/api'
+import {
+  fetchPackages,
+  fetchVehicles,
+  createPackage,
+  updatePackage,
+  deletePackage,
+  uploadImage,
+  createImageRecord,
+  attachImageToPackage,
+  fetchPackageCategories,
+  createPackageCategory,
+  updatePackageCategory,
+  deletePackageCategory,
+} from '../../api/api'
 import type { Package, Vehicle } from '../../data/content'
 
 const AdminPaquetes = () => {
@@ -19,6 +32,7 @@ const AdminPaquetes = () => {
   const [packages, setPackages] = useState<Package[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [pkgCategories, setPkgCategories] = useState<string[]>([])
+  const [pkgCategoryIds, setPkgCategoryIds] = useState<Record<string, number>>({})
   const [pkgCatInputs, setPkgCatInputs] = useState<Record<string, string>>({})
   const [pkgCatEditing, setPkgCatEditing] = useState<Record<string, boolean>>({})
   const [newPkgCategory, setNewPkgCategory] = useState('')
@@ -35,19 +49,24 @@ const AdminPaquetes = () => {
 
   useEffect(() => {
     let mounted = true
-    Promise.all([fetchPackages(), fetchVehicles()]).then(([p, v]) => {
+    Promise.all([fetchPackages(), fetchVehicles(), fetchPackageCategories()]).then(([p, v, c]) => {
       if (!mounted) return
       setPackages(p)
       setVehicles(v)
-      setPkgCategories(Array.from(new Set(p.map(x => x.category))).filter(Boolean))
+      const categoriesFromPackages = Array.from(new Set(p.map((x) => x.category).filter(Boolean)))
+      const categoriesFromDb = c.map((item) => item.name).filter(Boolean)
+      const merged = Array.from(new Set([...categoriesFromDb, ...categoriesFromPackages]))
+      setPkgCategories(merged)
+
+      const idMap: Record<string, number> = {}
+      c.forEach((item) => {
+        idMap[item.name] = item.id
+      })
+      setPkgCategoryIds(idMap)
       setLoading(false)
     })
     return () => { mounted = false }
   }, [])
-
-  useEffect(() => {
-    setPkgCategories(Array.from(new Set(packages.map((x) => x.category))).filter(Boolean))
-  }, [packages])
 
   useEffect(() => {
     setPkgCatInputs((prev) => {
@@ -64,7 +83,7 @@ const AdminPaquetes = () => {
 
   const fallbackCategory = 'Sin categoria'
 
-  const addCategory = (name: string) => {
+  const addCategory = async (name: string) => {
     const trimmed = name.trim()
     if (!trimmed) {
       setAlertMessage({ open: true, title: 'Error', message: 'Ingresa un nombre de categoria' })
@@ -74,10 +93,20 @@ const AdminPaquetes = () => {
       setAlertMessage({ open: true, title: 'Error', message: 'Ya existe esa categoria de paquete' })
       return
     }
-    setPkgCategories((s) => [...s, trimmed])
-    setPkgCatInputs((s) => ({ ...s, [trimmed]: trimmed }))
-    setPkgCatEditing((s) => ({ ...s, [trimmed]: false }))
-    setNewPkgCategory('')
+    try {
+      const created = await createPackageCategory(trimmed)
+      setPkgCategories((s) => [...s, created.name])
+      setPkgCategoryIds((s) => ({ ...s, [created.name]: created.id }))
+      setPkgCatInputs((s) => ({ ...s, [created.name]: created.name }))
+      setPkgCatEditing((s) => ({ ...s, [created.name]: false }))
+      setNewPkgCategory('')
+    } catch (e) {
+      setAlertMessage({
+        open: true,
+        title: 'Error',
+        message: `No se pudo crear la categoria: ${e instanceof Error ? e.message : 'Error desconocido'}`,
+      })
+    }
   }
 
   const renameCategory = async (from: string) => {
@@ -88,12 +117,25 @@ const AdminPaquetes = () => {
     }
     if (to === from) return
 
+    const categoryId = pkgCategoryIds[from]
+    if (!categoryId) {
+      setAlertMessage({ open: true, title: 'Error', message: 'No se encontro la categoria en la base de datos' })
+      return
+    }
+
     const prevCats = pkgCategories
+    const prevCategoryIds = pkgCategoryIds
     const prevPackages = packages
     const updatedCats = prevCats.map((c) => (c === from ? to : c))
     const updatedPackages = prevPackages.map((p) => (p.category === from ? { ...p, category: to } : p))
 
     setPkgCategories(updatedCats)
+    setPkgCategoryIds((s) => {
+      const next = { ...s }
+      delete next[from]
+      next[to] = categoryId
+      return next
+    })
     setPackages(updatedPackages)
     setPkgCatInputs((s) => {
       const next = { ...s }
@@ -109,11 +151,11 @@ const AdminPaquetes = () => {
     })
 
     try {
-      const affected = updatedPackages.filter((p) => p.category === to)
-      await Promise.all(affected.map((p) => updatePackage(p.id, { category: to } as any)))
+      await updatePackageCategory(categoryId, to)
     } catch (e) {
       setAlertMessage({ open: true, title: 'Error', message: `No se pudo renombrar: ${e instanceof Error ? e.message : 'Error desconocido'}` })
       setPkgCategories(prevCats)
+      setPkgCategoryIds(prevCategoryIds)
       setPackages(prevPackages)
       setPkgCatInputs((s) => ({ ...s, [from]: from }))
       setPkgCatEditing((s) => ({ ...s, [from]: false }))
@@ -122,13 +164,38 @@ const AdminPaquetes = () => {
 
   const deleteCategory = async (name: string) => {
     if (!confirm(`Eliminar la categoria "${name}"? Los elementos asociados se moveran a "${fallbackCategory}".`)) return
+    const categoryId = pkgCategoryIds[name]
+    if (!categoryId) {
+      setAlertMessage({ open: true, title: 'Error', message: 'No se encontro la categoria en la base de datos' })
+      return
+    }
+
+    let fallbackId = pkgCategoryIds[fallbackCategory]
+    if (!fallbackId) {
+      try {
+        const fallbackCreated = await createPackageCategory(fallbackCategory)
+        fallbackId = fallbackCreated.id
+        setPkgCategoryIds((s) => ({ ...s, [fallbackCategory]: fallbackCreated.id }))
+      } catch (e) {
+        setAlertMessage({ open: true, title: 'Error', message: `No se pudo crear categoria de respaldo: ${e instanceof Error ? e.message : 'Error desconocido'}` })
+        return
+      }
+    }
+
     const prevCats = pkgCategories
+    const prevCategoryIds = pkgCategoryIds
     const prevPackages = packages
     const updatedCats = prevCats.filter((c) => c !== name)
     if (!updatedCats.includes(fallbackCategory)) updatedCats.push(fallbackCategory)
     const updatedPackages = prevPackages.map((p) => (p.category === name ? { ...p, category: fallbackCategory } : p))
 
     setPkgCategories(updatedCats)
+    setPkgCategoryIds((s) => {
+      const next = { ...s }
+      delete next[name]
+      if (fallbackId) next[fallbackCategory] = fallbackId
+      return next
+    })
     setPackages(updatedPackages)
     setPkgCatEditing((s) => {
       const next = { ...s }
@@ -138,11 +205,11 @@ const AdminPaquetes = () => {
     })
 
     try {
-      const affected = updatedPackages.filter((p) => p.category === fallbackCategory)
-      await Promise.all(affected.map((p) => updatePackage(p.id, { category: fallbackCategory } as any)))
+      await deletePackageCategory(categoryId, fallbackId)
     } catch (e) {
       setAlertMessage({ open: true, title: 'Error', message: `No se pudo eliminar la categoria: ${e instanceof Error ? e.message : 'Error desconocido'}` })
       setPkgCategories(prevCats)
+      setPkgCategoryIds(prevCategoryIds)
       setPackages(prevPackages)
     }
   }
@@ -178,8 +245,14 @@ const AdminPaquetes = () => {
 
   const onSavePackage = async (pkg: Package) => {
     try {
+      const categoriaId = pkgCategoryIds[pkg.category]
+      if (!categoriaId) {
+        setAlertMessage({ open: true, title: 'Error', message: 'Selecciona una categoria valida para el paquete' })
+        return
+      }
+
       if (!pkg.id) {
-        const created = await createPackage({ ...pkg, imageUrl: '' })
+        const created = await createPackage({ ...(pkg as any), categoriaId, imageUrl: '' } as any)
 
         if (pkg.imageUrl) {
           const img = await createImageRecord({ categoria: 'PAQUETE', url: pkg.imageUrl, altText: created.name })
@@ -189,7 +262,7 @@ const AdminPaquetes = () => {
 
         setPackages((s) => [created, ...s])
       } else {
-        await updatePackage(pkg.id, { ...pkg, imageUrl: '' })
+        await updatePackage(pkg.id, { ...(pkg as any), categoriaId, imageUrl: '' } as any)
 
         if (pkg.imageUrl) {
           const img = await createImageRecord({ categoria: 'PAQUETE', url: pkg.imageUrl, altText: pkg.name })
@@ -211,6 +284,14 @@ const AdminPaquetes = () => {
   }
 
   const pkgCategoryStats = pkgCategories.map((c) => ({ name: c, count: packages.filter((p) => p.category === c).length }))
+  const uncategorizedLabel = 'Sin categoria'
+  const groupedPackages = packages.reduce<Record<string, Package[]>>((acc, pkgItem) => {
+    const key = (pkgItem.category || '').trim() || uncategorizedLabel
+    if (!acc[key]) acc[key] = []
+    acc[key].push(pkgItem)
+    return acc
+  }, {})
+  const groupedCategoryNames = Object.keys(groupedPackages).sort((a, b) => a.localeCompare(b, 'es'))
 
   if (loading) return <div className="page"><p>Cargando paquetes...</p></div>
 
@@ -222,8 +303,10 @@ const AdminPaquetes = () => {
           <p className="section__copy">Administra los paquetes y sus categorias.</p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-6 lg:gap-8 items-start">
-          <AdminSidebar current="paquetes" />
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 lg:gap-8 items-start">
+          <div className="sticky top-4">
+            <AdminSidebar current="paquetes" />
+          </div>
 
           <div className="min-w-0 space-y-10">
             <section className="section">
@@ -337,73 +420,95 @@ const AdminPaquetes = () => {
                 </div>
               </div>
 
-              <div className={`w-full border rounded-xl overflow-hidden shadow-[0_12px_36px_rgba(0,0,0,0.35)] ${
-                theme === 'dark'
-                  ? 'border-white/10 bg-[var(--card-bg,#11131a)]'
-                  : 'border-gray-200 bg-white'
-              }`}>
-                <div className={`hidden md:grid grid-cols-6 gap-3 p-4 font-semibold text-sm uppercase tracking-wide ${
-                  theme === 'dark'
-                    ? 'bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] text-gray-200'
-                    : 'bg-gray-100 border-b border-gray-300 text-gray-700'
-                }`}>
-                  <span>Nombre</span>
-                  <span>Categoria</span>
-                  <span>Precio</span>
-                  <span>Vehiculos</span>
-                  <span>Incluye</span>
-                  <span>Acciones</span>
-                </div>
-                {packages.map((p) => (
-                  <div key={p.id} className={`grid grid-cols-1 md:grid-cols-6 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b last:border-b-0 transition-colors ${
-                    theme === 'dark'
-                      ? 'border-white/5 hover:bg-white/5'
-                      : 'border-gray-200 hover:bg-gray-50'
-                  }`}>
-                    <div className="flex items-center justify-between md:block">
-                      <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Nombre</span>
-                      <span className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{p.name}</span>
-                    </div>
-                    <div className="flex items-center justify-between md:block">
-                      <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Categoria</span>
-                      <span className={`inline-flex px-2.5 py-1 text-[11px] rounded-full ${
+              <div className="space-y-5">
+                {groupedCategoryNames.map((categoryName) => {
+                  const categoryPackages = groupedPackages[categoryName] || []
+                  return (
+                    <div key={categoryName} className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                          theme === 'dark'
+                            ? 'bg-slate-900/70 border border-white/10 text-gray-100'
+                            : 'bg-gray-200 border border-gray-300 text-gray-700'
+                        }`}>{categoryName}</span>
+                        <span className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] ${
+                          theme === 'dark'
+                            ? 'bg-white/5 border-white/10 text-gray-200'
+                            : 'bg-gray-100 border-gray-300 text-gray-600'
+                        }`}>{categoryPackages.length} paquete{categoryPackages.length === 1 ? '' : 's'}</span>
+                      </div>
+
+                      <div className={`w-full border rounded-xl overflow-hidden shadow-[0_12px_36px_rgba(0,0,0,0.35)] ${
                         theme === 'dark'
-                          ? 'bg-white/10 text-gray-100'
-                          : 'bg-gray-200 text-gray-700'
-                      }`}>{p.category}</span>
-                    </div>
-                    <div className="flex items-center justify-between md:block">
-                      <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Precio</span>
-                      <span className={`font-semibold ${theme === 'dark' ? 'text-emerald-200' : 'text-emerald-600'}`}>${p.price.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between md:block">
-                      <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Vehiculos</span>
-                      <div className="flex flex-wrap gap-1">
-                        {(p.vehicles || []).slice(0,3).map((v) => (
-                          <span key={v.id} className={`inline-flex px-2 py-0.5 text-[11px] rounded-full border ${
+                          ? 'border-white/10 bg-[var(--card-bg,#11131a)]'
+                          : 'border-gray-200 bg-white'
+                      }`}>
+                        <div className={`hidden md:grid grid-cols-6 gap-3 p-4 font-semibold text-sm uppercase tracking-wide ${
+                          theme === 'dark'
+                            ? 'bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] text-gray-200'
+                            : 'bg-gray-100 border-b border-gray-300 text-gray-700'
+                        }`}>
+                          <span>Nombre</span>
+                          <span>Categoria</span>
+                          <span>Precio</span>
+                          <span>Vehiculos</span>
+                          <span>Incluye</span>
+                          <span>Acciones</span>
+                        </div>
+                        {categoryPackages.map((p) => (
+                          <div key={p.id} className={`grid grid-cols-1 md:grid-cols-6 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b last:border-b-0 transition-colors ${
                             theme === 'dark'
-                              ? 'bg-slate-900/60 border-white/10 text-gray-200'
-                              : 'bg-gray-200 border-gray-300 text-gray-700'
-                          }`}>{v.name}</span>
+                              ? 'border-white/5 hover:bg-white/5'
+                              : 'border-gray-200 hover:bg-gray-50'
+                          }`}>
+                            <div className="flex items-center justify-between md:block">
+                              <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Nombre</span>
+                              <span className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{p.name}</span>
+                            </div>
+                            <div className="flex items-center justify-between md:block">
+                              <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Categoria</span>
+                              <span className={`inline-flex px-2.5 py-1 text-[11px] rounded-full ${
+                                theme === 'dark'
+                                  ? 'bg-white/10 text-gray-100'
+                                  : 'bg-gray-200 text-gray-700'
+                              }`}>{p.category || uncategorizedLabel}</span>
+                            </div>
+                            <div className="flex items-center justify-between md:block">
+                              <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Precio</span>
+                              <span className={`font-semibold ${theme === 'dark' ? 'text-emerald-200' : 'text-emerald-600'}`}>${p.price.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center justify-between md:block">
+                              <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Vehiculos</span>
+                              <div className="flex flex-wrap gap-1">
+                                {(p.vehicles || []).slice(0,3).map((v) => (
+                                  <span key={v.id} className={`inline-flex px-2 py-0.5 text-[11px] rounded-full border ${
+                                    theme === 'dark'
+                                      ? 'bg-slate-900/60 border-white/10 text-gray-200'
+                                      : 'bg-gray-200 border-gray-300 text-gray-700'
+                                  }`}>{v.name}</span>
+                                ))}
+                                {(p.vehicleIds?.length || 0) > 3 && <span className={`text-[11px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>+{(p.vehicleIds?.length || 0) - 3} mas</span>}
+                                {(!p.vehicles || p.vehicles.length === 0) && <span className={`text-[11px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>—</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between md:block">
+                              <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Incluye</span>
+                              <span className={`text-[11px] truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{p.includes?.[0] ?? '—'}</span>
+                            </div>
+                            <div className="flex gap-2.5 items-center justify-end md:justify-end">
+                              <button className={iconButtonClasses} aria-label={`Editar ${p.name}`} onClick={() => onEditPackage(p)}>
+                                <FaEdit size={16} />
+                              </button>
+                              <button className={iconButtonClasses} aria-label={`Eliminar ${p.name}`} onClick={() => onDeletePackage(p.id)}>
+                                <FaTrash size={16} />
+                              </button>
+                            </div>
+                          </div>
                         ))}
-                        {(p.vehicleIds?.length || 0) > 3 && <span className={`text-[11px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>+{(p.vehicleIds?.length || 0) - 3} mas</span>}
-                        {(!p.vehicles || p.vehicles.length === 0) && <span className={`text-[11px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>—</span>}
                       </div>
                     </div>
-                    <div className="flex items-center justify-between md:block">
-                      <span className={`md:hidden text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Incluye</span>
-                      <span className={`text-[11px] truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{p.includes?.[0] ?? '—'}</span>
-                    </div>
-                    <div className="flex gap-2.5 items-center justify-end md:justify-end">
-                      <button className={iconButtonClasses} aria-label={`Editar ${p.name}`} onClick={() => onEditPackage(p)}>
-                        <FaEdit size={16} />
-                      </button>
-                      <button className={iconButtonClasses} aria-label={`Eliminar ${p.name}`} onClick={() => onDeletePackage(p.id)}>
-                        <FaTrash size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </section>
           </div>
@@ -425,7 +530,13 @@ const AdminPaquetes = () => {
       </Modal>
 
       <Modal open={showPkgCatModal} onClose={() => setShowPkgCatModal(false)} title="Crear categoria de paquete">
-        <CreateCategoryForm onCreate={(name) => { if (!pkgCategories.includes(name)) setPkgCategories(s => [name, ...s]); setShowPkgCatModal(false) }} onCancel={() => setShowPkgCatModal(false)} />
+        <CreateCategoryForm
+          onCreate={async (name) => {
+            await addCategory(name)
+            setShowPkgCatModal(false)
+          }}
+          onCancel={() => setShowPkgCatModal(false)}
+        />
       </Modal>
 
       <ConfirmationModal

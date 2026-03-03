@@ -31,7 +31,7 @@ export class VehiclesController {
   async findAll(
     @Query("skip") skip?: string,
     @Query("take") take?: string,
-    @Query("categoria") categoria?: string,
+    @Query("categoriaId") categoriaId?: string,
     @Query("estado") estado?: string,
   ) {
     const s = Number(skip ?? 0);
@@ -41,19 +41,17 @@ export class VehiclesController {
     return this.vehiclesService.findAll({
       skip: Number.isFinite(s) ? s : 0,
       take: Number.isFinite(t) ? t : 10,
-      categoria,
+      categoriaId: categoriaId ? Number(categoriaId) : undefined,
       estado: est === "ACTIVO" || est === "INACTIVO" ? est : "ACTIVO",
     });
   }
 
   @Get("disponibilidad")
-  @ApiOperation({ summary: "Consultar disponibilidad por rango horario" })
+  @ApiOperation({ summary: "Consultar disponibilidad diaria" })
   async availability(
     @Query("fecha") fecha?: string,
-    @Query("horaInicio") horaInicio?: string,
-    @Query("horaFin") horaFin?: string,
   ) {
-    return this.vehiclesService.getAvailability({ fecha, horaInicio, horaFin });
+    return this.vehiclesService.getAvailability({ fecha });
   }
 
   @Get(":id")

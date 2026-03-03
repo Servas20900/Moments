@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsDateString,
   IsEnum,
+  IsBoolean,
   Min,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
@@ -25,11 +26,6 @@ export class CreateReservationDto {
   @IsOptional()
   @IsString()
   vehiculoId?: string;
-
-  @ApiProperty({ example: "cm5xmb3ym00004m7a5wvg6p44", required: false })
-  @IsOptional()
-  @IsString()
-  conductorId?: string;
 
   @ApiProperty({ example: "Juan Pérez" })
   @IsString()
@@ -66,14 +62,6 @@ export class CreateReservationDto {
   @IsDateString()
   fechaEvento: string;
 
-  @ApiProperty({ example: "2026-02-14T14:00:00.000Z" })
-  @IsDateString()
-  horaInicio: string;
-
-  @ApiProperty({ example: "2026-02-14T18:00:00.000Z" })
-  @IsDateString()
-  horaFin: string;
-
   @ApiProperty({ example: "San José Centro" })
   @IsString()
   origen: string;
@@ -98,10 +86,59 @@ export class CreateReservationDto {
   @Min(0)
   anticipo: number;
 
+  @ApiProperty({ 
+    example: 200.0, 
+    description: 'Precio base de la reserva (sin extras)',
+    required: false 
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  precioBase?: number;
+
+  @ApiProperty({ 
+    example: 250.0, 
+    description: 'Precio total incluido extras',
+    required: false 
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  precioTotal?: number;
+
+  @ApiProperty({ 
+    example: 150.0, 
+    description: 'Monto restante por pagar',
+    required: false 
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  restante?: number;
+
   @ApiProperty({ enum: ["TARJETA", "SINPE", "TRANSFERENCIA"], required: false })
   @IsOptional()
   @IsEnum(["TARJETA", "SINPE", "TRANSFERENCIA"])
   tipoPago?: string;
+
+  @ApiProperty({
+    example: true,
+    description: 'Confirmación explícita de aceptación de términos y condiciones al momento del pago',
+  })
+  @IsBoolean()
+  aceptoTerminos: boolean;
+
+  @ApiProperty({
+    example: 'v1-2026-03',
+    required: false,
+    description: 'Versión de términos aceptada por el cliente',
+  })
+  @IsOptional()
+  @IsString()
+  terminosVersion?: string;
 
   @ApiProperty({
     required: false,

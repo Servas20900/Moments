@@ -30,11 +30,12 @@ export class VehicleAvailabilityService {
       },
     });
 
-    // Obtener unidad del vehículo (cuántas unidades existen)
-    const vehiculoUnidad = await this.prisma.vehiculoUnidad.findUnique({
-      where: { vehiculoId },
+    // Obtener cantidad de unidades del vehículo
+    const vehiculo = await this.prisma.vehiculo.findUnique({
+      where: { id: vehiculoId },
+      select: { cantidad: true },
     });
-    const cantidadDisponible = vehiculoUnidad?.cantidad ?? 1;
+    const cantidadDisponible = vehiculo?.cantidad ?? 1;
 
     // Contar reservas activas para ese vehículo en esa fecha
     const reservasActivas = await this.prisma.reserva.count({
@@ -45,7 +46,7 @@ export class VehicleAvailabilityService {
           lt: nextDay,
         },
         estado: {
-          in: ['PAGO_PENDIENTE', 'PAGO_PARCIAL', 'CONFIRMADA', 'COMPLETADA'],
+          in: ['PAGO_PARCIAL', 'CONFIRMADA'],
         },
       },
     });
@@ -127,7 +128,7 @@ export class VehicleAvailabilityService {
   async createBlock(data: {
     vehiculoId: string;
     fecha: string;
-    motivo: MotivoDisponibilidad;
+    motivo: 'MANTENIMIENTO' | 'BLOQUEADO_ADMIN' | 'OTRO';
     detalles?: string;
     creadoPor?: string;
   }) {
@@ -169,7 +170,7 @@ export class VehicleAvailabilityService {
       data: {
         vehiculoId: data.vehiculoId,
         fecha: targetDate,
-        motivo: data.motivo,
+        motivo: data.motivo as MotivoDisponibilidad,
         detalles: data.detalles,
         creadoPor: data.creadoPor,
       },
@@ -199,7 +200,7 @@ export class VehicleAvailabilityService {
     const firstDay = new Date(year, month - 1, 1);
     const lastDay = new Date(year, month, 0, 23, 59, 59, 999);
 
-    const [bloqueosAdmin, reservasActivas, vehiculoUnidad] = await Promise.all([
+    const [bloqueosAdmin, reservasActivas, vehiculo] = await Promise.all([
       this.prisma.disponibilidadVehiculo.findMany({
         where: {
           vehiculoId,
@@ -217,16 +218,17 @@ export class VehicleAvailabilityService {
             lte: lastDay,
           },
           estado: {
-            in: ['PAGO_PENDIENTE', 'PAGO_PARCIAL', 'CONFIRMADA', 'COMPLETADA'],
+            in: ['PAGO_PARCIAL', 'CONFIRMADA'],
           },
         },
       }),
-      this.prisma.vehiculoUnidad.findUnique({
-        where: { vehiculoId },
+      this.prisma.vehiculo.findUnique({
+        where: { id: vehiculoId },
+        select: { cantidad: true },
       }),
     ]);
 
-    const cantidadTotal = vehiculoUnidad?.cantidad ?? 1;
+    const cantidadTotal = vehiculo?.cantidad ?? 1;
 
     // Agrupar por día
     const calendar: Record<string, any> = {};
@@ -314,10 +316,10 @@ export class VehicleAvailabilityService {
 
     // ======= VISTA AGREGADA: TODOS LOS VEHÍCULOS =======
 
-    // Obtener todos los vehículos activos
+    // Obtener todos los vehículos activos con su cantidad
     const vehiculos = await this.prisma.vehiculo.findMany({
       where: { estado: 'ACTIVO' },
-      include: { unidad: true },
+      select: { id: true, nombre: true, cantidad: true },
     });
 
     // Obtener TODOS los bloqueos del mes
@@ -331,7 +333,7 @@ export class VehicleAvailabilityService {
     const reservasActivas = await this.prisma.reserva.findMany({
       where: {
         fechaEvento: { gte: firstDay, lte: lastDay },
-        estado: { in: ['PAGO_PENDIENTE', 'PAGO_PARCIAL', 'CONFIRMADA', 'COMPLETADA'] },
+        estado: { in: ['PAGO_PARCIAL', 'CONFIRMADA'] },
       },
       include: {
         vehiculo: { select: { nombre: true } },
@@ -354,7 +356,7 @@ export class VehicleAvailabilityService {
       const vehiculosDelDia: any[] = [];
 
       for (const vehiculo of vehiculos) {
-        const cantidad = vehiculo.unidad?.cantidad ?? 1;
+        const cantidad = vehiculo.cantidad ?? 1;
         totalUnidades += cantidad;
 
         // Verificar si este vehículo tiene bloqueo admin en este día
@@ -433,8 +435,6 @@ export class VehicleAvailabilityService {
             paquete: (r.paquete as any)?.nombre || 'N/A',
             cliente: r.nombre,
             estado: r.estado,
-            horaInicio: r.horaInicio,
-            horaFin: r.horaFin,
           })),
       };
     }
@@ -444,7 +444,7 @@ export class VehicleAvailabilityService {
       year,
       month,
       totalVehiculos: vehiculos.length,
-      totalUnidades: vehiculos.reduce((sum, v) => sum + (v.unidad?.cantidad ?? 1), 0),
+      totalUnidades: vehiculos.reduce((sum, v) => sum + (v.cantidad ?? 1), 0),
       days: Object.values(calendar),
     };
   }

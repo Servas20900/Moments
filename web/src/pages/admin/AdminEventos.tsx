@@ -101,8 +101,10 @@ const AdminEventos = () => {
           <p className="section__copy">Administra los eventos del calendario. Las acciones pegan a la API.</p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-6 lg:gap-8 items-start">
-          <AdminSidebar current="eventos" />
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 lg:gap-8 items-start">
+          <div className="sticky top-4">
+            <AdminSidebar current="eventos" />
+          </div>
 
           <div className="min-w-0">
             <section className="section">

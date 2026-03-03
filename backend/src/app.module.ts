@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { CacheModule } from "@nestjs/cache-manager";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
@@ -19,7 +20,9 @@ import { ExtrasModule } from "./modules/extras/extras.module";
 import { IncluidosModule } from "./modules/incluidos/incluidos.module";
 import { CategoriasIncluidosModule } from "./modules/categorias-incluidos/categorias-incluidos.module";
 import { VehicleAvailabilityModule } from "./modules/vehicle-availability/vehicle-availability.module";
+import { NotificacionesModule } from "./modules/notificaciones/notificaciones.module";
 import { HealthController } from "./common/health/health.controller";
+import { ThrottlerBehindProxyGuard } from "./common/guards/throttler-behind-proxy.guard";
 import { validate } from "./config/env.validation";
 
 @Module({
@@ -37,7 +40,7 @@ import { validate } from "./config/env.validation";
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), '..', process.env.NODE_ENV === 'production' ? 'public' : 'web/dist'),
       serveRoot: "/",
-      exclude: ["/api*", "/auth*", "/paquetes*", "/vehiculos*", "/eventos*", "/experiencias*", "/reservas*", "/imagenes*", "/extras*", "/usuarios*", "/calendario*", "/health*", "/categorias-incluidos*", "/incluidos*"],
+      exclude: ["/api*", "/auth*", "/paquetes*", "/vehiculos*", "/eventos*", "/experiencias*", "/reservas*", "/imagenes*", "/extras*", "/notificaciones*", "/usuarios*", "/calendario*", "/health*", "/categorias-incluidos*", "/incluidos*"],
     }),
     ThrottlerModule.forRoot([
       {
@@ -66,7 +69,14 @@ import { validate } from "./config/env.validation";
     IncluidosModule,
     CategoriasIncluidosModule,
     VehicleAvailabilityModule,
+    NotificacionesModule,
   ],
   controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerBehindProxyGuard,
+    },
+  ],
 })
 export class AppModule {}

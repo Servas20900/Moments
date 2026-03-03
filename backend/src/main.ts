@@ -11,6 +11,12 @@ import { setupSwagger } from "./config/swagger";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const httpAdapter = app.getHttpAdapter();
+  const httpServer = httpAdapter.getInstance();
+  if (httpServer?.set) {
+    httpServer.set("trust proxy", 1);
+  }
+
   // Configure Winston as logger
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
@@ -20,7 +26,11 @@ async function bootstrap() {
   setupMiddleware(app);
   setupPipes(app);
   setupFilters(app);
-  setupSwagger(app);
+  
+  // Only enable Swagger in development
+  if (process.env.NODE_ENV !== 'production') {
+    setupSwagger(app);
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port, "0.0.0.0");

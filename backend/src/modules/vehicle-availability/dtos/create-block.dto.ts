@@ -1,6 +1,11 @@
 import { IsString, IsDateString, IsEnum, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { MotivoDisponibilidad } from '@prisma/client';
+
+enum MotivoBloqueoAdmin {
+  MANTENIMIENTO = 'MANTENIMIENTO',
+  BLOQUEADO_ADMIN = 'BLOQUEADO_ADMIN',
+  OTRO = 'OTRO',
+}
 
 export class CreateBlockDto {
   @ApiProperty({ example: 'cm5xmb3ym00004m7a5wvg6p43' })
@@ -11,9 +16,9 @@ export class CreateBlockDto {
   @IsDateString()
   fecha: string;
 
-  @ApiProperty({ enum: MotivoDisponibilidad, example: 'BLOQUEADO_ADMIN' })
-  @IsEnum(MotivoDisponibilidad)
-  motivo: MotivoDisponibilidad;
+  @ApiProperty({ enum: MotivoBloqueoAdmin, example: 'BLOQUEADO_ADMIN' })
+  @IsEnum(MotivoBloqueoAdmin)
+  motivo: MotivoBloqueoAdmin;
 
   @ApiProperty({ example: 'Servicio de mantenimiento programado', required: false })
   @IsOptional()

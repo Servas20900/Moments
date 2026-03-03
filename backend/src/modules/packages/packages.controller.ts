@@ -8,13 +8,11 @@ import {
   Body,
   UseGuards,
   Query,
-  Inject,
 } from "@nestjs/common";
-import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import type { Cache } from "cache-manager";
 import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { UseInterceptors } from "@nestjs/common";
 import { CacheInterceptor } from "@nestjs/cache-manager";
+import { Throttle } from "@nestjs/throttler";
 import { PackagesService } from "./packages.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -26,18 +24,46 @@ import { UpdatePackageDto } from "./dtos/update-package.dto";
 @ApiTags("Paquetes")
 @Controller("paquetes")
 export class PackagesController {
-  constructor(
-    private packagesService: PackagesService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+  constructor(private packagesService: PackagesService) {}
 
-  @Get("categorias/list")
+  @Get("categorias")
   @ApiOperation({ summary: "Listar categorías de paquetes" })
-  async getCategories() {
-    return this.packagesService.getCategories();
+  async findAllCategories() {
+    return this.packagesService.findAllCategories();
+  }
+
+  @Post("categorias")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth("access_token")
+  @ApiOperation({ summary: "Crear categoría de paquete (admin)" })
+  async createCategory(@Body() body: any) {
+    return this.packagesService.createCategory(body?.nombre ?? body?.name ?? "");
+  }
+
+  @Put("categorias/:id")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth("access_token")
+  @ApiOperation({ summary: "Actualizar categoría de paquete (admin)" })
+  async updateCategory(@Param("id") id: string, @Body() body: any) {
+    return this.packagesService.updateCategory(Number(id), body?.nombre ?? body?.name ?? "");
+  }
+
+  @Delete("categorias/:id")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth("access_token")
+  @ApiOperation({ summary: "Eliminar categoría de paquete (admin)" })
+  async deleteCategory(
+    @Param("id") id: string,
+    @Query("fallbackCategoryId") fallbackCategoryId?: string,
+  ) {
+    return this.packagesService.deleteCategory(Number(id), Number(fallbackCategoryId));
   }
 
   @Get()
+  @Throttle({ default: { limit: 300, ttl: 60000 } })
   @ApiOperation({ summary: "Listar paquetes (solo activos)" })
   @UseInterceptors(CacheInterceptor)
   async findAll(
@@ -78,10 +104,15 @@ export class PackagesController {
       precioBase: Number(body.precioBase ?? body.price ?? 0),
       maxPersonas: Number(body.maxPersonas ?? body.maxPeople ?? 0),
       vehicleIds: Array.isArray(body.vehicleIds) ? body.vehicleIds : undefined,
+      incluidos: Array.isArray(body.incluidos)
+        ? body.incluidos
+        : Array.isArray(body.incluye)
+          ? body.incluye
+          : Array.isArray(body.includes)
+            ? body.includes
+            : undefined,
     };
-    const created = await this.packagesService.create(dto);
-    await this.cacheManager.reset();
-    return created;
+    return this.packagesService.create(dto);
   }
 
   @Put(":id")
@@ -97,14 +128,15 @@ export class PackagesController {
       precioBase: body.precioBase ?? body.price,
       maxPersonas: body.maxPersonas ?? body.maxPeople,
       vehicleIds: Array.isArray(body.vehicleIds) ? body.vehicleIds : undefined,
-      extraIds: Array.isArray(body.extraIds) ? body.extraIds : undefined,
-      incluidoIds: Array.isArray(body.incluidoIds) ? body.incluidoIds : undefined,
-      incluidos: Array.isArray(body.incluidos) ? body.incluidos : undefined,
-      imagenUrl: body.imagenUrl ?? body.imageUrl,
+      incluidos: Array.isArray(body.incluidos)
+        ? body.incluidos
+        : Array.isArray(body.incluye)
+          ? body.incluye
+          : Array.isArray(body.includes)
+            ? body.includes
+            : undefined,
     };
-    const updated = await this.packagesService.update(id, dto);
-    await this.cacheManager.reset();
-    return updated;
+    return this.packagesService.update(id, dto);
   }
 
   @Delete(":id")
@@ -113,8 +145,6 @@ export class PackagesController {
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Eliminar (soft delete) paquete (admin)" })
   async delete(@Param("id") id: string) {
-    const result = await this.packagesService.delete(id);
-    await this.cacheManager.reset();
-    return result;
+    return this.packagesService.delete(id);
   }
 }

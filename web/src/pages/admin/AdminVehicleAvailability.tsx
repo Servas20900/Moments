@@ -229,7 +229,21 @@ const AdminVehicleAvailability = () => {
 
   // ============== LOADING STATE ==============
   if (loading) {
-    return <div className="page"><p>Cargando disponibilidad...</p></div>
+    return (
+      <div className={`min-h-screen ${theme === 'dark' ? 'bg-gradient-to-b from-[#0f0e13] to-[#1a1625] text-white' : 'bg-gradient-to-b from-gray-50 to-gray-100 text-gray-900'}`}>
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <header className="mb-12">
+            <h1 className="display">Disponibilidad de Vehículos</h1>
+          </header>
+          <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 lg:gap-8 items-start">
+            <div className="sticky top-4">
+              <AdminSidebar current="disponibilidad" />
+            </div>
+            <div className="min-w-0"><p className="text-center">Cargando disponibilidad...</p></div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (vehicles.length === 0) {
@@ -240,6 +254,15 @@ const AdminVehicleAvailability = () => {
             <h1 className="display">Disponibilidad de Vehículos</h1>
             <p className="section__copy">No hay vehículos registrados</p>
           </header>
+
+          <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 lg:gap-8 items-start">
+            <div className="sticky top-4">
+              <AdminSidebar current="disponibilidad" />
+            </div>
+            <div className="min-w-0 p-8 text-center">
+              <p className="text-gray-500">Por favor, crea vehículos primero para ver su disponibilidad</p>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -253,8 +276,10 @@ const AdminVehicleAvailability = () => {
           <p className="section__copy">Visualiza el calendario de disponibilidad y qué vehículos utiliza cada paquete</p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-6 lg:gap-8 items-start">
-          <AdminSidebar current="disponibilidad" />
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 lg:gap-8 items-start">
+          <div className="sticky top-4">
+            <AdminSidebar current="disponibilidad" />
+          </div>
 
           <div className="min-w-0 space-y-10">
             {/* =============== FILTROS GLOBALES =============== */}

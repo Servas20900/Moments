@@ -249,6 +249,7 @@ function AdminReservationsTable() {
                                 <p className="text-sm font-medium text-white truncate">{reserva.nombre}</p>
                                 <p className="text-xs text-gray-400 truncate">{reserva.email}</p>
                                 <p className="text-xs text-gray-500 truncate">{reserva.telefono}</p>
+                                <p className="text-[10px] text-amber-300 truncate">Factura: {reserva.numeroFactura || 'Pendiente'}</p>
                               </div>
                             </div>
                           </td>
@@ -260,9 +261,7 @@ function AdminReservationsTable() {
                                 <HiCalendar className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
                                 <div className="min-w-0">
                                   <p className="text-sm font-medium text-white">{new Date(reserva.fechaEvento).toLocaleDateString('es-CR')}</p>
-                                  <p className="text-xs text-gray-400 whitespace-nowrap">
-                                    {new Date(reserva.horaInicio).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })} - {new Date(reserva.horaFin).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit' })}
-                                  </p>
+                                  <p className="text-xs text-gray-400">Reserva diaria (todo el día)</p>
                                 </div>
                               </div>
                               <div className="flex items-start gap-2">
@@ -284,7 +283,7 @@ function AdminReservationsTable() {
                                 <span className="text-white font-medium">${reserva.precioTotal.toFixed(2)}</span>
                                 
                                 <span className="text-gray-500">Restante:</span>
-                                <span className="text-gray-400">${reserva.restante.toFixed(2)}</span>
+                                <span className="text-gray-400">${(reserva.restante ?? 0).toFixed(2)}</span>
                               </div>
                             </div>
                           </td>

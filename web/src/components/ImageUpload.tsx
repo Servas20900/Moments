@@ -11,6 +11,10 @@ export type ImageUploadProps = {
   required?: boolean
 }
 
+const SkeletonLoader = () => (
+  <div className="w-full h-56 bg-gradient-to-r from-white/5 via-white/10 to-white/5 rounded-lg animate-pulse" />
+)
+
 const ImageUpload = ({ label = 'Cargar imagen', value, onChange, onUpload, error, required = false }: ImageUploadProps) => {
   const [isUploading, setIsUploading] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
@@ -83,18 +87,18 @@ const ImageUpload = ({ label = 'Cargar imagen', value, onChange, onUpload, error
       )}
 
       {!value ? (
-        <div
-          className={[zoneBase, isDragging ? zoneDragging : '', isUploading ? zoneDisabled : ''].filter(Boolean).join(' ')}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
+        <>
           {isUploading ? (
-            <div className="text-sm text-gray-300">Subiendo imagen...</div>
+            <SkeletonLoader />
           ) : (
-            <>
+            <div
+              className={[zoneBase, isDragging ? zoneDragging : '', isUploading ? zoneDisabled : ''].filter(Boolean).join(' ')}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
               <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/80">
                 <FaImage />
               </div>
@@ -102,7 +106,7 @@ const ImageUpload = ({ label = 'Cargar imagen', value, onChange, onUpload, error
                 <div className="text-base font-semibold text-white">Arrastra tu imagen aquí</div>
                 <div className="text-sm text-gray-400">o haz clic para seleccionar (JPG, PNG, WebP - Máximo 5MB)</div>
               </div>
-            </>
+            </div>
           )}
           <input
             ref={fileInputRef}
@@ -113,7 +117,7 @@ const ImageUpload = ({ label = 'Cargar imagen', value, onChange, onUpload, error
             disabled={isUploading}
             aria-label="Subir imagen"
           />
-        </div>
+        </>
       ) : (
         <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
           <div className="overflow-hidden rounded-lg border border-white/10">

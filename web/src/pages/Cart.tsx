@@ -68,10 +68,6 @@ const Cart = () => {
                   <p className="text-white font-semibold">{cart.date}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Horario</p>
-                  <p className="text-white font-semibold">{cart.time}</p>
-                </div>
-                <div>
                   <p className="text-sm text-gray-400">Origen</p>
                   <p className="text-white font-semibold">{cart.origin}</p>
                 </div>

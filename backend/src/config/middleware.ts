@@ -21,6 +21,7 @@ export function setupMiddleware(app: INestApplication): void {
       req.path.startsWith("/reservas") ||
       req.path.startsWith("/imagenes") ||
       req.path.startsWith("/extras") ||
+      req.path.startsWith("/notificaciones") ||
       req.path.startsWith("/categorias-incluidos") ||
       req.path.startsWith("/incluidos") ||
       req.path.startsWith("/usuarios") ||

@@ -22,15 +22,6 @@ export class UsersService {
             rol: true,
           },
         },
-        distrito: {
-          include: {
-            canton: {
-              include: {
-                provincia: true,
-              },
-            },
-          },
-        },
       },
     });
 
@@ -94,7 +85,6 @@ export class UsersService {
         nombre: dto.nombre || user.nombre,
         telefono: dto.telefono || user.telefono,
         identificacion: dto.identificacion || user.identificacion,
-        distritoId: dto.distritoId || user.distritoId,
       },
       include: {
         roles: {

@@ -3,6 +3,8 @@ import helmet from "helmet";
 import * as Sentry from "@sentry/node";
 
 export function setupSecurity(app: INestApplication): void {
+  const isProduction = process.env.NODE_ENV === "production";
+
   // Initialize Sentry if DSN is provided
   if (process.env.SENTRY_DSN) {
     Sentry.init({
@@ -15,8 +17,24 @@ export function setupSecurity(app: INestApplication): void {
   // Security headers with Helmet
   app.use(
     helmet({
-      contentSecurityPolicy: false, // Disabled for Swagger
-      crossOriginEmbedderPolicy: false,
+      contentSecurityPolicy: isProduction
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              baseUri: ["'self'"],
+              frameAncestors: ["'none'"],
+              objectSrc: ["'none'"],
+              scriptSrc: ["'self'"],
+              styleSrc: ["'self'", "'unsafe-inline'"],
+              imgSrc: ["'self'", "data:", "https:"],
+              fontSrc: ["'self'", "data:"],
+              connectSrc: ["'self'"],
+              formAction: ["'self'"],
+              upgradeInsecureRequests: [],
+            },
+          }
+        : false,
+      crossOriginEmbedderPolicy: isProduction,
     }),
   );
 }

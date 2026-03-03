@@ -47,8 +47,8 @@ export class ReservationsController {
 
   @Post()
   @ApiOperation({ summary: "Crear reserva (publico)" })
-  async create(@Body() dto: CreateReservationDto) {
-    return this.reservationsService.create(dto);
+  async create(@Body() dto: CreateReservationDto, @Request() req: any) {
+    return this.reservationsService.create(dto, this.buildContracargoMetadata(req));
   }
 
   @Patch(":id/pago/adelanto")
@@ -56,8 +56,9 @@ export class ReservationsController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Confirmar recepción de adelanto (admin)" })
-  async confirmAdelanto(@Param("id") id: string) {
-    return this.reservationsService.confirmAdelanto(id);
+  async confirmAdelanto(@Param("id") id: string, @Request() req: any) {
+    const adminUser = req.user?.email || req.user?.nombre || 'Admin';
+    return this.reservationsService.confirmAdelanto(id, adminUser);
   }
 
   @Patch(":id/pago/completo")
@@ -65,8 +66,9 @@ export class ReservationsController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth("access_token")
   @ApiOperation({ summary: "Confirmar pago completo (admin)" })
-  async confirmPagoCompleto(@Param("id") id: string) {
-    return this.reservationsService.confirmPagoCompleto(id);
+  async confirmPagoCompleto(@Param("id") id: string, @Request() req: any) {
+    const adminUser = req.user?.email || req.user?.nombre || 'Admin';
+    return this.reservationsService.confirmPagoCompleto(id, adminUser);
   }
 
   // ==================== NUEVOS ENDPOINTS ADMIN ====================
@@ -188,5 +190,23 @@ export class ReservationsController {
   ) {
     const adminUser = req.user?.email || req.user?.nombre || 'Admin';
     return this.reservationsService.updateEventoRealizado(id, dto.eventoRealizado, adminUser);
+  }
+
+  private buildContracargoMetadata(req: any) {
+    const xForwardedFor = req?.headers?.['x-forwarded-for'];
+    const forwardedIp = typeof xForwardedFor === 'string' ? xForwardedFor.split(',')[0].trim() : null;
+    const ipCliente = forwardedIp || req?.headers?.['cf-connecting-ip'] || req?.headers?.['x-real-ip'] || req?.ip || req?.socket?.remoteAddress || null;
+    const userAgent = req?.headers?.['user-agent'] || null;
+
+    return {
+      ipCliente,
+      userAgent,
+      metadatosContracargo: {
+        acceptLanguage: req?.headers?.['accept-language'] || null,
+        referer: req?.headers?.referer || null,
+        forwardedFor: req?.headers?.['x-forwarded-for'] || null,
+        cfRay: req?.headers?.['cf-ray'] || null,
+      },
+    };
   }
 }

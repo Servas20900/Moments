@@ -7,15 +7,24 @@ export class CreateVehicleDto {
   @IsString()
   nombre: string;
 
-  @ApiProperty({ example: "Van" })
-  @IsString()
-  categoria: string;
+  @ApiProperty({ example: 1, description: "ID de la categoría de vehículo" })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  categoriaId: number;
 
   @ApiProperty({ example: 12 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
   asientos: number;
+
+  @ApiProperty({ example: 1, description: "Cantidad de unidades disponibles del mismo vehículo", default: 1 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  cantidad?: number;
 
   @ApiProperty({ example: 25.0 })
   @Type(() => Number)

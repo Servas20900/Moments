@@ -44,6 +44,7 @@ export type VehicleView = {
   name: string
   category: string
   seats: number
+  quantity: number
   rate: string
   features: string[]
   imageUrl: string
@@ -92,14 +93,6 @@ export type VehicleOccupancy = {
   isOccupied: boolean
 }
 
-export type VehicleAvailability = {
-  available: boolean
-  bloqueadoPor: 'RESERVADO' | 'MANTENIMIENTO' | 'BLOQUEADO_ADMIN' | 'OTRO' | null
-  detalles: string | null
-  cantidadDisponible: number
-  cantidadTotal: number
-}
-
 export type VehicleBlock = {
   id: string
   vehiculoId: string
@@ -110,22 +103,34 @@ export type VehicleBlock = {
   creadoEn: string
 }
 
-export type MonthlyAvailabilityDay = {
-  date: string
-  isBlocked: boolean
-  motivo?: string
-  detalles?: string
-  reservasCount: number
-  disponibles: number
-  cantidadTotal: number
+export type CategoriaIncluido = {
+  id: number
+  nombre: string
+  estado: 'ACTIVO' | 'INACTIVO' | 'SUSPENDIDO'
+  creadoEn: string
 }
 
-export type MonthlyAvailability = {
-  vehiculoId: string
-  year: number
-  month: number
-  cantidadTotal: number
-  days: MonthlyAvailabilityDay[]
+export type Incluido = {
+  id: string
+  nombre: string
+  descripcion: string | null
+  categoriaId: number
+  categoriaNombre: string
+  estado: 'ACTIVO' | 'INACTIVO' | 'SUSPENDIDO'
+  creadoEn: string
+  actualizadoEn: string
+  packageIds?: string[]
+}
+
+export type Notification = {
+  id: string
+  usuarioId: string
+  titulo: string
+  mensaje: string
+  tipo: 'RESERVA' | 'PAGO' | 'CONFIRMACION' | 'CANCELACION'
+  reservaId?: string
+  leida: boolean
+  creadoEn: string
 }
 
 // Alias legacy names usados en Admin

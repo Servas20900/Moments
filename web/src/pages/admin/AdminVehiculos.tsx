@@ -146,7 +146,7 @@ const AdminVehiculos = () => {
   }
 
   const onCreateVehicle = () => {
-    setEditingVehicle({ id: '', name: '', category: '', seats: 1, rate: '', features: [], imageUrl: '' })
+    setEditingVehicle({ id: '', name: '', category: '', seats: 1, quantity: 1, rate: '', features: [], imageUrl: '' })
     setShowVehModal(true)
   }
 
@@ -204,8 +204,10 @@ const AdminVehiculos = () => {
           <p className="section__copy">Administra los vehiculos y sus categorias.</p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-6 lg:gap-8 items-start">
-          <AdminSidebar current="vehiculos" />
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 lg:gap-8 items-start">
+          <div className="sticky top-4">
+            <AdminSidebar current="vehiculos" />
+          </div>
 
           <div className="min-w-0 space-y-10">
             <section className="section">
@@ -301,14 +303,15 @@ const AdminVehiculos = () => {
               </div>
 
               <div className="w-full border border-white/10 rounded-xl overflow-hidden bg-[var(--card-bg,#11131a)] shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
-                <div className="hidden md:grid grid-cols-4 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
+                <div className="hidden md:grid grid-cols-5 gap-3 p-4 bg-gradient-to-r from-white/10 to-transparent border-b border-[rgba(201,162,77,0.2)] font-semibold text-sm uppercase tracking-wide text-gray-200">
                   <span>Nombre</span>
                   <span>Categoria</span>
                   <span>Asientos</span>
+                  <span>Cantidad</span>
                   <span>Acciones</span>
                 </div>
                 {vehicles.map((v) => (
-                  <div key={v.id} className="grid grid-cols-1 md:grid-cols-4 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                  <div key={v.id} className="grid grid-cols-1 md:grid-cols-5 gap-2 md:gap-3 p-3.5 items-start md:items-center border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
                     <div className="flex items-center justify-between md:block">
                       <span className="md:hidden text-xs text-gray-400">Nombre</span>
                       <span>{v.name}</span>
@@ -320,6 +323,13 @@ const AdminVehiculos = () => {
                     <div className="flex items-center justify-between md:block">
                       <span className="md:hidden text-xs text-gray-400">Asientos</span>
                       <span>{v.seats}</span>
+                    </div>
+                    <div className="flex items-center justify-between md:block">
+                      <span className="md:hidden text-xs text-gray-400">Cantidad</span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="font-semibold text-amber-300">{v.quantity ?? 1}</span>
+                        <span className="text-xs text-gray-400">unidad{(v.quantity ?? 1) !== 1 ? 'es' : ''}</span>
+                      </span>
                     </div>
                     <div className="flex gap-2.5 items-center justify-end md:justify-end">
                       <button className={iconButtonClasses} aria-label={`Editar ${v.name}`} onClick={() => onEditVehicle(v)}>

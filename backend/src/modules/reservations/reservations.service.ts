@@ -1,10 +1,13 @@
-import { Injectable, NotFoundException, Logger, BadRequestException } from "@nestjs/common";
+import { Injectable, NotFoundException, Logger, BadRequestException, InternalServerErrorException } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
+import { randomBytes } from "crypto";
+import { EstadoReserva } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { EmailService } from "../../common/email/email.service";
 import { InvoiceService } from "../../common/invoice/invoice.service";
+import { NotificacionesService } from "../notificaciones/notificaciones.service";
 import { CreateReservationDto } from "./dtos/create-reservation.dto";
-import { EstadoContacto } from "./dtos/update-estado-operativo.dto";
+import { CreateManualReservationDto } from "./dtos/create-manual-reservation.dto";
 
 @Injectable()
 export class ReservationsService {
@@ -14,9 +17,21 @@ export class ReservationsService {
     private prisma: PrismaService,
     private emailService: EmailService,
     private invoiceService: InvoiceService,
+    private notificacionesService: NotificacionesService,
   ) {}
 
-  async create(dto: CreateReservationDto) {
+  async create(
+    dto: CreateReservationDto,
+    metadata?: {
+      ipCliente?: string | null;
+      userAgent?: string | null;
+      metadatosContracargo?: any;
+    },
+  ) {
+    if (!dto.aceptoTerminos) {
+      throw new BadRequestException('Debes aceptar los términos y condiciones para continuar con la reserva');
+    }
+
     const userId =
       dto.usuarioId ??
       (await this.ensureUser(dto.email, dto.nombre, dto.telefono));
@@ -24,317 +39,102 @@ export class ReservationsService {
     const vehiculoId = dto.vehiculoId;
 
     if (!paqueteId) throw new NotFoundException("paqueteId es requerido");
-    // vehiculoId es OPCIONAL - puede asignarse después
+    if (!vehiculoId) throw new NotFoundException("vehiculoId es requerido");
+
+    await this.ensureVehicleBelongsToPackage(paqueteId, vehiculoId);
 
     const fechaEvento = new Date(dto.fechaEvento);
-    const horaInicio = new Date(dto.horaInicio);
-    const horaFin = new Date(dto.horaFin);
-
-    if (!(horaInicio instanceof Date) || isNaN(horaInicio.getTime())) {
-      throw new BadRequestException("horaInicio inválida");
-    }
-    if (!(horaFin instanceof Date) || isNaN(horaFin.getTime())) {
-      throw new BadRequestException("horaFin inválida");
-    }
-    if (horaFin <= horaInicio) {
-      throw new BadRequestException("horaFin debe ser mayor que horaInicio");
+    if (isNaN(fechaEvento.getTime())) {
+      throw new BadRequestException("fechaEvento inválida");
     }
 
-    const paquete = await this.prisma.paquete.findUnique({
-      where: { id: paqueteId },
-      include: { vehiculos: true },
-    });
+    await this.ensureVehicleAvailabilityForDate(vehiculoId, fechaEvento);
 
-    if (!paquete) {
-      throw new NotFoundException("Paquete no encontrado");
-    }
-
-    // Validar vehículo SOLO SI fue proporcionado
-    if (vehiculoId) {
-      const allowedVehicleIds = paquete.vehiculos?.map((v) => v.vehiculoId) ?? [];
-      if (allowedVehicleIds.length > 0 && !allowedVehicleIds.includes(vehiculoId)) {
-        throw new BadRequestException("El vehículo no pertenece al paquete seleccionado");
-      }
-
-      // Verificar conflicto de horario SOLO SI hay vehículo
-      const conflicting = await this.prisma.reserva.findFirst({
-        where: {
-          vehiculoId,
-          estado: { in: ["PAGO_PENDIENTE", "PAGO_PARCIAL", "CONFIRMADA", "COMPLETADA"] },
-          horaInicio: { lt: horaFin },
-          horaFin: { gt: horaInicio },
-        },
-        select: { id: true },
-      });
-
-      if (conflicting) {
-        throw new BadRequestException("El vehículo ya está reservado en ese horario");
-      }
-    }
-
-    // ==========================================
-    // CÁLCULO DE PRECIOS (NO CONFIAR EN FRONTEND)
-    // ==========================================
-    
-    // 1. Precio base del paquete
-    const precioBase = Number(paquete.precioBase);
-    
-    // 2. Calcular precio de extras
-    let precioExtras = 0;
-    const extrasValidados: Array<{extraId: string; cantidad: number; precioUnitario: number}> = [];
-    
-    if (Array.isArray(dto.extras) && dto.extras.length > 0) {
-      const extraIds = dto.extras.map(e => e.extraId).filter(Boolean);
-      
-      if (extraIds.length > 0) {
-        const extrasDB = await this.prisma.extra.findMany({
-          where: { 
-            id: { in: extraIds },
-            estado: 'ACTIVO'
-          },
-          select: { id: true, precio: true }
-        });
-        
-        const extrasMap = new Map(extrasDB.map(e => [e.id, Number(e.precio)]));
-        
-        for (const extraDTO of dto.extras) {
-          const precioReal = extrasMap.get(extraDTO.extraId);
-          if (precioReal !== undefined) {
-            const cantidad = Math.max(1, Number(extraDTO.cantidad ?? 1));
-            precioExtras += precioReal * cantidad;
-            extrasValidados.push({
-              extraId: extraDTO.extraId,
-              cantidad,
-              precioUnitario: precioReal
-            });
-          }
-        }
-      }
-    }
-    
-    // 3. Precio total = base + extras
-    const precioTotal = precioBase + precioExtras;
-    
-    // 4. Validar adelanto (mínimo 50%)
-    const adelantoMinimo = precioTotal * 0.5;
-    const anticipo = Number(dto.anticipo);
-    
-    if (anticipo < adelantoMinimo) {
-      throw new BadRequestException(
-        `El adelanto debe ser al menos el 50% del total. ` +
-        `Mínimo requerido: $${adelantoMinimo.toFixed(2)}, ` +
-        `recibido: $${anticipo.toFixed(2)}`
-      );
-    }
-    
-    if (anticipo > precioTotal) {
-      throw new BadRequestException(
-        `El adelanto no puede ser mayor al precio total. ` +
-        `Total: $${precioTotal.toFixed(2)}, adelanto: $${anticipo.toFixed(2)}`
-      );
-    }
-    
-    // 5. Calcular saldo restante
-    const restante = precioTotal - anticipo;
-    
-    this.logger.log(
-      `Reserva: precioBase=$${precioBase}, extras=$${precioExtras}, ` +
-      `total=$${precioTotal}, anticipo=$${anticipo}, restante=$${restante}`
+    const extrasInput = Array.isArray(dto.extras) ? dto.extras.map((x) => ({ extraId: x.extraId, cantidad: x.cantidad })) : [];
+    const { precioBase, precioTotal, restante, anticipo, extrasConPrecio } = await this.computePricesFromPaqueteAndExtras(
+      paqueteId,
+      extrasInput,
+      dto.anticipo ?? 0,
     );
-    
-    // ==========================================
-    // GENERAR NÚMERO DE FACTURA
-    // ==========================================
-    const numeroFactura = await this.invoiceService.generateInvoiceNumber();
-    
-    // ==========================================
-    // CREAR RESERVA CON PRECIOS CALCULADOS
-    // ==========================================
-    
-    const created = await this.prisma.reserva.create({
-      data: {
-        usuarioId: userId,
-        paqueteId,
-        vehiculoId: vehiculoId || null,  // ← Asegurar que sea null si no está definido
-        conductorId: dto.conductorId,
-        nombre: dto.nombre,
-        email: dto.email,
-        telefono: dto.telefono,
-        direccion: dto.direccion ?? null,
-        tipoIdentificacion: dto.tipoIdentificacion ?? null,
-        identificacion: dto.numeroIdentificacion ?? null,
-        tipoEvento: dto.tipoEvento,
-        fechaEvento,
-        horaInicio,
-        horaFin,
-        origen: dto.origen,
-        destino: dto.destino,
-        numeroPersonas: dto.numeroPersonas,
-        precioBase,
-        precioTotal,
-        anticipo,
-        restante,
-        estado: "PAGO_PENDIENTE",
-        tipoPago: dto.tipoPago as any,
-        numeroFactura,
-        notasInternas: dto.notasInternas || null,
-      },
+
+    const created = await this.createReservationWithInvoice({
+      usuarioId: userId,
+      paqueteId,
+      vehiculoId,
+      nombre: dto.nombre,
+      email: dto.email,
+      telefono: dto.telefono,
+      identificacion: dto.numeroIdentificacion ?? null,
+      direccion: dto.direccion ?? null,
+      tipoIdentificacion: dto.tipoIdentificacion ?? null,
+      tipoEvento: dto.tipoEvento,
+      fechaEvento,
+      origen: dto.origen,
+      destino: dto.destino,
+      numeroPersonas: dto.numeroPersonas,
+      precioBase,
+      precioTotal,
+      anticipo,
+      restante,
+      estado: "PAGO_PENDIENTE",
+      tipoPago: dto.tipoPago as any,
+      aceptoTerminos: true,
+      terminosAceptadosEn: new Date(),
+      terminosVersion: dto.terminosVersion ?? 'v1-2026-03',
+      ipCliente: metadata?.ipCliente ?? null,
+      userAgent: metadata?.userAgent ?? null,
+      metadatosContracargo: metadata?.metadatosContracargo ?? null,
     });
 
-    // Registrar extras validados
-    if (extrasValidados.length > 0) {
-      await this.prisma.reservaExtra.createMany({ 
-        data: extrasValidados.map((x) => ({
+    if (extrasConPrecio.length > 0) {
+      await this.prisma.reservaExtra.createMany({
+        data: extrasConPrecio.map((e) => ({
           reservaId: created.id,
-          extraId: x.extraId,
-          cantidad: x.cantidad,
-          precioUnitario: x.precioUnitario,
-        }))
+          extraId: e.extraId,
+          cantidad: e.cantidad,
+          precioUnitario: e.precioUnitario,
+        })),
       });
-      this.logger.log(`${extrasValidados.length} extras registrados para reserva #${created.id}`);
     }
 
-    // ==========================================
-    // GUARDAR INCLUIDOS SELECCIONADOS
-    // ==========================================
-    if (Array.isArray(dto.incluidos) && dto.incluidos.length > 0) {
-      const incluidoIds = dto.incluidos.map(i => i.incluidoId).filter(Boolean);
-      
-      if (incluidoIds.length > 0) {
-        // Validar que los incluidos existan y estén activos
-        const incluidosDB = await this.prisma.incluido.findMany({
-          where: { 
-            id: { in: incluidoIds },
-            estado: 'ACTIVO'
-          },
-          select: { id: true }
-        });
-        
-        const incluidosValidos = incluidosDB.map(i => i.id);
-        const incluidosAGuardar = incluidoIds.filter(id => incluidosValidos.includes(id));
-        
-        if (incluidosAGuardar.length > 0) {
-          await this.prisma.reservaIncluido.createMany({ 
-            data: incluidosAGuardar.map((incluidoId) => ({
-              reservaId: created.id,
-              incluidoId: incluidoId,
-            })),
-            skipDuplicates: true,
-          });
-          this.logger.log(`${incluidosAGuardar.length} incluidos registrados para reserva #${created.id}`);
-        }
+    // Crear notificación para el usuario
+    if (userId) {
+      try {
+        const paquete = await this.prisma.paquete.findUnique({ where: { id: paqueteId } });
+        await this.notificacionesService.crearNotificacion(
+          userId,
+          'Nueva Reserva Creada',
+          `Tu reserva para ${paquete?.nombre || 'el paquete'} el ${fechaEvento.toLocaleDateString('es-CR')} ha sido creada exitosamente.`,
+          'RESERVA',
+          created.id
+        );
+      } catch (error) {
+        this.logger.error(`Error al crear notificación para reserva #${created.id}:`, error);
       }
     }
 
-    // ==========================================
-    // ENVIAR CORREOS DE CONFIRMACIÓN (siempre)
-    // ==========================================
+    // Enviar correo de confirmación para todos los métodos de pago
     try {
       const paquete = await this.prisma.paquete.findUnique({ where: { id: paqueteId } });
-      const vehiculo = vehiculoId ? await this.prisma.vehiculo.findUnique({ where: { id: vehiculoId } }) : null;
-      
-      // Obtener información detallada de extras (mostrar lo seleccionado por el cliente)
-      let extrasInfo: Array<{ nombre: string; cantidad: number; precio: number }> = [];
-      const extrasSeleccionados = Array.isArray(dto.extras) ? dto.extras : [];
-      if (extrasSeleccionados.length > 0) {
-        const extraIds = extrasSeleccionados.map(e => e.extraId).filter(Boolean);
-        if (extraIds.length > 0) {
-          const extrasDB = await this.prisma.extra.findMany({
-            where: { id: { in: extraIds } },
-            select: { id: true, nombre: true, precio: true }
-          });
-          extrasInfo = extrasSeleccionados.map((sel) => {
-            const extra = extrasDB.find(e => e.id === sel.extraId);
-            const cantidad = Math.max(1, Number(sel.cantidad ?? 1));
-            const precioUnitario = extra ? Number(extra.precio) : Number(sel.precioUnitario ?? 0);
-            return {
-              nombre: extra?.nombre || `Extra (${sel.extraId})`,
-              cantidad,
-              precio: precioUnitario * cantidad
-            };
-          });
-        }
-      }
-
-      // Obtener información detallada de incluidos CON CATEGORÍAS (mostrar lo seleccionado por el cliente)
-      let incluidosInfo: Array<{ 
-        id: string; 
-        nombre: string; 
-        descripcion?: string;
-        categoria: { id: number; nombre: string };
-      }> = [];
-      const incluidosSeleccionados = Array.isArray(dto.incluidos) ? dto.incluidos : [];
-      if (incluidosSeleccionados.length > 0) {
-        const incluidoIds = incluidosSeleccionados.map(i => i.incluidoId).filter(Boolean);
-        if (incluidoIds.length > 0) {
-          const incluidosDB = await this.prisma.incluido.findMany({
-            where: { id: { in: incluidoIds } },
-            select: { 
-              id: true, 
-              nombre: true, 
-              descripcion: true,
-              categoria: {
-                select: {
-                  id: true,
-                  nombre: true
-                }
-              }
-            }
-          });
-          const incluidosMap = new Map(incluidosDB.map((incluido) => [incluido.id, incluido]));
-          incluidosInfo = incluidoIds.map((incluidoId) => {
-            const incluido = incluidosMap.get(incluidoId);
-            return {
-              id: incluidoId,
-              nombre: incluido?.nombre || `Incluido (${incluidoId})`,
-              descripcion: incluido?.descripcion || undefined,
-              categoria: incluido?.categoria || { id: 0, nombre: 'Sin categoria' }
-            };
-          });
-        }
-      }
-
-      const emailData = {
+      await this.emailService.sendReservationConfirmation({
         nombre: created.nombre,
         email: created.email,
         reservaId: created.id,
-        numeroFactura: created.numeroFactura,
+        numeroFactura: created.numeroFactura ?? undefined,
         anticipo: Number(created.anticipo),
         total: Number(created.precioTotal),
-        restante: Number(created.precioTotal) - Number(created.anticipo),
         fecha: created.fechaEvento,
-        horaInicio: created.horaInicio,
-        horaFin: created.horaFin,
         origen: created.origen,
         destino: created.destino,
         numeroPersonas: created.numeroPersonas,
         paquete: paquete?.nombre || 'Paquete',
-        vehiculo: vehiculo ? `${vehiculo.nombre} (${vehiculo.asientos} asientos)` : undefined,
         telefono: created.telefono,
-        direccion: created.direccion || undefined,
-        tipoIdentificacion: created.tipoIdentificacion || undefined,
-        tipoEvento: created.tipoEvento,
-        precioBase: Number(paquete?.precioBase) || Number(created.precioTotal),
-        precioExtras: precioExtras,
-        identificacion: created.identificacion || undefined,
-        notasInternas: created.notasInternas || undefined,
-        origenReserva: created.origenReserva || 'WEB',
-        tipoPago: created.tipoPago || 'SINPE',
-        estadoPago: created.estado || 'PAGO_PENDIENTE',
-        extras: extrasInfo.length > 0 ? extrasInfo : undefined,
-        incluidos: incluidosInfo.length > 0 ? incluidosInfo : undefined,
-      };
-
-      // Enviar correo al cliente
-      await this.emailService.sendReservationConfirmation(emailData);
+        direccion: created.direccion ?? undefined,
+        tipoPago: created.tipoPago ?? dto.tipoPago ?? undefined,
+      });
       this.logger.log(`Correo de confirmación enviado para reserva #${created.id}`);
-
-      // Enviar correo al administrador
-      await this.emailService.sendAdminReservationNotification(emailData);
-      this.logger.log(`Notificación admin enviada para reserva #${created.id}`);
-
     } catch (error) {
-      this.logger.error(`Error al enviar correos para reserva #${created.id}:`, error);
+      this.logger.error(`Error al enviar correo de confirmación para reserva #${created.id}:`, error);
       // No falla la reserva si el correo falla
     }
 
@@ -347,7 +147,6 @@ export class ReservationsService {
     desde?: string;
     hasta?: string;
   }) {
-    // Construir WHERE dinámico
     const where: any = {};
 
     if (filters?.vehiculoId) {
@@ -361,326 +160,724 @@ export class ReservationsService {
     if (filters?.desde || filters?.hasta) {
       where.fechaEvento = {};
       if (filters.desde) {
-        const desdeDate = new Date(filters.desde);
-        desdeDate.setHours(0, 0, 0, 0);
-        where.fechaEvento.gte = desdeDate;
+        where.fechaEvento.gte = new Date(filters.desde);
       }
       if (filters.hasta) {
-        const hastaDate = new Date(filters.hasta);
-        hastaDate.setHours(23, 59, 59, 999);
-        where.fechaEvento.lte = hastaDate;
+        where.fechaEvento.lte = new Date(filters.hasta);
       }
     }
 
     const items = await this.prisma.reserva.findMany({
       where,
       orderBy: { creadoEn: "desc" },
-      include: {
-        vehiculo: { select: { nombre: true } },
-        paquete: { select: { nombre: true } },
-        extras: { 
-          include: { 
-            extra: { select: { nombre: true, precio: true, categoria: true } } 
-          } 
-        },
-        incluidos: { 
-          include: { 
-            incluido: { 
-              select: { nombre: true, descripcion: true, categoria: { select: { nombre: true } } } 
-            } 
-          } 
-        },
-      },
     });
-    
-    // Detectar conflictos para cada reserva
-    const itemsWithConflicts = await Promise.all(
-      items.map(async (r) => {
-        const hasConflict = await this.hasConflict(r.id, r.vehiculoId, r.horaInicio, r.horaFin, r.estado);
-        return { 
-          ...this.toResponse(r),
-          hasConflict,
-          vehiculoNombre: (r.vehiculo as any)?.nombre,
-          paqueteNombre: (r.paquete as any)?.nombre,
-        };
-      })
+    return items.map((r) => this.toResponse(r));
+  }
+
+  async findAllWithFilters(query: any) {
+    const {
+      vehiculoId,
+      estadoPago,
+      tipoEvento,
+      origenReserva,
+      contactoCliente,
+      conConflictos,
+      fechaDesde,
+      fechaHasta,
+      busqueda,
+      sortBy = 'fechaEvento',
+      sortOrder = 'desc',
+      page = 1,
+      limit = 20,
+    } = query;
+
+    const where: any = {};
+    const skip = (page - 1) * limit;
+
+    if (vehiculoId) {
+      where.vehiculoId = vehiculoId;
+    }
+
+    if (estadoPago) {
+      if (estadoPago === 'pendiente') {
+        where.estado = 'PAGO_PENDIENTE';
+      } else if (estadoPago === 'parcial') {
+        where.estado = 'PAGO_PARCIAL';
+      } else if (estadoPago === 'completo') {
+        where.estado = 'CONFIRMADA';
+      }
+    }
+
+    if (tipoEvento) {
+      const now = new Date();
+      if (tipoEvento === 'futuro') {
+        where.fechaEvento = { gt: now };
+      } else if (tipoEvento === 'hoy') {
+        const startDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endDay = new Date(startDay.getTime() + 24 * 60 * 60 * 1000);
+        where.fechaEvento = { gte: startDay, lt: endDay };
+      } else if (tipoEvento === 'pasado') {
+        where.fechaEvento = { lt: now };
+      }
+    }
+
+    if (origenReserva) {
+      where.origenReserva = origenReserva;
+    }
+
+    if (contactoCliente) {
+      where.contactoCliente = contactoCliente;
+    }
+
+    if (busqueda) {
+      where.OR = [
+        { nombre: { contains: busqueda, mode: 'insensitive' } },
+        { email: { contains: busqueda, mode: 'insensitive' } },
+        { telefono: { contains: busqueda, mode: 'insensitive' } },
+        { numeroFactura: { contains: busqueda, mode: 'insensitive' } },
+      ];
+    }
+
+    if (fechaDesde || fechaHasta) {
+      where.fechaEvento = {};
+      if (fechaDesde) {
+        where.fechaEvento.gte = new Date(fechaDesde);
+      }
+      if (fechaHasta) {
+        where.fechaEvento.lte = new Date(fechaHasta);
+      }
+    }
+
+    const orderBy: any = {};
+    orderBy[sortBy] = sortOrder;
+
+    const [items, total] = await Promise.all([
+      this.prisma.reserva.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+        include: {
+          vehiculo: { select: { nombre: true } },
+          paquete: { select: { nombre: true } },
+          extras: {
+            include: {
+              extra: { select: { nombre: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.reserva.count({ where }),
+    ]);
+
+    return {
+      items: items.map((r) => this.toResponseAdminTable(r)),
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async confirmAdelanto(reservaId: string, actor: string = 'Sistema') {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const reserva = await tx.reserva.findUnique({
+        where: { id: reservaId },
+      });
+
+      if (!reserva) {
+        throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
+      }
+
+      const updatedReserva = await tx.reserva.update({
+        where: { id: reservaId },
+        data: {
+          adelantoRecibido: true,
+          estado: 'PAGO_PARCIAL',
+        },
+      });
+
+      await this.registrarCambioEstadoSiAplica(tx, {
+        reservaId,
+        estadoAnterior: reserva.estado as EstadoReserva,
+        estadoNuevo: updatedReserva.estado as EstadoReserva,
+        ejecutadoPor: actor,
+        comentario: 'Confirmación de adelanto recibida',
+        origenCambio: 'CONFIRMACION_ADELANTO',
+      });
+
+      return updatedReserva;
+    });
+
+    if (updated.numeroFactura) return updated;
+    return this.assignInvoiceNumberIfMissing(reservaId);
+  }
+
+  async confirmPagoCompleto(reservaId: string, actor: string = 'Sistema') {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const reserva = await tx.reserva.findUnique({
+        where: { id: reservaId },
+      });
+
+      if (!reserva) {
+        throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
+      }
+
+      const updatedReserva = await tx.reserva.update({
+        where: { id: reservaId },
+        data: {
+          pagoCompleto: true,
+          estado: 'CONFIRMADA',
+        },
+      });
+
+      await this.registrarCambioEstadoSiAplica(tx, {
+        reservaId,
+        estadoAnterior: reserva.estado as EstadoReserva,
+        estadoNuevo: updatedReserva.estado as EstadoReserva,
+        ejecutadoPor: actor,
+        comentario: 'Confirmación de pago completo',
+        origenCambio: 'CONFIRMACION_PAGO_COMPLETO',
+      });
+
+      return updatedReserva;
+    });
+
+    if (updated.numeroFactura) return updated;
+    return this.assignInvoiceNumberIfMissing(reservaId);
+  }
+
+  async createManual(dto: CreateManualReservationDto, adminUser: string) {
+    const paqueteId = dto.paqueteId;
+    const vehiculoId = dto.vehiculoId;
+
+    if (!paqueteId) throw new NotFoundException("paqueteId es requerido");
+    if (!vehiculoId) throw new NotFoundException("vehiculoId es requerido");
+
+    await this.ensureVehicleBelongsToPackage(paqueteId, vehiculoId);
+
+    const fechaEvento = new Date(dto.fechaEvento);
+    if (isNaN(fechaEvento.getTime())) {
+      throw new BadRequestException("fechaEvento inválida");
+    }
+
+    await this.ensureVehicleAvailabilityForDate(vehiculoId, fechaEvento);
+
+    const estado = dto.estadoInicial ?? dto.estado ?? 'PAGO_PENDIENTE';
+
+    const extrasInput = Array.isArray(dto.extras)
+      ? dto.extras.map((x) => ({
+          extraId: x.extraId,
+          cantidad: x.cantidad,
+          precioUnitario: x.precioUnitario,
+        }))
+      : [];
+
+    const { precioBase, precioTotal, restante, anticipo, extrasConPrecio } = await this.computePricesFromPaqueteAndExtras(
+      paqueteId,
+      extrasInput,
+      dto.anticipo ?? 0,
+      true,
     );
-    
-    return itemsWithConflicts;
-  }
 
-  private async hasConflict(
-    reservaId: string,
-    vehiculoId: string | null,
-    horaInicio: Date,
-    horaFin: Date,
-    estado: string
-  ): Promise<boolean> {
-    // Solo verificar conflictos si la reserva está activa
-    if (estado === "CANCELADA") return false;
-    
-    // Si no hay vehículo asignado, no hay conflicto posible
-    if (!vehiculoId) return false;
-    
-    const conflicting = await this.prisma.reserva.findFirst({
-      where: {
-        id: { not: reservaId },
-        vehiculoId,
-        estado: { in: ["PAGO_PENDIENTE", "PAGO_PARCIAL", "CONFIRMADA", "COMPLETADA"] },
-        horaInicio: { lt: horaFin },
-        horaFin: { gt: horaInicio },
-      },
-      select: { id: true },
+    const created = await this.createReservationWithInvoice({
+      nombre: dto.nombre,
+      email: dto.email,
+      telefono: dto.telefono,
+      identificacion: dto.identificacion ?? null,
+      tipoEvento: dto.tipoEvento,
+      fechaEvento,
+      origen: dto.origen,
+      destino: dto.destino,
+      numeroPersonas: dto.numeroPersonas,
+      precioBase,
+      precioTotal,
+      anticipo,
+      restante,
+      estado,
+      tipoPago: dto.tipoPago as any,
+      paqueteId,
+      vehiculoId,
+      origenReserva: dto.origenReserva || 'MANUAL',
+      notasInternas: dto.notasInternas ?? null,
     });
-    
-    return !!conflicting;
+
+    if (extrasConPrecio.length > 0) {
+      await this.prisma.reservaExtra.createMany({
+        data: extrasConPrecio.map((e) => ({
+          reservaId: created.id,
+          extraId: e.extraId,
+          cantidad: e.cantidad,
+          precioUnitario: e.precioUnitario,
+        })),
+      });
+    }
+
+    return this.toResponse(created);
   }
 
-  async confirmAdelanto(id: string) {
+  async markPaymentCompleteManual(reservaId: string, dto: any, adminUser: string) {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const reserva = await tx.reserva.findUnique({
+        where: { id: reservaId },
+      });
+
+      if (!reserva) {
+        throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
+      }
+
+      const updatedReserva = await tx.reserva.update({
+        where: { id: reservaId },
+        data: {
+          pagoCompleto: true,
+          estado: 'CONFIRMADA',
+          tipoPago: dto.tipoPago,
+          notasInternas: (reserva.notasInternas || '') + `\n[${new Date().toLocaleString()}] ${adminUser} marcó pago completo (${dto.tipoPago})${dto.comentario ? ': ' + dto.comentario : ''}`,
+        },
+      });
+
+      await this.registrarCambioEstadoSiAplica(tx, {
+        reservaId,
+        estadoAnterior: reserva.estado as EstadoReserva,
+        estadoNuevo: updatedReserva.estado as EstadoReserva,
+        ejecutadoPor: adminUser,
+        comentario: dto.comentario || `Pago completo manual (${dto.tipoPago})`,
+        origenCambio: 'PAGO_COMPLETO_MANUAL',
+      });
+
+      return updatedReserva;
+    });
+
+    if (updated.numeroFactura) return updated;
+    return this.assignInvoiceNumberIfMissing(reservaId);
+  }
+
+  async updateReservation(reservaId: string, dto: any, adminUser: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const reserva = await tx.reserva.findUnique({
+        where: { id: reservaId },
+      });
+
+      if (!reserva) {
+        throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
+      }
+
+      const updateData: any = {};
+
+      // Solo ciertos campos pueden ser editados
+      if (dto.estado !== undefined) {
+        updateData.estado = dto.estado;
+      }
+      if (dto.vehiculoId !== undefined) {
+        if (!dto.vehiculoId) {
+          throw new BadRequestException('vehiculoId inválido');
+        }
+        await this.ensureVehicleBelongsToPackage(reserva.paqueteId, dto.vehiculoId);
+        updateData.vehiculoId = dto.vehiculoId;
+      }
+
+      const updatedReserva = await tx.reserva.update({
+        where: { id: reservaId },
+        data: updateData,
+      });
+
+      await this.registrarCambioEstadoSiAplica(tx, {
+        reservaId,
+        estadoAnterior: reserva.estado as EstadoReserva,
+        estadoNuevo: updatedReserva.estado as EstadoReserva,
+        ejecutadoPor: adminUser,
+        comentario: dto.comentario || 'Cambio manual de estado',
+        origenCambio: 'CAMBIO_ESTADO_MANUAL',
+      });
+
+      return updatedReserva;
+    });
+  }
+
+  async updateContactoCliente(reservaId: string, contactoCliente: string, adminUser: string) {
     const reserva = await this.prisma.reserva.findUnique({
-      where: { id },
+      where: { id: reservaId },
     });
 
     if (!reserva) {
-      throw new NotFoundException(`Reserva #${id} no encontrada`);
+      throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
     }
 
-    if (reserva.estado !== "PAGO_PENDIENTE") {
-      throw new BadRequestException(
-        `No se puede confirmar adelanto. Estado actual: ${reserva.estado}`
-      );
-    }
-
-    const adelantoMinimo = Number(reserva.precioTotal) * 0.5;
-    if (Number(reserva.anticipo) < adelantoMinimo) {
-      throw new BadRequestException(
-        `El adelanto registrado ($${Number(reserva.anticipo).toFixed(2)}) es menor al 50% requerido ($${adelantoMinimo.toFixed(2)})`
-      );
-    }
-
-    const restante = Number(reserva.precioTotal) - Number(reserva.anticipo);
-    const nuevoEstado = restante > 0.01 ? "PAGO_PARCIAL" : "CONFIRMADA";
-
-    const updated = await this.prisma.reserva.update({
-      where: { id },
+    return this.prisma.reserva.update({
+      where: { id: reservaId },
       data: {
-        estado: nuevoEstado,
-        restante,
+        contactoCliente: contactoCliente as any,
       },
     });
-
-    this.logger.log(
-      `Reserva #${id}: Adelanto confirmado. Estado: ${reserva.estado} → ${nuevoEstado}. Restante: $${restante.toFixed(2)}`
-    );
-
-    try {
-      const emailHtml = `
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; background: #fff; }
-            .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #c9a24d; padding: 30px 20px; text-align: center; }
-            .content { padding: 30px 20px; }
-            .box { background: #f5f5f5; padding: 20px; border-left: 4px solid #4caf50; margin: 20px 0; border-radius: 4px; }
-            .box.highlight { background: #e8f5e9; border-left-color: #4caf50; }
-            .amount { font-size: 28px; font-weight: bold; color: #1a1a2e; }
-            .label { font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 5px; }
-            .footer { background: #1a1a2e; color: #c9a24d; padding: 20px; text-align: center; font-size: 12px; }
-            .footer p { margin: 5px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0; font-size: 24px;">Adelanto Confirmado</h1>
-              <p style="margin: 10px 0 0 0; font-size: 14px;">Reserva #${reserva.id}</p>
-            </div>
-            <div class="content">
-              <p>Hola <strong>${reserva.nombre}</strong>,</p>
-              <p>Hemos confirmado exitosamente la recepción de tu adelanto.</p>
-              
-              <div class="box highlight">
-                <div class="label">Adelanto recibido</div>
-                <div class="amount">$${Number(reserva.anticipo).toFixed(2)}</div>
-              </div>
-
-              ${restante > 0.01 ? `
-                <div class="box">
-                  <p style="margin: 0 0 10px 0;"><strong>Saldo pendiente:</strong></p>
-                  <div class="amount" style="font-size: 20px; color: #c9a24d;">$${restante.toFixed(2)}</div>
-                  <p style="margin: 15px 0 0 0; font-size: 14px;">Recuerda completar el pago antes de tu evento.</p>
-                </div>
-              ` : `
-                <div class="box highlight">
-                  <p style="margin: 0;"><strong>¡Pago completo confirmado!</strong> Tu reserva está lista.</p>
-                </div>
-              `}
-
-              <div class="box">
-                <p style="margin: 0 0 10px 0;"><strong>Próximos pasos:</strong></p>
-                <p style="margin: 0;">Nuestro equipo se pondrá en contacto contigo en un plazo de <strong>48 horas hábiles</strong> para coordinar los detalles finales de tu reserva.</p>
-              </div>
-
-              <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">Número de reserva: <strong>#${reserva.id}</strong></p>
-            </div>
-            <div class="footer">
-              <p>Moments Transportation CR</p>
-              <p>¡Gracias por confiar en nosotros!</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-      await this.emailService.sendEmail({
-        to: reserva.email,
-        subject: `Adelanto confirmado - Reserva #${reserva.id} | Moments`,
-        html: emailHtml,
-      });
-    } catch (error) {
-      this.logger.error(`Error enviando email de adelanto confirmado:`, error);
-    }
-
-    return this.toResponse(updated);
   }
 
-  async confirmPagoCompleto(id: string) {
+  async updateAdelantoRecibido(reservaId: string, adelantoRecibido: boolean, adminUser: string) {
     const reserva = await this.prisma.reserva.findUnique({
-      where: { id },
+      where: { id: reservaId },
     });
 
     if (!reserva) {
-      throw new NotFoundException(`Reserva #${id} no encontrada`);
-    }
-
-    if (reserva.estado !== "PAGO_PARCIAL" && reserva.estado !== "PAGO_PENDIENTE") {
-      throw new BadRequestException(
-        `No se puede confirmar pago completo desde estado: ${reserva.estado}`
-      );
-    }
-
-    const precioTotal = Number(reserva.precioTotal);
-    const anticipo = Number(reserva.anticipo);
-    const restante = precioTotal - anticipo;
-
-    if (restante > 0.01) {
-      throw new BadRequestException(
-        `Aún falta saldo por pagar: $${restante.toFixed(2)}. ` +
-        `Total: $${precioTotal.toFixed(2)}, Pagado: $${anticipo.toFixed(2)}`
-      );
+      throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
     }
 
     const updated = await this.prisma.reserva.update({
-      where: { id },
+      where: { id: reservaId },
       data: {
-        estado: "CONFIRMADA",
-        restante: 0,
+        adelantoRecibido,
       },
     });
 
-    this.logger.log(
-      `Reserva #${id}: Pago completo confirmado. Estado: ${reserva.estado} → CONFIRMADA`
-    );
+    if (!adelantoRecibido || updated.numeroFactura) return updated;
+    return this.assignInvoiceNumberIfMissing(reservaId);
+  }
 
-    try {
-      const emailHtml = `
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; background: #fff; }
-            .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #c9a24d; padding: 30px 20px; text-align: center; }
-            .content { padding: 30px 20px; }
-            .box { background: #f5f5f5; padding: 20px; border-left: 4px solid #4caf50; margin: 20px 0; border-radius: 4px; }
-            .box.highlight { background: #e8f5e9; border-left-color: #4caf50; }
-            .amount { font-size: 28px; font-weight: bold; color: #1a1a2e; }
-            .label { font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 5px; }
-            .footer { background: #1a1a2e; color: #c9a24d; padding: 20px; text-align: center; font-size: 12px; }
-            .footer p { margin: 5px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0; font-size: 24px;">Pago Completo Confirmado</h1>
-              <p style="margin: 10px 0 0 0; font-size: 14px;">Reserva #${reserva.id}</p>
-            </div>
-            <div class="content">
-              <p>Hola <strong>${reserva.nombre}</strong>,</p>
-              <p>¡Excelente! Hemos confirmado el pago completo de tu reserva. Todo está listo.</p>
-              
-              <div class="box highlight">
-                <div class="label">Monto pagado</div>
-                <div class="amount">$${precioTotal.toFixed(2)}</div>
-                <p style="margin: 10px 0 0 0; font-size: 14px; color: #2e7d32;">✓ Pago confirmado</p>
-              </div>
-
-              <div class="box">
-                <p style="margin: 0 0 10px 0;"><strong>Próximos pasos:</strong></p>
-                <p style="margin: 0;">Nuestro equipo se pondrá en contacto contigo en un plazo de <strong>48 horas hábiles</strong> para confirmar los detalles finales, horarios exactos y punto de encuentro.</p>
-              </div>
-
-              <div class="box">
-                <p style="margin: 0 0 10px 0;"><strong>¿Preguntas?</strong></p>
-                <p style="margin: 0;">Si tienes dudas o cambios urgentes, no dudes en responder a este correo. Estamos aquí para ayudarte.</p>
-              </div>
-
-              <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">Número de reserva: <strong>#${reserva.id}</strong></p>
-            </div>
-            <div class="footer">
-              <p>Moments Transportation CR</p>
-              <p>¡Gracias por confiar en nosotros!</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-      await this.emailService.sendEmail({
-        to: reserva.email,
-        subject: `Pago completo confirmado - Reserva #${reserva.id} | Moments`,
-        html: emailHtml,
+  async updatePagoCompleto(reservaId: string, pagoCompleto: boolean, adminUser: string) {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const reserva = await tx.reserva.findUnique({
+        where: { id: reservaId },
       });
-    } catch (error) {
-      this.logger.error(`Error enviando email de pago completo:`, error);
+
+      if (!reserva) {
+        throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
+      }
+
+      const updatedReserva = await tx.reserva.update({
+        where: { id: reservaId },
+        data: {
+          pagoCompleto,
+          estado: pagoCompleto ? 'CONFIRMADA' : reserva.estado,
+        },
+      });
+
+      await this.registrarCambioEstadoSiAplica(tx, {
+        reservaId,
+        estadoAnterior: reserva.estado as EstadoReserva,
+        estadoNuevo: updatedReserva.estado as EstadoReserva,
+        ejecutadoPor: adminUser,
+        comentario: pagoCompleto ? 'Actualización de pago completo' : 'Reversión de bandera pago completo',
+        origenCambio: 'ACTUALIZACION_PAGO_COMPLETO',
+      });
+
+      return updatedReserva;
+    });
+
+    if (!pagoCompleto || updated.numeroFactura) return updated;
+    return this.assignInvoiceNumberIfMissing(reservaId);
+  }
+
+  async updateChoferAsignado(reservaId: string, choferAsignado: boolean, adminUser: string) {
+    const reserva = await this.prisma.reserva.findUnique({
+      where: { id: reservaId },
+    });
+
+    if (!reserva) {
+      throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
     }
 
-    return this.toResponse(updated);
+    return this.prisma.reserva.update({
+      where: { id: reservaId },
+      data: {
+        choferAsignado,
+      },
+    });
+  }
+
+  async updateEventoRealizado(reservaId: string, eventoRealizado: boolean, adminUser: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const reserva = await tx.reserva.findUnique({
+        where: { id: reservaId },
+      });
+
+      if (!reserva) {
+        throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
+      }
+
+      const updatedReserva = await tx.reserva.update({
+        where: { id: reservaId },
+        data: {
+          eventoRealizado,
+          estado: eventoRealizado ? 'COMPLETADA' : reserva.estado,
+        },
+      });
+
+      await this.registrarCambioEstadoSiAplica(tx, {
+        reservaId,
+        estadoAnterior: reserva.estado as EstadoReserva,
+        estadoNuevo: updatedReserva.estado as EstadoReserva,
+        ejecutadoPor: adminUser,
+        comentario: eventoRealizado ? 'Evento marcado como realizado' : 'Reversión de evento realizado',
+        origenCambio: 'ACTUALIZACION_EVENTO_REALIZADO',
+      });
+
+      return updatedReserva;
+    });
+  }
+
+  private async registrarCambioEstadoSiAplica(
+    tx: any,
+    data: {
+      reservaId: string;
+      estadoAnterior: EstadoReserva;
+      estadoNuevo: EstadoReserva;
+      ejecutadoPor: string;
+      comentario?: string;
+      origenCambio: string;
+    },
+  ) {
+    if (data.estadoAnterior === data.estadoNuevo) {
+      return;
+    }
+
+    await tx.historialEstadoReserva.create({
+      data: {
+        reservaId: data.reservaId,
+        estadoAnterior: data.estadoAnterior,
+        estado: data.estadoNuevo,
+        ejecutadoPor: data.ejecutadoPor || 'Sistema',
+        comentario: data.comentario,
+        origenCambio: data.origenCambio,
+      },
+    });
   }
 
   private toResponse(r: any) {
     return {
       id: r.id,
-      numeroFactura: r.numeroFactura,
+      numeroFactura: r.numeroFactura ?? null,
       nombre: r.nombre,
       email: r.email,
       telefono: r.telefono,
       estado: r.estado,
       fechaEvento: r.fechaEvento,
-      horaInicio: r.horaInicio,
-      horaFin: r.horaFin,
       numeroPersonas: r.numeroPersonas,
-      precioBase: Number(r.precioBase),
       precioTotal: Number(r.precioTotal),
-      anticipo: Number(r.anticipo),
-      restante: Number(r.restante),
       paqueteId: r.paqueteId,
       vehiculoId: r.vehiculoId,
-      tipoPago: r.tipoPago,
-      origenReserva: r.origenReserva || 'WEB',
     };
   }
 
+  private toResponseAdminTable(r: any) {
+    const extras = (r.extras ?? []).map((re: any) => ({
+      nombre: re.extra?.nombre ?? 'Extra',
+      cantidad: Number(re.cantidad ?? 1),
+      precioUnitario: Number(re.precioUnitario ?? 0),
+    }));
+    return {
+      id: r.id,
+      numeroFactura: r.numeroFactura ?? null,
+      nombre: r.nombre,
+      email: r.email,
+      telefono: r.telefono,
+      estado: r.estado,
+      fechaEvento: r.fechaEvento,
+      numeroPersonas: r.numeroPersonas,
+      precioTotal: Number(r.precioTotal),
+      restante: Number(r.restante ?? 0),
+      paqueteId: r.paqueteId,
+      vehiculoId: r.vehiculoId,
+      contactoCliente: r.contactoCliente ?? 'PENDIENTE',
+      adelantoRecibido: r.adelantoRecibido ?? false,
+      pagoCompleto: r.pagoCompleto ?? false,
+      eventoRealizado: r.eventoRealizado ?? false,
+      vehiculo: r.vehiculo ? { nombre: r.vehiculo.nombre } : null,
+      paquete: r.paquete ? { nombre: r.paquete.nombre } : null,
+      extras,
+      tieneConflicto: false,
+    };
+  }
+
+  private async createReservationWithInvoice(data: any) {
+    const maxAttempts = 5;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const numeroFactura = await this.invoiceService.generateInvoiceNumber();
+      try {
+        return await this.prisma.reserva.create({
+          data: {
+            ...data,
+            numeroFactura,
+          },
+        });
+      } catch (error) {
+        if (this.isInvoiceConflictError(error)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new InternalServerErrorException('No se pudo generar un número de factura único');
+  }
+
+  private async assignInvoiceNumberIfMissing(reservaId: string) {
+    const maxAttempts = 5;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const numeroFactura = await this.invoiceService.generateInvoiceNumber();
+      try {
+        const updateResult = await this.prisma.reserva.updateMany({
+          where: {
+            id: reservaId,
+            numeroFactura: null,
+          },
+          data: {
+            numeroFactura,
+          },
+        });
+
+        const reserva = await this.prisma.reserva.findUnique({ where: { id: reservaId } });
+        if (!reserva) {
+          throw new NotFoundException(`Reserva #${reservaId} no encontrada`);
+        }
+
+        if (updateResult.count === 1 || reserva.numeroFactura) {
+          return reserva;
+        }
+      } catch (error) {
+        if (this.isInvoiceConflictError(error)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new InternalServerErrorException(`No se pudo asignar número de factura a la reserva #${reservaId}`);
+  }
+
+  private isInvoiceConflictError(error: any): boolean {
+    const target = error?.meta?.target;
+    const hasNumeroFacturaTarget = Array.isArray(target)
+      ? target.includes('numeroFactura')
+      : typeof target === 'string' && target.includes('numeroFactura');
+    return error?.code === 'P2002' && hasNumeroFacturaTarget;
+  }
+
+  /**
+   * Calcula precios desde BD (paquete + extras). Fuente de verdad para evitar manipulación desde el front.
+   * Usado por create() (web) y createManual() (admin).
+   */
+  private async computePricesFromPaqueteAndExtras(
+    paqueteId: string,
+    extrasInput: Array<{ extraId: string; cantidad?: number; precioUnitario?: number }>,
+    anticipoInput: number,
+    validateProvidedUnitPrice: boolean = false,
+  ): Promise<{
+    precioBase: number;
+    precioTotal: number;
+    restante: number;
+    anticipo: number;
+    extrasConPrecio: Array<{ extraId: string; cantidad: number; precioUnitario: number }>;
+  }> {
+    const paquete = await this.prisma.paquete.findUnique({
+      where: { id: paqueteId },
+      select: { precioBase: true },
+    });
+    if (!paquete) throw new NotFoundException("Paquete no encontrado");
+    const precioBase = Number(paquete.precioBase ?? 0);
+
+    const extrasConPrecio: Array<{ extraId: string; cantidad: number; precioUnitario: number }> = [];
+    let totalExtras = 0;
+    for (const item of extrasInput.filter((x) => x.extraId)) {
+      const cantidad = Number(item.cantidad ?? 1);
+      if (cantidad < 1) continue;
+      const extra = await this.prisma.extra.findUnique({
+        where: { id: item.extraId },
+        select: { precio: true },
+      });
+      if (!extra) continue;
+      const precioUnitario = Number(extra.precio ?? 0);
+      if (
+        validateProvidedUnitPrice &&
+        item.precioUnitario !== undefined &&
+        item.precioUnitario !== null
+      ) {
+        const providedUnitPrice = Number(item.precioUnitario);
+        if (!Number.isFinite(providedUnitPrice) || providedUnitPrice < 0) {
+          throw new BadRequestException(`Precio unitario inválido para extra ${item.extraId}`);
+        }
+
+        if (Math.abs(providedUnitPrice - precioUnitario) > 0.01) {
+          throw new BadRequestException(`El precio del extra ${item.extraId} no coincide con el catálogo actual`);
+        }
+      }
+      totalExtras += precioUnitario * cantidad;
+      extrasConPrecio.push({ extraId: item.extraId, cantidad, precioUnitario });
+    }
+
+    const precioTotal = precioBase + totalExtras;
+    const anticipo = Math.max(0, Math.min(Number(anticipoInput) || 0, precioTotal));
+    const restante = Math.max(0, precioTotal - anticipo);
+
+    return { precioBase, precioTotal, restante, anticipo, extrasConPrecio };
+  }
+
+  private async ensureVehicleAvailabilityForDate(vehiculoId: string, fechaEvento: Date) {
+    const start = new Date(fechaEvento);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    const vehiculo = await this.prisma.vehiculo.findUnique({
+      where: { id: vehiculoId },
+      select: { id: true, cantidad: true, estado: true },
+    });
+
+    if (!vehiculo || vehiculo.estado !== "ACTIVO") {
+      throw new NotFoundException("Vehículo no disponible");
+    }
+
+    const bloqueado = await this.prisma.disponibilidadVehiculo.findFirst({
+      where: {
+        vehiculoId,
+        fecha: { gte: start, lt: end },
+      },
+      select: { id: true },
+    });
+
+    if (bloqueado) {
+      throw new BadRequestException("El vehículo está bloqueado administrativamente para esa fecha");
+    }
+
+    const reservasActivas = await this.prisma.reserva.count({
+      where: {
+        vehiculoId,
+        fechaEvento: { gte: start, lt: end },
+        estado: { in: ["CONFIRMADA", "PAGO_PARCIAL"] },
+      },
+    });
+
+    if (reservasActivas >= (vehiculo.cantidad ?? 1)) {
+      throw new BadRequestException("No hay cupo disponible para ese vehículo en la fecha seleccionada");
+    }
+  }
+
+  private async ensureVehicleBelongsToPackage(paqueteId: string, vehiculoId: string) {
+    const relation = await this.prisma.paqueteVehiculo.findUnique({
+      where: {
+        paqueteId_vehiculoId: {
+          paqueteId,
+          vehiculoId,
+        },
+      },
+      select: { paqueteId: true },
+    });
+
+    if (!relation) {
+      throw new BadRequestException("El vehículo seleccionado no está asignado al paquete elegido");
+    }
+  }
+
   private async ensureUser(email: string, nombre: string, telefono?: string) {
-    const existing = await this.prisma.usuario.findUnique({ where: { email } });
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = await this.prisma.usuario.findUnique({ where: { email: normalizedEmail } });
     if (existing) return existing.id;
-    const hashed = await bcrypt.hash("Temp1234!", 10);
+    const temporaryPassword = randomBytes(24).toString("base64url");
+    const hashed = await bcrypt.hash(temporaryPassword, 10);
     const user = await this.prisma.usuario.create({
       data: {
-        email,
+        email: normalizedEmail,
         contrasena: hashed,
         nombre: nombre || email,
         telefono: telefono || "",
@@ -719,853 +916,4 @@ export class ReservationsService {
     });
     return vehicle?.id;
   }
-
-  /**
-   * ========================================
-   * ADMIN: CREAR RESERVA MANUAL
-   * ========================================
-   * Permite crear reservas desde el panel admin para casos externos:
-   * - Reservas por WhatsApp, correo, teléfono
-   * - Clientes corporativos
-   * - Eventos internos
-   */
-  async createManual(dto: any, adminUser?: string) {
-    const {
-      nombre,
-      email,
-      telefono,
-      identificacion,
-      notasInternas,
-      paqueteId,
-      vehiculoId,
-      conductorId,
-      tipoEvento,
-      fechaEvento,
-      horaInicio,
-      horaFin,
-      origen,
-      destino,
-      numeroPersonas,
-      tipoPago,
-      origenReserva,
-      anticipo,
-      estadoInicial,
-      extras,
-      comentario,
-    } = dto;
-
-    // Validar fechas
-    const fechaEventoDate = new Date(fechaEvento);
-    const horaInicioDate = new Date(horaInicio);
-    const horaFinDate = new Date(horaFin);
-
-    if (!(horaInicioDate instanceof Date) || isNaN(horaInicioDate.getTime())) {
-      throw new BadRequestException("horaInicio inválida");
-    }
-    if (!(horaFinDate instanceof Date) || isNaN(horaFinDate.getTime())) {
-      throw new BadRequestException("horaFin inválida");
-    }
-    if (horaFinDate <= horaInicioDate) {
-      throw new BadRequestException("horaFin debe ser mayor que horaInicio");
-    }
-
-    // Validar paquete
-    const paquete = await this.prisma.paquete.findUnique({
-      where: { id: paqueteId },
-      include: { vehiculos: true },
-    });
-
-    if (!paquete) {
-      throw new NotFoundException("Paquete no encontrado");
-    }
-
-    // Validar vehículo pertenece al paquete
-    const allowedVehicleIds = paquete.vehiculos?.map((v) => v.vehiculoId) ?? [];
-    if (allowedVehicleIds.length > 0 && !allowedVehicleIds.includes(vehiculoId)) {
-      throw new BadRequestException("El vehículo no pertenece al paquete seleccionado");
-    }
-
-    // Verificar conflictos (NO BLOQUEANTE, solo FYI para el admin)
-    const conflicting = await this.prisma.reserva.findFirst({
-      where: {
-        vehiculoId,
-        estado: { in: ["PAGO_PENDIENTE", "PAGO_PARCIAL", "CONFIRMADA", "COMPLETADA"] },
-        horaInicio: { lt: horaFinDate },
-        horaFin: { gt: horaInicioDate },
-      },
-      select: { id: true, nombre: true },
-    });
-
-    // Solo registrar el warning, no bloquear la creación
-    if (conflicting) {
-      this.logger.warn(
-        `⚠️ CONFLICTO DETECTADO: Vehículo ${vehiculoId} ya está reservado en ese horario (reserva #${conflicting.id} - ${conflicting.nombre})`
-      );
-    }
-
-    // ==========================================
-    // CÁLCULO DE PRECIOS (BACKEND ES LA FUENTE DE VERDAD)
-    // ==========================================
-    
-    const precioBase = Number(paquete.precioBase);
-    
-    // Calcular precio de extras
-    let precioExtras = 0;
-    const extrasValidados: Array<{extraId: string; cantidad: number; precioUnitario: number}> = [];
-    
-    if (Array.isArray(extras) && extras.length > 0) {
-      const extraIds = extras.map(e => e.extraId).filter(Boolean);
-      
-      if (extraIds.length > 0) {
-        const extrasDB = await this.prisma.extra.findMany({
-          where: { 
-            id: { in: extraIds },
-            estado: 'ACTIVO'
-          },
-          select: { id: true, precio: true }
-        });
-        
-        const extrasMap = new Map(extrasDB.map(e => [e.id, Number(e.precio)]));
-        
-        for (const extraDTO of extras) {
-          const precioReal = extrasMap.get(extraDTO.extraId);
-          if (precioReal !== undefined) {
-            const cantidad = Math.max(1, Number(extraDTO.cantidad ?? 1));
-            precioExtras += precioReal * cantidad;
-            extrasValidados.push({
-              extraId: extraDTO.extraId,
-              cantidad,
-              precioUnitario: precioReal
-            });
-          }
-        }
-      }
-    }
-    
-    const precioTotal = precioBase + precioExtras;
-    
-    // Validar anticipo
-    const anticipoRecibido = Number(anticipo ?? 0);
-    if (anticipoRecibido < 0 || anticipoRecibido > precioTotal) {
-      throw new BadRequestException(`El anticipo debe estar entre $0 y $${precioTotal.toFixed(2)}`);
-    }
-    
-    const restante = precioTotal - anticipoRecibido;
-    
-    // Validar estado inicial
-    let estadoFinal = estadoInicial;
-    if (estadoInicial === 'PAGO_PARCIAL' && anticipoRecibido === 0) {
-      throw new BadRequestException('Estado PAGO_PARCIAL requiere anticipo > 0');
-    }
-    if (estadoInicial === 'CONFIRMADA' && restante > 0.01) {
-      throw new BadRequestException('Estado CONFIRMADA requiere pago completo');
-    }
-    
-    this.logger.log(
-      `Reserva manual: precioBase=$${precioBase}, extras=$${precioExtras}, ` +
-      `total=$${precioTotal}, anticipo=$${anticipoRecibido}, restante=$${restante}`
-    );
-    
-    // ==========================================
-    // CREAR RESERVA MANUAL
-    // ==========================================
-    
-    const created = await this.prisma.reserva.create({
-      data: {
-        usuarioId: null, // Reservas manuales no tienen usuario asociado
-        paqueteId,
-        vehiculoId,
-        conductorId: conductorId || null,
-        nombre,
-        email,
-        telefono,
-        identificacion: identificacion ?? null,
-        notasInternas: notasInternas ?? null,
-        tipoEvento,
-        fechaEvento: fechaEventoDate,
-        horaInicio: horaInicioDate,
-        horaFin: horaFinDate,
-        origen,
-        destino,
-        numeroPersonas,
-        precioBase,
-        precioTotal,
-        anticipo: anticipoRecibido,
-        restante,
-        estado: estadoFinal,
-        tipoPago: tipoPago as any,
-        origenReserva: origenReserva || 'MANUAL', // Usar el origen especificado o MANUAL por defecto
-      },
-    });
-
-    // Registrar extras
-    if (extrasValidados.length > 0) {
-      await this.prisma.reservaExtra.createMany({ 
-        data: extrasValidados.map((x) => ({
-          reservaId: created.id,
-          extraId: x.extraId,
-          cantidad: x.cantidad,
-          precioUnitario: x.precioUnitario,
-        }))
-      });
-    }
-
-    // ==========================================
-    // REGISTRAR EN HISTORIAL CON AUDITORÍA CLARA
-    // ==========================================
-    let mensajeAuditoria = comentario || `Reserva creada manualmente desde Admin por ${adminUser || 'Admin'}`;
-    
-    // Dejar claro si fue creada como pago completo
-    if (estadoFinal === 'CONFIRMADA' && restante <= 0.01) {
-      mensajeAuditoria = comentario 
-        ? `${comentario} | ✓ PAGO COMPLETO MANUAL registrado por ${adminUser || 'Admin'}` 
-        : `Reserva creada como PAGO COMPLETO MANUAL por ${adminUser || 'Admin'}. Origen: ${origenReserva || 'MANUAL'}. Total: $${precioTotal.toFixed(2)}`;
-    } else if (estadoFinal === 'PAGO_PARCIAL') {
-      mensajeAuditoria = comentario
-        ? `${comentario} | Anticipo: $${anticipoRecibido.toFixed(2)} de $${precioTotal.toFixed(2)}`
-        : `Reserva creada con anticipo parcial de $${anticipoRecibido.toFixed(2)} de $${precioTotal.toFixed(2)} por ${adminUser || 'Admin'}. Restante: $${restante.toFixed(2)}`;
-    }
-
-    await this.prisma.historialEstadoReserva.create({
-      data: {
-        reservaId: created.id,
-        estado: estadoFinal,
-        comentario: mensajeAuditoria,
-        activo: 'ACTIVO',
-      },
-    });
-
-    this.logger.log(
-      `✅ Reserva manual #${created.id} creada por ${adminUser || 'Admin'} | ` +
-      `Origen: ${origenReserva || 'MANUAL'} | Estado: ${estadoFinal} | ` +
-      `Total: $${precioTotal.toFixed(2)} | Anticipo: $${anticipoRecibido.toFixed(2)} | Restante: $${restante.toFixed(2)}`
-    );
-
-    return this.toResponse(created);
-  }
-
-  /**
-   * ========================================
-   * ADMIN: MARCAR PAGO COMPLETO MANUAL
-   * ========================================
-   * Permite marcar una reserva como pagada al 100% aunque:
-   * - No exista PagoReserva previo
-   * - El pago haya sido externo (SINPE, transferencia, efectivo)
-   */
-  async markPaymentCompleteManual(id: string, dto: any, adminUser?: string) {
-    const reserva = await this.prisma.reserva.findUnique({
-      where: { id },
-    });
-
-    if (!reserva) {
-      throw new NotFoundException(`Reserva #${id} no encontrada`);
-    }
-
-    // Validar que no esté ya confirmada o completada
-    if (reserva.estado === 'CONFIRMADA' || reserva.estado === 'COMPLETADA') {
-      throw new BadRequestException(
-        `No se puede marcar pago completo. Estado actual: ${reserva.estado}`
-      );
-    }
-
-    // Validar que no haya conflictos
-    const hasConflict = await this.hasConflict(
-      reserva.id,
-      reserva.vehiculoId,
-      reserva.horaInicio,
-      reserva.horaFin,
-      reserva.estado
-    );
-
-    if (hasConflict) {
-      throw new BadRequestException(
-        'No se puede confirmar pago. La reserva tiene conflictos de horario'
-      );
-    }
-
-    const precioTotal = Number(reserva.precioTotal);
-    const { tipoPago, referenciaExterna, comentario } = dto;
-
-    // ==========================================
-    // CREAR REGISTRO DE PAGO
-    // ==========================================
-    await this.prisma.pagoReserva.create({
-      data: {
-        reservaId: id,
-        monto: precioTotal,
-        tipoPago: tipoPago as any,
-        referenciaExterna: referenciaExterna || 'PAGO_MANUAL_ADMIN',
-        estado: 'PAGADO',
-        pagadoEn: new Date(),
-      },
-    });
-
-    // ==========================================
-    // ACTUALIZAR RESERVA
-    // ==========================================
-    const updated = await this.prisma.reserva.update({
-      where: { id },
-      data: {
-        anticipo: precioTotal,
-        restante: 0,
-        estado: 'CONFIRMADA',
-      },
-    });
-
-    // ==========================================
-    // REGISTRAR EN HISTORIAL
-    // ==========================================
-    await this.prisma.historialEstadoReserva.create({
-      data: {
-        reservaId: id,
-        estado: 'CONFIRMADA',
-        comentario: comentario || `Pago completo marcado manualmente por ${adminUser || 'Admin'}. Referencia: ${referenciaExterna || 'N/A'}`,
-        activo: 'ACTIVO',
-      },
-    });
-
-    this.logger.log(
-      `✅ Reserva #${id}: Pago completo marcado manualmente por ${adminUser || 'Admin'}. Total: $${precioTotal.toFixed(2)}`
-    );
-
-    // Enviar email de confirmación
-    try {
-      const emailHtml = `
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; background: #fff; }
-            .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #c9a24d; padding: 30px 20px; text-align: center; }
-            .content { padding: 30px 20px; }
-            .box { background: #f5f5f5; padding: 20px; border-left: 4px solid #4caf50; margin: 20px 0; border-radius: 4px; }
-            .box.highlight { background: #e8f5e9; border-left-color: #4caf50; }
-            .amount { font-size: 28px; font-weight: bold; color: #1a1a2e; }
-            .label { font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 5px; }
-            .footer { background: #1a1a2e; color: #c9a24d; padding: 20px; text-align: center; font-size: 12px; }
-            .footer p { margin: 5px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0; font-size: 24px;">¡Pago Confirmado!</h1>
-              <p style="margin: 10px 0 0 0; font-size: 14px;">Reserva #${reserva.id}</p>
-            </div>
-            <div class="content">
-              <p>Hola <strong>${reserva.nombre}</strong>,</p>
-              <p>¡Excelente! Hemos recibido y confirmado tu pago completo. Tu reserva está <strong>CONFIRMADA</strong>.</p>
-              
-              <div class="box highlight">
-                <div class="label">Pago Total Confirmado</div>
-                <div class="amount">$${precioTotal.toFixed(2)}</div>
-                <p style="margin: 10px 0 0 0; font-size: 14px; color: #2e7d32;">✓ Todo listo</p>
-              </div>
-
-              <div class="box">
-                <p style="margin: 0 0 10px 0;"><strong>Próximos pasos:</strong></p>
-                <p style="margin: 0;">Nuestro equipo se comunicará contigo en las próximas <strong>48 horas</strong> para coordinar los detalles finales.</p>
-              </div>
-
-              <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">Número de reserva: <strong>#${reserva.id}</strong></p>
-            </div>
-            <div class="footer">
-              <p>Moments Transportation CR</p>
-              <p>¡Gracias por confiar en nosotros!</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-      await this.emailService.sendEmail({
-        to: reserva.email,
-        subject: `¡Pago confirmado! - Reserva #${reserva.id} | Moments`,
-        html: emailHtml,
-      });
-    } catch (error) {
-      this.logger.error(`Error enviando email de confirmación:`, error);
-    }
-
-    return this.toResponse(updated);
-  }
-
-  /**
-   * ========================================
-   * ADMIN: EDITAR RESERVA (CONTROLADO)
-   * ========================================
-   */
-  async updateReservation(id: string, dto: any, adminUser?: string) {
-    const reserva = await this.prisma.reserva.findUnique({
-      where: { id },
-    });
-
-    if (!reserva) {
-      throw new NotFoundException(`Reserva #${id} no encontrada`);
-    }
-
-    const changes: any = {};
-    const comentarios: string[] = [];
-
-    // Permitir cambiar conductor
-    if (dto.conductorId !== undefined) {
-      changes.conductorId = dto.conductorId || null;
-      comentarios.push(`Conductor ${dto.conductorId ? 'asignado' : 'removido'}`);
-    }
-
-    // Permitir cambiar estado (con validaciones)
-    if (dto.estado && dto.estado !== reserva.estado) {
-      if (dto.estado === 'CANCELADA') {
-        changes.estado = 'CANCELADA';
-        comentarios.push(`Reserva cancelada por ${adminUser || 'Admin'}`);
-      } else if (dto.estado === 'COMPLETADA' && reserva.estado === 'CONFIRMADA') {
-        changes.estado = 'COMPLETADA';
-        comentarios.push(`Servicio completado`);
-      } else {
-        throw new BadRequestException(`Cambio de estado no permitido: ${reserva.estado} → ${dto.estado}`);
-      }
-    }
-
-    // Permitir cambiar horarios (validando conflictos)
-    if (dto.horaInicio || dto.horaFin) {
-      const horaInicio = dto.horaInicio ? new Date(dto.horaInicio) : reserva.horaInicio;
-      const horaFin = dto.horaFin ? new Date(dto.horaFin) : reserva.horaFin;
-
-      if (horaFin <= horaInicio) {
-        throw new BadRequestException("horaFin debe ser mayor que horaInicio");
-      }
-
-      // Verificar conflictos con el nuevo horario
-      const conflicting = await this.prisma.reserva.findFirst({
-        where: {
-          id: { not: id },
-          vehiculoId: reserva.vehiculoId,
-          estado: { in: ["PAGO_PENDIENTE", "PAGO_PARCIAL", "CONFIRMADA", "COMPLETADA"] },
-          horaInicio: { lt: horaFin },
-          horaFin: { gt: horaInicio },
-        },
-        select: { id: true },
-      });
-
-      if (conflicting) {
-        throw new BadRequestException("Conflicto de horario con otra reserva");
-      }
-
-      changes.horaInicio = horaInicio;
-      changes.horaFin = horaFin;
-      comentarios.push(`Horario modificado`);
-    }
-
-    // Permitir cambiar vehículo (validando disponibilidad)
-    if (dto.vehiculoId && dto.vehiculoId !== reserva.vehiculoId) {
-      // Verificar conflictos con el nuevo vehículo
-      const conflicting = await this.prisma.reserva.findFirst({
-        where: {
-          id: { not: id },
-          vehiculoId: dto.vehiculoId,
-          estado: { in: ["PAGO_PENDIENTE", "PAGO_PARCIAL", "CONFIRMADA", "COMPLETADA"] },
-          horaInicio: { lt: reserva.horaFin },
-          horaFin: { gt: reserva.horaInicio },
-        },
-        select: { id: true },
-      });
-
-      if (conflicting) {
-        throw new BadRequestException("El nuevo vehículo no está disponible en ese horario");
-      }
-
-      changes.vehiculoId = dto.vehiculoId;
-      comentarios.push(`Vehículo cambiado`);
-    }
-
-    if (Object.keys(changes).length === 0) {
-      throw new BadRequestException('No hay cambios para aplicar');
-    }
-
-    // Aplicar cambios
-    const updated = await this.prisma.reserva.update({
-      where: { id },
-      data: changes,
-    });
-
-    // Registrar en historial
-    await this.prisma.historialEstadoReserva.create({
-      data: {
-        reservaId: id,
-        estado: updated.estado,
-        comentario: `${comentarios.join(', ')} por ${adminUser || 'Admin'}${dto.comentario ? '. ' + dto.comentario : ''}`,
-        activo: 'ACTIVO',
-      },
-    });
-
-    this.logger.log(`✅ Reserva #${id} editada por ${adminUser || 'Admin'}: ${comentarios.join(', ')}`);
-
-    return this.toResponse(updated);
-  }
-
-  // ==========================================
-  // MÉTODOS PARA ESTADOS OPERATIVOS (TABLA ADMIN)
-  // ==========================================
-
-  /**
-   * Actualiza el estado de contacto con el cliente
-   */
-  async updateContactoCliente(
-    reservaId: string,
-    contactoCliente: EstadoContacto,
-    adminUser?: string,
-  ) {
-    const reserva = await this.prisma.reserva.findUnique({
-      where: { id: reservaId },
-      select: { id: true, contactoCliente: true },
-    });
-
-    if (!reserva) {
-      throw new NotFoundException('Reserva no encontrada');
-    }
-
-    const estadoAnterior = reserva.contactoCliente;
-
-    const updated = await this.prisma.reserva.update({
-      where: { id: reservaId },
-      data: { contactoCliente },
-    });
-
-    // Registrar auditoría
-    await this.prisma.historialEstadoReserva.create({
-      data: {
-        reservaId,
-        estado: updated.estado,
-        comentario: `🔄 Contacto con cliente actualizado: ${estadoAnterior} → ${contactoCliente} por ${adminUser || 'Admin'}`,
-        activo: 'ACTIVO',
-      },
-    });
-
-    this.logger.log(`📞 Reserva #${reservaId}: Contacto ${estadoAnterior} → ${contactoCliente}`);
-
-    return this.toResponse(updated);
-  }
-
-  /**
-   * Actualiza si el adelanto fue recibido
-   */
-  async updateAdelantoRecibido(
-    reservaId: string,
-    adelantoRecibido: boolean,
-    adminUser?: string,
-  ) {
-    const reserva = await this.prisma.reserva.findUnique({
-      where: { id: reservaId },
-      select: { id: true, adelantoRecibido: true, anticipo: true },
-    });
-
-    if (!reserva) {
-      throw new NotFoundException('Reserva no encontrada');
-    }
-
-    const estadoAnterior = reserva.adelantoRecibido;
-
-    const updated = await this.prisma.reserva.update({
-      where: { id: reservaId },
-      data: { adelantoRecibido },
-    });
-
-    // Registrar auditoría
-    await this.prisma.historialEstadoReserva.create({
-      data: {
-        reservaId,
-        estado: updated.estado,
-        comentario: `💰 Adelanto ${adelantoRecibido ? 'RECIBIDO' : 'NO RECIBIDO'} ($${Number(reserva.anticipo).toFixed(2)}). Cambio: ${estadoAnterior ? 'Sí' : 'No'} → ${adelantoRecibido ? 'Sí' : 'No'} por ${adminUser || 'Admin'}`,
-        activo: 'ACTIVO',
-      },
-    });
-
-    this.logger.log(`💵 Reserva #${reservaId}: Adelanto ${estadoAnterior} → ${adelantoRecibido}`);
-
-    return this.toResponse(updated);
-  }
-
-  /**
-   * Actualiza si el pago está completo
-   */
-  async updatePagoCompleto(
-    reservaId: string,
-    pagoCompleto: boolean,
-    adminUser?: string,
-  ) {
-    const reserva = await this.prisma.reserva.findUnique({
-      where: { id: reservaId },
-      select: { id: true, pagoCompleto: true, precioTotal: true },
-    });
-
-    if (!reserva) {
-      throw new NotFoundException('Reserva no encontrada');
-    }
-
-    const estadoAnterior = reserva.pagoCompleto;
-
-    const updated = await this.prisma.reserva.update({
-      where: { id: reservaId },
-      data: { pagoCompleto },
-    });
-
-    // Registrar auditoría
-    await this.prisma.historialEstadoReserva.create({
-      data: {
-        reservaId,
-        estado: updated.estado,
-        comentario: `💳 PAGO COMPLETO ${pagoCompleto ? 'CONFIRMADO' : 'REVERTIDO'} ($${Number(reserva.precioTotal).toFixed(2)}). Cambio: ${estadoAnterior ? 'Sí' : 'No'} → ${pagoCompleto ? 'Sí' : 'No'} por ${adminUser || 'Admin'}`,
-        activo: 'ACTIVO',
-      },
-    });
-
-    this.logger.log(`✅ Reserva #${reservaId}: Pago completo ${estadoAnterior} → ${pagoCompleto}`);
-
-    return this.toResponse(updated);
-  }
-
-  /**
-   * Actualiza si el chofer fue asignado
-   */
-  async updateChoferAsignado(
-    reservaId: string,
-    choferAsignado: boolean,
-    adminUser?: string,
-  ) {
-    const reserva = await this.prisma.reserva.findUnique({
-      where: { id: reservaId },
-      select: { id: true, choferAsignado: true },
-    });
-
-    if (!reserva) {
-      throw new NotFoundException('Reserva no encontrada');
-    }
-
-    const estadoAnterior = reserva.choferAsignado;
-
-    const updated = await this.prisma.reserva.update({
-      where: { id: reservaId },
-      data: { choferAsignado },
-    });
-
-    // Registrar auditoría
-    await this.prisma.historialEstadoReserva.create({
-      data: {
-        reservaId,
-        estado: updated.estado,
-        comentario: `🚗 Chofer ${choferAsignado ? 'ASIGNADO' : 'NO ASIGNADO'}. Cambio: ${estadoAnterior ? 'Sí' : 'No'} → ${choferAsignado ? 'Sí' : 'No'} por ${adminUser || 'Admin'}`,
-        activo: 'ACTIVO',
-      },
-    });
-
-    this.logger.log(`👤 Reserva #${reservaId}: Chofer asignado ${estadoAnterior} → ${choferAsignado}`);
-
-    return this.toResponse(updated);
-  }
-
-  /**
-   * Actualiza si el evento fue realizado
-   */
-  async updateEventoRealizado(
-    reservaId: string,
-    eventoRealizado: boolean,
-    adminUser?: string,
-  ) {
-    const reserva = await this.prisma.reserva.findUnique({
-      where: { id: reservaId },
-      select: { id: true, eventoRealizado: true },
-    });
-
-    if (!reserva) {
-      throw new NotFoundException('Reserva no encontrada');
-    }
-
-    const estadoAnterior = reserva.eventoRealizado;
-
-    const updated = await this.prisma.reserva.update({
-      where: { id: reservaId },
-      data: { eventoRealizado },
-    });
-
-    // Registrar auditoría
-    await this.prisma.historialEstadoReserva.create({
-      data: {
-        reservaId,
-        estado: updated.estado,
-        comentario: `🎉 Evento ${eventoRealizado ? 'REALIZADO' : 'NO REALIZADO'}. Cambio: ${estadoAnterior ? 'Sí' : 'No'} → ${eventoRealizado ? 'Sí' : 'No'} por ${adminUser || 'Admin'}`,
-        activo: 'ACTIVO',
-      },
-    });
-
-    this.logger.log(`🎊 Reserva #${reservaId}: Evento realizado ${estadoAnterior} → ${eventoRealizado}`);
-
-    return this.toResponse(updated);
-  }
-
-  /**
-   * Lista todas las reservas con filtros, búsqueda y paginación (para tabla admin)
-   */
-  async findAllWithFilters(query: any) {
-    const {
-      vehiculoId,
-      estadoPago,
-      tipoEvento,
-      origenReserva,
-      contactoCliente,
-      conConflictos,
-      fechaDesde,
-      fechaHasta,
-      busqueda,
-      sortBy = 'fechaEvento',
-      sortOrder = 'asc',
-      page = 1,
-      limit = 25,
-    } = query;
-
-    const skip = (Number(page) - 1) * Number(limit);
-    const take = Number(limit);
-
-    // Construir WHERE clause
-    const where: any = {};
-
-    if (vehiculoId) {
-      where.vehiculoId = vehiculoId;
-    }
-
-    if (estadoPago === 'pendiente') {
-      where.estado = 'PAGO_PENDIENTE';
-    } else if (estadoPago === 'parcial') {
-      where.estado = 'PAGO_PARCIAL';
-    } else if (estadoPago === 'completo') {
-      where.pagoCompleto = true;
-    }
-
-    if (tipoEvento === 'futuro') {
-      where.fechaEvento = { gte: new Date() };
-    } else if (tipoEvento === 'hoy') {
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-      const manana = new Date(hoy);
-      manana.setDate(manana.getDate() + 1);
-      where.fechaEvento = { gte: hoy, lt: manana };
-    } else if (tipoEvento === 'pasado') {
-      where.fechaEvento = { lt: new Date() };
-    }
-
-    if (origenReserva) {
-      where.origenReserva = origenReserva;
-    }
-
-    if (contactoCliente) {
-      where.contactoCliente = contactoCliente;
-    }
-
-    if (fechaDesde || fechaHasta) {
-      where.fechaEvento = {};
-      if (fechaDesde) where.fechaEvento.gte = new Date(fechaDesde);
-      if (fechaHasta) where.fechaEvento.lte = new Date(fechaHasta);
-    }
-
-    if (busqueda) {
-      where.OR = [
-        { nombre: { contains: busqueda, mode: 'insensitive' } },
-        { email: { contains: busqueda, mode: 'insensitive' } },
-        { telefono: { contains: busqueda } },
-      ];
-    }
-
-    // Ordenamiento
-    const orderBy: any = {};
-    if (sortBy === 'fechaEvento') {
-      orderBy.fechaEvento = sortOrder;
-    } else if (sortBy === 'actualizadoEn') {
-      orderBy.actualizadoEn = sortOrder;
-    }
-
-    // Ejecutar query
-    const [reservas, total] = await Promise.all([
-      this.prisma.reserva.findMany({
-        where,
-        skip,
-        take,
-        orderBy,
-        include: {
-          paquete: {
-            select: {
-              id: true,
-              nombre: true,
-              precioBase: true,
-            },
-          },
-          vehiculo: {
-            select: {
-              id: true,
-              nombre: true,
-              categoria: true,
-            },
-          },
-          conductor: {
-            select: {
-              id: true,
-              nombre: true,
-              telefono: true,
-            },
-          },
-          extras: { 
-            include: { 
-              extra: { select: { nombre: true, precio: true, categoria: true } } 
-            } 
-          },
-          incluidos: { 
-            include: { 
-              incluido: { 
-                select: { nombre: true, descripcion: true, categoria: { select: { nombre: true } } } 
-              } 
-            } 
-          },
-        },
-      }),
-      this.prisma.reserva.count({ where }),
-    ]);
-
-    // Detectar conflictos si es necesario
-    let reservasConConflictos = reservas;
-    if (conConflictos !== undefined) {
-      const reservasConFlags = await Promise.all(
-        reservas.map(async (r) => {
-          const conflicto = await this.prisma.reserva.findFirst({
-            where: {
-              vehiculoId: r.vehiculoId,
-              id: { not: r.id },
-              estado: {
-                in: ['PAGO_PENDIENTE', 'PAGO_PARCIAL', 'CONFIRMADA', 'COMPLETADA'],
-              },
-              horaInicio: { lt: r.horaFin },
-              horaFin: { gt: r.horaInicio },
-            },
-            select: { id: true },
-          });
-          return { ...r, tieneConflicto: !!conflicto };
-        }),
-      );
-
-      if (conConflictos) {
-        reservasConConflictos = reservasConFlags.filter((r: any) => r.tieneConflicto);
-      } else {
-        reservasConConflictos = reservasConFlags;
-      }
-    }
-
-    return {
-      data: reservasConConflictos.map((r) => this.toResponse(r)),
-      meta: {
-        total,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(total / take),
-      },
-    };
-  }
 }
-

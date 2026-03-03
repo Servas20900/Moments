@@ -3,7 +3,7 @@ import Button from '../Button'
 import { InputField, TextareaField, CheckboxField } from '../FormField'
 import ImageUpload from '../ImageUpload'
 import ListItemInput from './ListItemInput'
-import { createImageRecord, type CreateManualReservationData } from '../../api/api'
+import { createImageRecord } from '../../api/api'
 import type { CalendarSlotView, Package, Vehicle, SystemImage, HeroSlide } from '../../data/content'
 
 export function AdminEventForm(
@@ -144,6 +144,7 @@ export function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCa
     if (!price || isNaN(priceNum) || priceNum <= 0) newErrors.price = 'El precio debe ser mayor a 0'
     const maxPeopleNum = Number(maxPeople)
     if (!maxPeople || isNaN(maxPeopleNum) || maxPeopleNum < 1) newErrors.maxPeople = 'Capacidad minima 1'
+    if (selectedVehicleIds.length < 1) newErrors.vehicleIds = 'Debes asignar al menos un vehículo'
     // Imagen es opcional
     return newErrors
   }
@@ -269,6 +270,7 @@ export function AdminPackageForm({ pkg, categories = [], vehiclesList = [], onCa
           ))}
           {vehiclesList.length === 0 && <p className="text-sm text-gray-400">No hay vehiculos cargados.</p>}
         </div>
+        {errors.vehicleIds && <span className="text-xs text-red-400">{errors.vehicleIds}</span>}
       </div>
       <TextareaField
         label="Descripcion"
@@ -305,6 +307,7 @@ export function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, u
     name: vehicle.name || '',
     category: vehicle.category || '',
     seats: vehicle.seats ?? 1,
+    quantity: vehicle.quantity ?? 1,
     rate: vehicle.rate || '',
     features: vehicle.features || [],
     imageUrl: vehicle.imageUrl || '',
@@ -315,9 +318,9 @@ export function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, u
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
 
-    if (type === 'number' && name === 'seats') {
+    if (type === 'number' && (name === 'seats' || name === 'quantity')) {
       if (/^\d*$/.test(value)) {
-        setState((s) => ({ ...s, seats: value } as any))
+        setState((s) => ({ ...s, [name]: value } as any))
       }
     } else {
       setState((s) => ({ ...s, [name]: value } as any))
@@ -336,6 +339,8 @@ export function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, u
     if (!state.category.trim()) newErrors.category = 'La categoria es requerida'
     const seatsValue = typeof state.seats === 'string' ? Number(state.seats) : state.seats
     if (!Number.isFinite(seatsValue) || seatsValue < 1) newErrors.seats = 'Minimo 1 asiento'
+    const quantityValue = typeof state.quantity === 'string' ? Number(state.quantity) : state.quantity
+    if (!Number.isFinite(quantityValue) || quantityValue < 1) newErrors.quantity = 'Mínimo 1 unidad'
     // Imagen es opcional
     return newErrors
   }
@@ -348,7 +353,8 @@ export function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, u
       return
     }
     const seatsValue = typeof state.seats === 'string' ? Number(state.seats) : state.seats
-    onSave({ ...state, seats: seatsValue })
+    const quantityValue = typeof state.quantity === 'string' ? Number(state.quantity) : state.quantity
+    onSave({ ...state, seats: seatsValue, quantity: quantityValue })
   }
 
   return (
@@ -387,6 +393,18 @@ export function AdminVehicleForm({ vehicle, categories = [], onCancel, onSave, u
       <datalist id="veh-cats">
         {categories.map((c) => <option key={c} value={c} />)}
       </datalist>
+      <InputField
+        label="Cantidad de unidades"
+        required
+        type="number"
+        name="quantity"
+        value={state.quantity}
+        onChange={handleChange}
+        error={errors.quantity}
+        min="1"
+        placeholder="1"
+        help="Número de unidades disponibles del mismo vehículo"
+      />
       <ListItemInput
         label="Características"
         required
@@ -688,11 +706,11 @@ interface AdminManualReservationFormProps {
   packages: Package[]
   vehicles: Vehicle[]
   onCancel: () => void
-  onSave: (data: CreateManualReservationData) => Promise<void>
+  onSave: (data: any) => Promise<void>
 }
 
 export function AdminManualReservationForm({ packages, vehicles, onCancel, onSave }: AdminManualReservationFormProps) {
-  const [state, setState] = useState<CreateManualReservationData>({
+  const [state, setState] = useState<any>({
     nombre: '',
     email: '',
     telefono: '',
@@ -700,11 +718,8 @@ export function AdminManualReservationForm({ packages, vehicles, onCancel, onSav
     notasInternas: '',
     paqueteId: '',
     vehiculoId: '',
-    conductorId: '',
     tipoEvento: '',
     fechaEvento: '',
-    horaInicio: '',
-    horaFin: '',
     origen: '',
     destino: '',
     numeroPersonas: 1,
@@ -752,9 +767,9 @@ export function AdminManualReservationForm({ packages, vehicles, onCancel, onSav
 
       setCheckingConflict(true)
       try {
-        const { checkVehicleAvailability } = await import('../../api/api')
-        const availability = await checkVehicleAvailability(state.vehiculoId, state.fechaEvento)
-        setHasConflict(!availability.available)
+        const { fetchVehicleAvailability } = await import('../../api/api')
+        const availability = await fetchVehicleAvailability(state.vehiculoId, state.fechaEvento)
+        setHasConflict(availability.bloqueado || availability.disponibles <= 0)
       } catch (error) {
         console.error('Error verificando conflictos:', error)
         setHasConflict(false)
@@ -768,7 +783,7 @@ export function AdminManualReservationForm({ packages, vehicles, onCancel, onSav
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
-    setState(s => ({
+    setState((s: any) => ({
       ...s,
       [name]: type === 'number' ? Number(value) : value
     }))
@@ -777,13 +792,13 @@ export function AdminManualReservationForm({ packages, vehicles, onCancel, onSav
 
   const handleCheckboxChange = (checked: boolean) => {
     if (checked) {
-      setState(s => ({
+      setState((s: any) => ({
         ...s,
         estadoInicial: 'CONFIRMADA',
         anticipo: precioTotal
       }))
     } else {
-      setState(s => ({
+      setState((s: any) => ({
         ...s,
         estadoInicial: 'PAGO_PENDIENTE',
         anticipo: 0
@@ -800,8 +815,6 @@ export function AdminManualReservationForm({ packages, vehicles, onCancel, onSav
     if (!state.vehiculoId) newErrors.vehiculoId = 'Debe seleccionar un vehículo'
     if (!state.tipoEvento.trim()) newErrors.tipoEvento = 'El tipo de evento es requerido'
     if (!state.fechaEvento) newErrors.fechaEvento = 'La fecha es requerida'
-    if (!state.horaInicio) newErrors.horaInicio = 'La hora de inicio es requerida'
-    if (!state.horaFin) newErrors.horaFin = 'La hora de fin es requerida'
     if (!state.origen.trim()) newErrors.origen = 'El origen es requerido'
     if (!state.destino.trim()) newErrors.destino = 'El destino es requerido'
     if (state.numeroPersonas < 1) newErrors.numeroPersonas = 'Mínimo 1 persona'
@@ -920,7 +933,7 @@ export function AdminManualReservationForm({ packages, vehicles, onCancel, onSav
             />
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InputField
               label="Fecha del evento"
               required
@@ -930,27 +943,6 @@ export function AdminManualReservationForm({ packages, vehicles, onCancel, onSav
               onChange={handleChange}
               error={errors.fechaEvento}
             />
-            <InputField
-              label="Hora inicio"
-              required
-              type="time"
-              name="horaInicio"
-              value={state.horaInicio}
-              onChange={handleChange}
-              error={errors.horaInicio}
-            />
-            <InputField
-              label="Hora fin"
-              required
-              type="time"
-              name="horaFin"
-              value={state.horaFin}
-              onChange={handleChange}
-              error={errors.horaFin}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <InputField
               label="Origen"
               required

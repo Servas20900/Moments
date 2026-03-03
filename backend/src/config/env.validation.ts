@@ -91,6 +91,12 @@ export class EnvironmentVariables {
   @IsOptional()
   SMTP_PORT?: number;
 
+  @IsNumber()
+  @IsOptional()
+  @Min(5)
+  @Max(180)
+  RESET_PASSWORD_TTL_MINUTES: number = 30;
+
   @IsString()
   @IsOptional()
   SMTP_USER?: string;

@@ -29,7 +29,6 @@ export type ReservationCart = {
   package: Pick<PackageView, 'id' | 'name' | 'price' | 'category' | 'imageUrl' | 'maxPeople'>
   vehicle?: Pick<VehicleView, 'id' | 'name' | 'seats' | 'rate' | 'imageUrl'>
   date: string
-  time: string
   origin: string
   destination: string
   people: number

@@ -492,8 +492,6 @@ export interface components {
             paqueteId: string;
             /** @example cm5xmb3ym00004m7a5wvg6p43 */
             vehiculoId: string;
-            /** @example cm5xmb3ym00004m7a5wvg6p44 */
-            conductorId?: string;
             /** @example Juan Pérez */
             nombre: string;
             /** @example juan@example.com */
@@ -506,10 +504,6 @@ export interface components {
             tipoEvento: string;
             /** @example 2026-02-14T00:00:00.000Z */
             fechaEvento: string;
-            /** @example 2026-02-14T14:00:00.000Z */
-            horaInicio: string;
-            /** @example 2026-02-14T18:00:00.000Z */
-            horaFin: string;
             /** @example San José Centro */
             origen: string;
             /** @example Playa Hermosa */

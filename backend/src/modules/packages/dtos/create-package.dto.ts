@@ -46,28 +46,7 @@ export class CreatePackageDto {
   @ApiProperty({
     required: false,
     type: [String],
-    description: "IDs de extras asociados al paquete",
-  })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  extraIds?: string[];
-
-  @ApiProperty({
-    required: false,
-    type: [String],
-    description: "IDs de incluidos (bebidas) asociados al paquete",
-  })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  incluidoIds?: string[];
-
-  @ApiProperty({
-    example: ["Chofer profesional", "Botella de vino", "Decoración"],
-    required: false,
-    type: [String],
-    description: "Lista de servicios y comodidades incluidas en el paquete",
+    description: "Lista de elementos incluidos en el paquete",
   })
   @IsOptional()
   @IsArray()

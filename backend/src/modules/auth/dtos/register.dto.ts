@@ -1,11 +1,4 @@
-import {
-  IsEmail,
-  IsInt,
-  IsOptional,
-  IsString,
-  MinLength,
-  Matches,
-} from "class-validator";
+import { IsEmail, IsOptional, IsString, MinLength, Matches } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class RegisterDto {
@@ -43,12 +36,4 @@ export class RegisterDto {
   @IsString()
   identificacion?: string;
 
-  @ApiProperty({
-    example: 1,
-    description: "ID del distrito de residencia",
-    required: false,
-  })
-  @IsOptional()
-  @IsInt()
-  distritoId?: number;
 }

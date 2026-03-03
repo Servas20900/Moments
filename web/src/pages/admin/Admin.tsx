@@ -317,7 +317,7 @@ const Admin = () => {
   }
 
   const onCreateVehicle = () => {
-    setEditingVehicle({ id: '', name: '', category: '', seats: 1, rate: '', features: [], imageUrl: '' })
+    setEditingVehicle({ id: '', name: '', category: '', seats: 1, quantity: 1, rate: '', features: [], imageUrl: '' })
     setShowVehModal(true)
   }
 
@@ -510,7 +510,7 @@ const Admin = () => {
               {notifications.length === 0 && <Card><p>No hay notificaciones aún.</p></Card>}
               {notifications.map((n) => (
                 <Card key={n.id} title={`${n.channel.toUpperCase()} · ${new Date(n.timestamp).toLocaleString()}`} subtitle={n.to}>
-                  <div dangerouslySetInnerHTML={{ __html: typeof n.message === 'string' ? n.message : String(n.message) }} />
+                  <div className="text-sm">{n.message}</div>
                 </Card>
               ))}
             </div>
